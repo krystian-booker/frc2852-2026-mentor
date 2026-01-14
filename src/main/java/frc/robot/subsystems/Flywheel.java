@@ -28,7 +28,7 @@ import static edu.wpi.first.units.Units.*;
 /**
  * Flywheel subsystem using dual Kraken X60 motors with Phoenix Pro FOC control.
  */
-public class FlywheelSubsystem extends SubsystemBase {
+public class Flywheel extends SubsystemBase {
 
     // Hardware
     private final TalonFX leaderMotor;
@@ -48,7 +48,7 @@ public class FlywheelSubsystem extends SubsystemBase {
     // State
     private double targetVelocityRPM = 0.0;
 
-    public FlywheelSubsystem() {
+    public Flywheel() {
         // Initialize motors
         CANBus canBus = new CANBus(FlywheelConstants.kCANBus);
         leaderMotor = new TalonFX(FlywheelConstants.kLeaderMotorId, canBus);

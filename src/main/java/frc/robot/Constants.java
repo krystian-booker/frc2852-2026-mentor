@@ -26,7 +26,7 @@ public final class Constants {
     // Mechanical
     public static final double kGearRatio = 2.0; // Motor rotations per flywheel rotation
 
-    // PID/Feedforward Gains (tune with SysId via Tuner X)
+    // PID/Feedforward Gains
     public static final double kS = 0.0;   // Static friction (Amps)
     public static final double kV = 0.12;  // Velocity feedforward (Amps per RPS)
     public static final double kA = 0.01;  // Acceleration feedforward (Amps per RPS/s)
@@ -43,5 +43,43 @@ public final class Constants {
     // Velocity Control
     public static final double kVelocityToleranceRPM = 50.0;     // RPM tolerance for atSetpoint()
     public static final double kSignalUpdateFrequencyHz = 250.0; // Status signal update rate
+  }
+
+  public static class HoodConstants {
+    // CAN IDs
+    public static final int kMotorId = 30;
+    public static final int kCANCoderId = 31;
+    public static final String kCANBus = "canivore";
+
+    // Mechanical
+    public static final double kGearRatio = 15.0; // Motor rotations per hood rotation
+    public static final double kMinPositionDegrees = 0.0;
+    public static final double kMaxPositionDegrees = 45.0;
+
+    // PID Gains (Slot 0)
+    public static final double kS = 0.0;   // Static friction (Amps)
+    public static final double kV = 0.0;   // Velocity feedforward (Amps per RPS)
+    public static final double kA = 0.0;   // Acceleration feedforward (Amps per RPS/s)
+    public static final double kP = 50.0;  // Proportional (Amps per rotation error)
+    public static final double kI = 0.0;   // Integral
+    public static final double kD = 0.5;   // Derivative
+
+    // Motion Magic
+    public static final double kMotionMagicCruiseVelocity = 200.0; // deg/s
+    public static final double kMotionMagicAcceleration = 400.0;   // deg/s^2
+    public static final double kMotionMagicJerk = 4000.0;          // deg/s^3
+
+    // Current Limits
+    public static final double kSupplyCurrentLimit = 40.0;       // Amps - main limit
+    public static final double kSupplyCurrentLowerLimit = 30.0;  // Amps - reduced limit after time
+    public static final double kSupplyCurrentLowerTime = 1.0;    // Seconds - time before reducing
+    public static final double kStatorCurrentLimit = 80.0;       // Amps
+
+    // Position Control
+    public static final double kPositionToleranceDegrees = 0.5;  // Degrees tolerance for atPosition()
+    public static final double kSignalUpdateFrequencyHz = 250.0; // Status signal update rate
+
+    // CANCoder
+    public static final double kCANCoderOffset = 0.0; // Rotations - tune during setup
   }
 }

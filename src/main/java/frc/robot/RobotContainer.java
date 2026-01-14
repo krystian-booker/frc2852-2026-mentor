@@ -5,11 +5,11 @@
 package frc.robot;
 
 import frc.robot.Constants.OperatorConstants;
-import frc.robot.subsystems.FlywheelSubsystem;
+import frc.robot.subsystems.Flywheel;
+import frc.robot.subsystems.Hood;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 /**
@@ -21,7 +21,8 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 public class RobotContainer {
 
   // Subsystems
-  private final FlywheelSubsystem flywheel = new FlywheelSubsystem();
+  private final Flywheel flywheel = new Flywheel();
+  private final Hood hood = new Hood();
 
   // Controllers
   private final CommandXboxController driverController = new CommandXboxController(OperatorConstants.kDriverControllerPort);
@@ -41,13 +42,6 @@ public class RobotContainer {
     driverController.b().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
     driverController.x().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kForward));
     driverController.y().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
-  }
-
-  /**
-   * Returns the flywheel subsystem.
-   */
-  public FlywheelSubsystem getFlywheel() {
-    return flywheel;
   }
 
   /**
