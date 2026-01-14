@@ -23,6 +23,8 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
+import frc.robot.Constants;
+import frc.robot.Constants.CANIds;
 import frc.robot.Constants.TurretConstants;
 
 import static edu.wpi.first.units.Units.*;
@@ -50,9 +52,9 @@ public class Turret extends SubsystemBase {
 
     public Turret() {
         // Initialize hardware
-        CANBus canBus = new CANBus(TurretConstants.kCANBus);
-        motor = new TalonFX(TurretConstants.kMotorId, canBus);
-        canCoder = new CANcoder(TurretConstants.kCANCoderId, canBus);
+        CANBus canBus = new CANBus(CANIds.CANIVORE);
+        motor = new TalonFX(CANIds.TURRET_MOTOR, canBus);
+        canCoder = new CANcoder(CANIds.TURRET_CANCODER, canBus);
 
         // Initialize control requests
         positionRequest = new MotionMagicTorqueCurrentFOC(0).withSlot(0);
@@ -68,7 +70,7 @@ public class Turret extends SubsystemBase {
         canCoderPosition = canCoder.getAbsolutePosition();
 
         BaseStatusSignal.setUpdateFrequencyForAll(
-                TurretConstants.kSignalUpdateFrequencyHz,
+                Constants.SIGNAL_UPDATE_FREQUENCY_HZ,
                 motorPosition,
                 canCoderPosition,
                 motor.getMotorVoltage(),
@@ -96,7 +98,7 @@ public class Turret extends SubsystemBase {
 
         // CANcoder is 1:1 with turret rotation
         config.MagnetSensor.SensorDirection = SensorDirectionValue.CounterClockwise_Positive;
-        config.MagnetSensor.MagnetOffset = TurretConstants.kCANCoderOffset;
+        config.MagnetSensor.MagnetOffset = TurretConstants.CANCODER_OFFSET;
 
         // Apply with retry
         StatusCode status = StatusCode.StatusCodeNotInitialized;
@@ -119,40 +121,40 @@ public class Turret extends SubsystemBase {
 
         // Use FusedCANcoder for absolute position feedback
         config.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.FusedCANcoder;
-        config.Feedback.FeedbackRemoteSensorID = TurretConstants.kCANCoderId;
-        config.Feedback.RotorToSensorRatio = TurretConstants.kGearRatio;
+        config.Feedback.FeedbackRemoteSensorID = CANIds.TURRET_CANCODER;
+        config.Feedback.RotorToSensorRatio = TurretConstants.GEAR_RATIO;
         config.Feedback.SensorToMechanismRatio = 1.0; // CANcoder is 1:1 with turret
 
         // PID Gains
-        config.Slot0.kS = TurretConstants.kS;
-        config.Slot0.kV = TurretConstants.kV;
-        config.Slot0.kA = TurretConstants.kA;
-        config.Slot0.kG = TurretConstants.kG;
-        config.Slot0.kP = TurretConstants.kP;
-        config.Slot0.kI = TurretConstants.kI;
-        config.Slot0.kD = TurretConstants.kD;
+        config.Slot0.kS = TurretConstants.S;
+        config.Slot0.kV = TurretConstants.V;
+        config.Slot0.kA = TurretConstants.A;
+        config.Slot0.kG = TurretConstants.G;
+        config.Slot0.kP = TurretConstants.P;
+        config.Slot0.kI = TurretConstants.I;
+        config.Slot0.kD = TurretConstants.D;
 
         // Motion Magic configuration
-        config.MotionMagic.MotionMagicCruiseVelocity = TurretConstants.kMotionMagicCruiseVelocity;
-        config.MotionMagic.MotionMagicAcceleration = TurretConstants.kMotionMagicAcceleration;
-        config.MotionMagic.MotionMagicJerk = TurretConstants.kMotionMagicJerk;
+        config.MotionMagic.MotionMagicCruiseVelocity = TurretConstants.MOTION_MAGIC_CRUISE_VELOCITY;
+        config.MotionMagic.MotionMagicAcceleration = TurretConstants.MOTION_MAGIC_ACCELERATION;
+        config.MotionMagic.MotionMagicJerk = TurretConstants.MOTION_MAGIC_JERK;
 
         // Software limits to prevent over-rotation (wire wrap protection)
         config.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
-        config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = TurretConstants.kMaxPositionDegrees / 360.0;
+        config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = TurretConstants.MAX_POSITION_DEGREES / 360.0;
         config.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
-        config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = TurretConstants.kMinPositionDegrees / 360.0;
+        config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = TurretConstants.MIN_POSITION_DEGREES / 360.0;
 
         // Current limits
         config.CurrentLimits.StatorCurrentLimitEnable = true;
-        config.CurrentLimits.StatorCurrentLimit = TurretConstants.kStatorCurrentLimit;
+        config.CurrentLimits.StatorCurrentLimit = TurretConstants.STATOR_CURRENT_LIMIT;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
-        config.CurrentLimits.SupplyCurrentLimit = TurretConstants.kSupplyCurrentLimit;
-        config.CurrentLimits.SupplyCurrentLowerLimit = TurretConstants.kSupplyCurrentLowerLimit;
-        config.CurrentLimits.SupplyCurrentLowerTime = TurretConstants.kSupplyCurrentLowerTime;
+        config.CurrentLimits.SupplyCurrentLimit = TurretConstants.SUPPLY_CURRENT_LIMIT;
+        config.CurrentLimits.SupplyCurrentLowerLimit = TurretConstants.SUPPLY_CURRENT_LOWER_LIMIT;
+        config.CurrentLimits.SupplyCurrentLowerTime = TurretConstants.SUPPLY_CURRENT_LOWER_TIME;
 
-        config.TorqueCurrent.PeakForwardTorqueCurrent = TurretConstants.kStatorCurrentLimit;
-        config.TorqueCurrent.PeakReverseTorqueCurrent = -TurretConstants.kStatorCurrentLimit;
+        config.TorqueCurrent.PeakForwardTorqueCurrent = TurretConstants.STATOR_CURRENT_LIMIT;
+        config.TorqueCurrent.PeakReverseTorqueCurrent = -TurretConstants.STATOR_CURRENT_LIMIT;
 
         // Apply with retry
         StatusCode status = StatusCode.StatusCodeNotInitialized;
@@ -169,8 +171,8 @@ public class Turret extends SubsystemBase {
 
     public void setPosition(double degrees) {
         // Clamp to valid range
-        targetPositionDegrees = Math.max(TurretConstants.kMinPositionDegrees,
-                Math.min(TurretConstants.kMaxPositionDegrees, degrees));
+        targetPositionDegrees = Math.max(TurretConstants.MIN_POSITION_DEGREES,
+                Math.min(TurretConstants.MAX_POSITION_DEGREES, degrees));
 
         // Convert degrees to rotations and command motion magic
         double rotations = targetPositionDegrees / 360.0;
@@ -184,12 +186,12 @@ public class Turret extends SubsystemBase {
 
     public boolean isAtPosition() {
         double currentDegrees = getPositionDegrees();
-        return Math.abs(currentDegrees - targetPositionDegrees) < TurretConstants.kPositionToleranceDegrees;
+        return Math.abs(currentDegrees - targetPositionDegrees) < TurretConstants.POSITION_TOLERANCE_DEGREES;
     }
 
     public boolean isAtPosition(double degrees) {
         double currentDegrees = getPositionDegrees();
-        return Math.abs(currentDegrees - degrees) < TurretConstants.kPositionToleranceDegrees;
+        return Math.abs(currentDegrees - degrees) < TurretConstants.POSITION_TOLERANCE_DEGREES;
     }
 
     public double getPositionDegrees() {

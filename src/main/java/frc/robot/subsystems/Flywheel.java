@@ -21,6 +21,8 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
+import frc.robot.Constants;
+import frc.robot.Constants.CANIds;
 import frc.robot.Constants.FlywheelConstants;
 
 import static edu.wpi.first.units.Units.*;
@@ -47,9 +49,9 @@ public class Flywheel extends SubsystemBase {
 
     public Flywheel() {
         // Initialize motors
-        CANBus canBus = new CANBus(FlywheelConstants.kCANBus);
-        leaderMotor = new TalonFX(FlywheelConstants.kLeaderMotorId, canBus);
-        followerMotor = new TalonFX(FlywheelConstants.kFollowerMotorId, canBus);
+        CANBus canBus = new CANBus(CANIds.CANIVORE);
+        leaderMotor = new TalonFX(CANIds.FLYWHEEL_LEADER_MOTOR, canBus);
+        followerMotor = new TalonFX(CANIds.FLYWHEEL_FOLLOWER_MOTOR, canBus);
 
         // Initialize control requests
         velocityRequest = new VelocityTorqueCurrentFOC(0).withSlot(0);
@@ -64,7 +66,7 @@ public class Flywheel extends SubsystemBase {
         leaderVelocity = leaderMotor.getVelocity();
 
         BaseStatusSignal.setUpdateFrequencyForAll(
-                FlywheelConstants.kSignalUpdateFrequencyHz,
+                Constants.SIGNAL_UPDATE_FREQUENCY_HZ,
                 leaderVelocity,
                 leaderMotor.getPosition(),
                 leaderMotor.getMotorVoltage());
@@ -91,24 +93,24 @@ public class Flywheel extends SubsystemBase {
 
         config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
         config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
-        config.Feedback.SensorToMechanismRatio = FlywheelConstants.kGearRatio;
+        config.Feedback.SensorToMechanismRatio = FlywheelConstants.GEAR_RATIO;
 
-        config.Slot0.kS = FlywheelConstants.kS;
-        config.Slot0.kV = FlywheelConstants.kV;
-        config.Slot0.kA = FlywheelConstants.kA;
-        config.Slot0.kP = FlywheelConstants.kP;
-        config.Slot0.kI = FlywheelConstants.kI;
-        config.Slot0.kD = FlywheelConstants.kD;
+        config.Slot0.kS = FlywheelConstants.S;
+        config.Slot0.kV = FlywheelConstants.V;
+        config.Slot0.kA = FlywheelConstants.A;
+        config.Slot0.kP = FlywheelConstants.P;
+        config.Slot0.kI = FlywheelConstants.I;
+        config.Slot0.kD = FlywheelConstants.D;
 
         config.CurrentLimits.StatorCurrentLimitEnable = true;
-        config.CurrentLimits.StatorCurrentLimit = FlywheelConstants.kStatorCurrentLimit;
+        config.CurrentLimits.StatorCurrentLimit = FlywheelConstants.STATOR_CURRENT_LIMIT;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
-        config.CurrentLimits.SupplyCurrentLimit = FlywheelConstants.kSupplyCurrentLimit;
-        config.CurrentLimits.SupplyCurrentLowerLimit = FlywheelConstants.kSupplyCurrentLowerLimit;
-        config.CurrentLimits.SupplyCurrentLowerTime = FlywheelConstants.kSupplyCurrentLowerTime;
+        config.CurrentLimits.SupplyCurrentLimit = FlywheelConstants.SUPPLY_CURRENT_LIMIT;
+        config.CurrentLimits.SupplyCurrentLowerLimit = FlywheelConstants.SUPPLY_CURRENT_LOWER_LIMIT;
+        config.CurrentLimits.SupplyCurrentLowerTime = FlywheelConstants.SUPPLY_CURRENT_LOWER_TIME;
 
-        config.TorqueCurrent.PeakForwardTorqueCurrent = FlywheelConstants.kStatorCurrentLimit;
-        config.TorqueCurrent.PeakReverseTorqueCurrent = -FlywheelConstants.kStatorCurrentLimit;
+        config.TorqueCurrent.PeakForwardTorqueCurrent = FlywheelConstants.STATOR_CURRENT_LIMIT;
+        config.TorqueCurrent.PeakReverseTorqueCurrent = -FlywheelConstants.STATOR_CURRENT_LIMIT;
 
         // Apply with retry
         StatusCode status = StatusCode.StatusCodeNotInitialized;
@@ -128,11 +130,11 @@ public class Flywheel extends SubsystemBase {
         config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
 
         config.CurrentLimits.StatorCurrentLimitEnable = true;
-        config.CurrentLimits.StatorCurrentLimit = FlywheelConstants.kStatorCurrentLimit;
+        config.CurrentLimits.StatorCurrentLimit = FlywheelConstants.STATOR_CURRENT_LIMIT;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
-        config.CurrentLimits.SupplyCurrentLimit = FlywheelConstants.kSupplyCurrentLimit;
-        config.CurrentLimits.SupplyCurrentLowerLimit = FlywheelConstants.kSupplyCurrentLowerLimit;
-        config.CurrentLimits.SupplyCurrentLowerTime = FlywheelConstants.kSupplyCurrentLowerTime;
+        config.CurrentLimits.SupplyCurrentLimit = FlywheelConstants.SUPPLY_CURRENT_LIMIT;
+        config.CurrentLimits.SupplyCurrentLowerLimit = FlywheelConstants.SUPPLY_CURRENT_LOWER_LIMIT;
+        config.CurrentLimits.SupplyCurrentLowerTime = FlywheelConstants.SUPPLY_CURRENT_LOWER_TIME;
 
         StatusCode status = StatusCode.StatusCodeNotInitialized;
         for (int i = 0; i < 5; i++) {
@@ -145,7 +147,7 @@ public class Flywheel extends SubsystemBase {
             System.err.println("Failed to configure flywheel follower motor: " + status);
         }
 
-        followerMotor.setControl(new Follower(FlywheelConstants.kLeaderMotorId, MotorAlignmentValue.Opposed));
+        followerMotor.setControl(new Follower(CANIds.FLYWHEEL_LEADER_MOTOR, MotorAlignmentValue.Opposed));
     }
 
     public void setVelocity(double rpm) {
@@ -161,9 +163,9 @@ public class Flywheel extends SubsystemBase {
     public boolean atSetpoint() {
         double currentRPM = getCurrentVelocityRPM();
         if (targetVelocityRPM == 0.0) {
-            return Math.abs(currentRPM) < FlywheelConstants.kVelocityToleranceRPM;
+            return Math.abs(currentRPM) < FlywheelConstants.VELOCITY_TOLERANCE_RPM;
         }
-        return Math.abs(currentRPM - targetVelocityRPM) < FlywheelConstants.kVelocityToleranceRPM;
+        return Math.abs(currentRPM - targetVelocityRPM) < FlywheelConstants.VELOCITY_TOLERANCE_RPM;
     }
 
     public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {

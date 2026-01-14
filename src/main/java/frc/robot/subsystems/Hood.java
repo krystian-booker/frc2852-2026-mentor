@@ -24,6 +24,8 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
+import frc.robot.Constants;
+import frc.robot.Constants.CANIds;
 import frc.robot.Constants.HoodConstants;
 
 import static edu.wpi.first.units.Units.*;
@@ -55,9 +57,9 @@ public class Hood extends SubsystemBase {
 
     public Hood() {
         // Initialize hardware
-        CANBus canBus = new CANBus(HoodConstants.kCANBus);
-        motor = new TalonFX(HoodConstants.kMotorId, canBus);
-        cancoder = new CANcoder(HoodConstants.kCANCoderId, canBus);
+        CANBus canBus = new CANBus(CANIds.CANIVORE);
+        motor = new TalonFX(CANIds.HOOD_MOTOR, canBus);
+        cancoder = new CANcoder(CANIds.HOOD_CANCODER, canBus);
 
         // Initialize control requests
         positionRequest = new MotionMagicTorqueCurrentFOC(0).withSlot(0);
@@ -73,7 +75,7 @@ public class Hood extends SubsystemBase {
         cancoderPosition = cancoder.getAbsolutePosition();
 
         BaseStatusSignal.setUpdateFrequencyForAll(
-                HoodConstants.kSignalUpdateFrequencyHz,
+                Constants.SIGNAL_UPDATE_FREQUENCY_HZ,
                 motorPosition,
                 cancoderPosition,
                 motor.getVelocity(),
@@ -101,7 +103,7 @@ public class Hood extends SubsystemBase {
 
         config.MagnetSensor.AbsoluteSensorDiscontinuityPoint = 0.5;
         config.MagnetSensor.SensorDirection = SensorDirectionValue.CounterClockwise_Positive;
-        config.MagnetSensor.MagnetOffset = HoodConstants.kCANCoderOffset;
+        config.MagnetSensor.MagnetOffset = HoodConstants.CANCODER_OFFSET;
 
         // Apply with retry
         StatusCode status = StatusCode.StatusCodeNotInitialized;
@@ -125,42 +127,42 @@ public class Hood extends SubsystemBase {
 
         // Feedback - use FusedCANcoder for absolute positioning
         config.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.FusedCANcoder;
-        config.Feedback.FeedbackRemoteSensorID = HoodConstants.kCANCoderId;
-        config.Feedback.RotorToSensorRatio = HoodConstants.kGearRatio;
+        config.Feedback.FeedbackRemoteSensorID = CANIds.HOOD_CANCODER;
+        config.Feedback.RotorToSensorRatio = HoodConstants.GEAR_RATIO;
         config.Feedback.SensorToMechanismRatio = 1.0;
 
         // PID Gains (Slot 0)
-        config.Slot0.kS = HoodConstants.kS;
-        config.Slot0.kV = HoodConstants.kV;
-        config.Slot0.kA = HoodConstants.kA;
-        config.Slot0.kP = HoodConstants.kP;
-        config.Slot0.kI = HoodConstants.kI;
-        config.Slot0.kD = HoodConstants.kD;
+        config.Slot0.kS = HoodConstants.S;
+        config.Slot0.kV = HoodConstants.V;
+        config.Slot0.kA = HoodConstants.A;
+        config.Slot0.kP = HoodConstants.P;
+        config.Slot0.kI = HoodConstants.I;
+        config.Slot0.kD = HoodConstants.D;
         config.Slot0.GravityType = GravityTypeValue.Arm_Cosine;
         config.Slot0.kG = 0.0; // Tune based on hood weight
 
         // Motion Magic - convert deg/s to rot/s
-        config.MotionMagic.MotionMagicCruiseVelocity = HoodConstants.kMotionMagicCruiseVelocity / 360.0;
-        config.MotionMagic.MotionMagicAcceleration = HoodConstants.kMotionMagicAcceleration / 360.0;
-        config.MotionMagic.MotionMagicJerk = HoodConstants.kMotionMagicJerk / 360.0;
+        config.MotionMagic.MotionMagicCruiseVelocity = HoodConstants.MOTION_MAGIC_CRUISE_VELOCITY / 360.0;
+        config.MotionMagic.MotionMagicAcceleration = HoodConstants.MOTION_MAGIC_ACCELERATION / 360.0;
+        config.MotionMagic.MotionMagicJerk = HoodConstants.MOTION_MAGIC_JERK / 360.0;
 
         // Soft limits - convert degrees to rotations
         config.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
-        config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = HoodConstants.kMaxPositionDegrees / 360.0;
+        config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = HoodConstants.MAX_POSITION_DEGREES / 360.0;
         config.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
-        config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = HoodConstants.kMinPositionDegrees / 360.0;
+        config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = HoodConstants.MIN_POSITION_DEGREES / 360.0;
 
         // Current limits
         config.CurrentLimits.StatorCurrentLimitEnable = true;
-        config.CurrentLimits.StatorCurrentLimit = HoodConstants.kStatorCurrentLimit;
+        config.CurrentLimits.StatorCurrentLimit = HoodConstants.STATOR_CURRENT_LIMIT;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
-        config.CurrentLimits.SupplyCurrentLimit = HoodConstants.kSupplyCurrentLimit;
-        config.CurrentLimits.SupplyCurrentLowerLimit = HoodConstants.kSupplyCurrentLowerLimit;
-        config.CurrentLimits.SupplyCurrentLowerTime = HoodConstants.kSupplyCurrentLowerTime;
+        config.CurrentLimits.SupplyCurrentLimit = HoodConstants.SUPPLY_CURRENT_LIMIT;
+        config.CurrentLimits.SupplyCurrentLowerLimit = HoodConstants.SUPPLY_CURRENT_LOWER_LIMIT;
+        config.CurrentLimits.SupplyCurrentLowerTime = HoodConstants.SUPPLY_CURRENT_LOWER_TIME;
 
         // Torque current limits
-        config.TorqueCurrent.PeakForwardTorqueCurrent = HoodConstants.kStatorCurrentLimit;
-        config.TorqueCurrent.PeakReverseTorqueCurrent = -HoodConstants.kStatorCurrentLimit;
+        config.TorqueCurrent.PeakForwardTorqueCurrent = HoodConstants.STATOR_CURRENT_LIMIT;
+        config.TorqueCurrent.PeakReverseTorqueCurrent = -HoodConstants.STATOR_CURRENT_LIMIT;
 
         // Apply with retry
         StatusCode status = StatusCode.StatusCodeNotInitialized;
@@ -176,14 +178,14 @@ public class Hood extends SubsystemBase {
     }
 
     public void setPosition(double degrees) {
-        targetPositionDegrees = clamp(degrees, HoodConstants.kMinPositionDegrees, HoodConstants.kMaxPositionDegrees);
+        targetPositionDegrees = clamp(degrees, HoodConstants.MIN_POSITION_DEGREES, HoodConstants.MAX_POSITION_DEGREES);
         double rotations = targetPositionDegrees / 360.0;
         motor.setControl(positionRequest.withPosition(rotations));
     }
 
     public boolean atPosition() {
         double currentDegrees = getCurrentPositionDegrees();
-        return Math.abs(currentDegrees - targetPositionDegrees) < HoodConstants.kPositionToleranceDegrees;
+        return Math.abs(currentDegrees - targetPositionDegrees) < HoodConstants.POSITION_TOLERANCE_DEGREES;
     }
 
     public double getCurrentPositionDegrees() {
