@@ -25,9 +25,6 @@ import frc.robot.Constants.FlywheelConstants;
 
 import static edu.wpi.first.units.Units.*;
 
-/**
- * Flywheel subsystem using dual Kraken X60 motors with Phoenix Pro FOC control.
- */
 public class Flywheel extends SubsystemBase {
 
     // Hardware
