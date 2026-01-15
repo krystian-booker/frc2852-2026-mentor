@@ -155,4 +155,18 @@ public final class Constants {
     public static final int SMART_CURRENT_LIMIT = 40; // Amps
     public static final int SECONDARY_CURRENT_LIMIT = 60; // Amps
   }
+
+  public static class ConveyorConstants {
+    // Mechanical
+    public static final double GEAR_RATIO = 1.0; // Motor rotations per roller rotation - UPDATE THIS
+
+    // Preset Speeds (duty cycle -1.0 to 1.0)
+    // Running at max speed for 8 balls/second throughput
+    public static final double FEED_SPEED = 1.0; // Full speed for feeding shooter
+    public static final double REVERSE_SPEED = -0.5; // Reverse for clearing jams
+
+    // Current Limits - higher limits for sustained high-speed operation
+    public static final int SMART_CURRENT_LIMIT = 60; // Amps
+    public static final int SECONDARY_CURRENT_LIMIT = 80; // Amps
+  }
 }
