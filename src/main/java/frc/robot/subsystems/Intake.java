@@ -10,23 +10,16 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkFlexConfig;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 import frc.robot.Constants.CANIds;
 import frc.robot.Constants.IntakeConstants;
-
-import static edu.wpi.first.units.Units.*;
 
 public class Intake extends SubsystemBase {
 
     // Hardware
     private final SparkFlex motor;
     private final RelativeEncoder encoder;
-
-    // SysId routine for characterization
-    private final SysIdRoutine sysIdRoutine;
 
     public Intake() {
         // Initialize hardware
@@ -35,23 +28,6 @@ public class Intake extends SubsystemBase {
 
         // Configure motor
         configureMotor();
-
-        // Configure SysId routine for characterization
-        sysIdRoutine = new SysIdRoutine(
-                new SysIdRoutine.Config(
-                        null, // Use default ramp rate (1 V/s)
-                        Volts.of(7), // Use 7V for velocity mechanism
-                        null, // Use default timeout (10 s)
-                        (state) -> SmartDashboard.putString("Intake/SysId State", state.toString())),
-                new SysIdRoutine.Mechanism(
-                        (voltage) -> motor.setVoltage(voltage.in(Volts)),
-                        log -> {
-                            log.motor("intake")
-                                    .voltage(Volts.of(motor.getAppliedOutput() * motor.getBusVoltage()))
-                                    .angularPosition(Rotations.of(encoder.getPosition()))
-                                    .angularVelocity(RotationsPerSecond.of(encoder.getVelocity()));
-                        },
-                        this));
     }
 
     private void configureMotor() {
@@ -100,14 +76,6 @@ public class Intake extends SubsystemBase {
 
     public double getVelocityRPS() {
         return encoder.getVelocity();
-    }
-
-    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
-        return sysIdRoutine.quasistatic(direction);
-    }
-
-    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-        return sysIdRoutine.dynamic(direction);
     }
 
     @Override

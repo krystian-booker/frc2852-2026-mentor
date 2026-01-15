@@ -1,7 +1,3 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot;
 
 import frc.robot.Constants.OperatorConstants;
@@ -10,16 +6,13 @@ import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
+import com.ctre.phoenix6.SignalLogger;
+
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
-/**
- * This class is where the bulk of the robot should be declared. Since Command-based is a
- * "declarative" paradigm, very little robot logic should actually be handled in the {@link Robot}
- * periodic methods (other than the scheduler calls). Instead, the structure of the robot (including
- * subsystems, commands, and trigger mappings) should be declared here.
- */
 public class RobotContainer {
 
   // Subsystems
@@ -30,34 +23,66 @@ public class RobotContainer {
   private final Turret turret = new Turret();
 
   // Controllers
-  private final CommandXboxController driverController = new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
+  private final CommandXboxController driverController = new CommandXboxController(
+      OperatorConstants.DRIVER_CONTROLLER_PORT);
 
-  /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
-    // Configure the trigger bindings
-    configureBindings();
+    if (DriverStation.isTest()) {
+      configureTestBindings();
+    } else {
+      configureBindings();
+    }
   }
-
 
   private void configureBindings() {
     driverController.leftBumper().toggleOnTrue(intakeActuator.extendWithSafety(intake));
-
-    // SysId characterization for flywheel (use in test mode)
-    // Quasistatic: slow voltage ramp to measure kS and kV
-    // Dynamic: step voltage to measure kA
-    driverController.a().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    driverController.b().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-    driverController.x().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kForward));
-    driverController.y().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
   }
 
   /**
-   * Use this to pass the autonomous command to the main {@link Robot} class.
+   * Configure SysId bindings
    *
-   * @return the command to run in autonomous
+   * Button mapping:
+   * A - Quasistatic Forward
+   * B - Quasistatic Reverse
+   * X - Dynamic Forward
+   * Y - Dynamic Reverse
    */
+  private void configureTestBindings() {
+    // Start CTRE SignalLogger for Phoenix 6 SysId
+    SignalLogger.start();
+
+    // Flywheel
+    // driverController.a().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    // driverController.b().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+    // driverController.x().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    // driverController.y().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+
+    // Hood
+    // driverController.a().whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    // driverController.b().whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+    // driverController.x().whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    // driverController.y().whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+
+    // Turret
+    // driverController.a().whileTrue(turret.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    // driverController.b().whileTrue(turret.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+    // driverController.x().whileTrue(turret.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    // driverController.y().whileTrue(turret.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+
+    // Intake
+    // driverController.a().whileTrue(intake.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    // driverController.b().whileTrue(intake.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+    // driverController.x().whileTrue(intake.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    // driverController.y().whileTrue(intake.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+
+    // Intake Actuator
+    // driverController.a().whileTrue(intakeActuator.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    // driverController.b().whileTrue(intakeActuator.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+    // driverController.x().whileTrue(intakeActuator.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    // driverController.y().whileTrue(intakeActuator.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+  }
+
   public Command getAutonomousCommand() {
-    // An example command will be run in autonomous
     return null;
   }
 }
