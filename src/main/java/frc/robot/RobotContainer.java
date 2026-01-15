@@ -40,6 +40,8 @@ public class RobotContainer {
 
 
   private void configureBindings() {
+    driverController.leftBumper().toggleOnTrue(intakeActuator.extendWithSafety(intake));
+
     // SysId characterization for flywheel (use in test mode)
     // Quasistatic: slow voltage ramp to measure kS and kV
     // Dynamic: step voltage to measure kA

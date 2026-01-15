@@ -18,6 +18,7 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 import frc.robot.Constants.CANIds;
 import frc.robot.Constants.IntakeActuatorConstants;
+import frc.robot.commands.ExtendWithSafetyCommand;
 
 import static edu.wpi.first.units.Units.*;
 
@@ -125,8 +126,8 @@ public class IntakeActuator extends SubsystemBase {
     }
 
     public boolean atPosition() {
-        double currentDegrees = getCurrentPositionDegrees();
-        return Math.abs(currentDegrees - targetPositionDegrees) < IntakeActuatorConstants.POSITION_TOLERANCE_DEGREES;
+        return Math.abs(getCurrentPositionDegrees()
+                - targetPositionDegrees) < IntakeActuatorConstants.POSITION_TOLERANCE_DEGREES;
     }
 
     public double getCurrentPositionDegrees() {
@@ -137,10 +138,40 @@ public class IntakeActuator extends SubsystemBase {
         return targetPositionDegrees;
     }
 
+    public double getOutputCurrent() {
+        return motor.getOutputCurrent();
+    }
+
+    public boolean isExtended() {
+        return getCurrentPositionDegrees() >= IntakeActuatorConstants.EXTENDED_POSITION_THRESHOLD_DEGREES;
+    }
+
+    public boolean isRetracted() {
+        return getCurrentPositionDegrees() <= IntakeActuatorConstants.POSITION_TOLERANCE_DEGREES;
+    }
+
     public void stop() {
         motor.setVoltage(0);
     }
 
+    // Commands
+    public Command extendWithSafety(Intake intake) {
+        return new ExtendWithSafetyCommand(this, intake);
+    }
+
+    public Command retract() {
+        return run(() -> setPosition(IntakeActuatorConstants.MIN_POSITION_DEGREES))
+                .until(this::atPosition)
+                .withName("IntakeActuator.retract");
+    }
+
+    public Command extend() {
+        return run(() -> setPosition(IntakeActuatorConstants.MAX_POSITION_DEGREES))
+                .until(this::atPosition)
+                .withName("IntakeActuator.extend");
+    }
+
+    // SysId
     public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
         return sysIdRoutine.quasistatic(direction);
     }
@@ -149,6 +180,7 @@ public class IntakeActuator extends SubsystemBase {
         return sysIdRoutine.dynamic(direction);
     }
 
+    // Helpers
     private double clamp(double value, double min, double max) {
         return Math.max(min, Math.min(max, value));
     }
@@ -160,5 +192,7 @@ public class IntakeActuator extends SubsystemBase {
         SmartDashboard.putNumber("IntakeActuator/Velocity", encoder.getVelocity());
         SmartDashboard.putBoolean("IntakeActuator/At Position", atPosition());
         SmartDashboard.putNumber("IntakeActuator/Applied Output", motor.getAppliedOutput());
+        SmartDashboard.putNumber("IntakeActuator/Output Current", getOutputCurrent());
+        SmartDashboard.putBoolean("IntakeActuator/Is Extended", isExtended());
     }
 }

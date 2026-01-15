@@ -123,6 +123,10 @@ public final class Constants {
 
     // Position Control
     public static final double POSITION_TOLERANCE_DEGREES = 2.0; // Degrees tolerance for atPosition()
+
+    // Current Spike Safety Retraction
+    public static final double CURRENT_SPIKE_THRESHOLD_AMPS = 35.0; // Threshold to trigger safety retraction
+    public static final double EXTENDED_POSITION_THRESHOLD_DEGREES = 85.0; // Consider "extended" above this
   }
 
   public static class IntakeConstants {
