@@ -7,6 +7,7 @@ package frc.robot;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
+import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -24,6 +25,7 @@ public class RobotContainer {
   // Subsystems
   private final Flywheel flywheel = new Flywheel();
   private final Hood hood = new Hood();
+  private final Intake intake = new Intake();
   private final IntakeActuator intakeActuator = new IntakeActuator();
   private final Turret turret = new Turret();
 

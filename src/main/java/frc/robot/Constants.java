@@ -16,6 +16,7 @@ public final class Constants {
     public static final int TURRET_MOTOR = 40;
     public static final int TURRET_CANCODER = 41;
     public static final int INTAKE_ACTUATOR_MOTOR = 50;
+    public static final int INTAKE_MOTOR = 51;
   }
 
   public static class FlywheelConstants {
@@ -122,5 +123,18 @@ public final class Constants {
 
     // Position Control
     public static final double POSITION_TOLERANCE_DEGREES = 2.0; // Degrees tolerance for atPosition()
+  }
+
+  public static class IntakeConstants {
+    // Mechanical
+    public static final double GEAR_RATIO = 1.0; // Motor rotations per roller rotation - UPDATE THIS
+
+    // Preset Speeds (duty cycle -1.0 to 1.0)
+    public static final double INTAKE_SPEED = 0.8; // Speed for intaking game pieces
+    public static final double OUTTAKE_SPEED = -0.6; // Speed for ejecting game pieces
+
+    // Current Limits
+    public static final int SMART_CURRENT_LIMIT = 40; // Amps
+    public static final int SECONDARY_CURRENT_LIMIT = 60; // Amps
   }
 }
