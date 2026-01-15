@@ -9,14 +9,28 @@ public final class Constants {
 
   public static class CANIds {
     public static final String CANIVORE = "canivore";
+
+    // Intake
+    public static final int INTAKE_ACTUATOR_MOTOR = 13;
+    public static final int INTAKE_MOTOR = 14;
+
+    // Climber
+    public static final int CLIMBER_LEFT_MOTOR = 15;
+    public static final int CLIMBER_RIGHT_MOTOR = 16;
+
+    // Conveyor
+    public static final int CONVEYOR_FLOOR_MOTOR = 17;
+    public static final int CONVEYOR_LEFT_INDEX_MOTOR = 18;
+    public static final int CONVEYOR_RIGHT_INDEX_MOTOR = 19;
+
+    // Shooter
     public static final int FLYWHEEL_LEADER_MOTOR = 20;
     public static final int FLYWHEEL_FOLLOWER_MOTOR = 21;
-    public static final int HOOD_MOTOR = 30;
-    public static final int HOOD_CANCODER = 31;
-    public static final int TURRET_MOTOR = 40;
-    public static final int TURRET_CANCODER = 41;
-    public static final int INTAKE_ACTUATOR_MOTOR = 50;
-    public static final int INTAKE_MOTOR = 51;
+    public static final int TURRET_MOTOR = 22;
+    public static final int TURRET_CANCODER = 23;
+    public static final int HOOD_MOTOR = 24;
+    public static final int HOOD_CANCODER = 25;
+    public static final int TAKEUP_MOTOR = 26;
   }
 
   public static class FlywheelConstants {
