@@ -30,10 +30,6 @@ import frc.robot.Constants.HoodConstants;
 
 import static edu.wpi.first.units.Units.*;
 
-/**
- * Hood subsystem using a Kraken X60 motor with CANCoder absolute positioning.
- * Uses Motion Magic for smooth, accurate position control with Phoenix Pro FOC.
- */
 public class Hood extends SubsystemBase {
 
     // Hardware

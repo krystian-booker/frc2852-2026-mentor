@@ -15,6 +15,7 @@ public final class Constants {
     public static final int HOOD_CANCODER = 31;
     public static final int TURRET_MOTOR = 40;
     public static final int TURRET_CANCODER = 41;
+    public static final int INTAKE_ACTUATOR_MOTOR = 50;
   }
 
   public static class FlywheelConstants {
@@ -102,5 +103,24 @@ public final class Constants {
 
     // CANCoder
     public static final double CANCODER_OFFSET = 0.0; // Rotations - tune during setup to align 0 degrees
+  }
+
+  public static class IntakeActuatorConstants {
+    // Mechanical
+    public static final double GEAR_RATIO = 1.0; // Motor rotations per mechanism rotation - UPDATE THIS
+    public static final double MIN_POSITION_DEGREES = 0.0;
+    public static final double MAX_POSITION_DEGREES = 90.0; // UPDATE: Set actual max position
+
+    // PID Gains
+    public static final double P = 0.1; // Proportional
+    public static final double I = 0.0; // Integral
+    public static final double D = 0.0; // Derivative
+
+    // Current Limits
+    public static final int SMART_CURRENT_LIMIT = 40; // Amps
+    public static final int SECONDARY_CURRENT_LIMIT = 60; // Amps
+
+    // Position Control
+    public static final double POSITION_TOLERANCE_DEGREES = 2.0; // Degrees tolerance for atPosition()
   }
 }
