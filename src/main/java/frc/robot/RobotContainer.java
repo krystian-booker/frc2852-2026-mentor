@@ -7,6 +7,7 @@ import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
+import frc.robot.subsystems.LED;
 import frc.robot.subsystems.Vision;
 import frc.robot.utils.Telemetry;
 
@@ -14,6 +15,7 @@ import com.ctre.phoenix6.SignalLogger;
 
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 
 import static edu.wpi.first.units.Units.*;
@@ -39,6 +41,7 @@ public class RobotContainer {
   private final Intake intake = new Intake();
   private final IntakeActuator intakeActuator = new IntakeActuator();
   private final Turret turret = new Turret();
+  private final LED led = new LED();
 
   // Controllers
   private final CommandXboxController driverController = new CommandXboxController(
@@ -64,6 +67,9 @@ public class RobotContainer {
   private final Vision vision;
   private final QuestNavSubsystem questNav;
 
+  // QuestNav seeding state
+  private boolean isQuestNavSeeded = false;
+
   // Auto setup
   private final SendableChooser<Command> autoChooser;
 
@@ -81,6 +87,9 @@ public class RobotContainer {
       configureBindings();
       configureSwerveBindings();
     }
+
+    // Configure disabled mode QuestNav seeding
+    configureDisabledBindings();
 
     // Telemetry setup
     drivetrain.registerTelemetry(logger::telemeterize);
@@ -146,6 +155,28 @@ public class RobotContainer {
     // BACK BUTTON - Pathfind to Visible AprilTag Target
     // Uses PathPlanner to navigate to a configured target if one is visible
     driverController.back().onTrue(vision.pathfindToVisibleTarget(drivetrain));
+  }
+
+  /**
+   * Configure disabled mode bindings for QuestNav seeding.
+   * LEDs start RED and turn GREEN once QuestNav is seeded from a multi-tag vision pose.
+   * Seeding only happens while disabled, every 5 seconds.
+   */
+  private void configureDisabledBindings() {
+    Command seedingCommand = Commands.sequence(
+        Commands.waitSeconds(5.0),
+        Commands.runOnce(() -> {
+          if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
+            if (questNav.seedPoseFromVision()) {
+              isQuestNavSeeded = true;
+              led.setPattern(LED.Pattern.GREEN);
+              vision.setFeedingEnabled(false);
+            }
+          }
+        })
+    ).repeatedly().ignoringDisable(true);
+
+    RobotModeTriggers.disabled().whileTrue(seedingCommand);
   }
 
   /**

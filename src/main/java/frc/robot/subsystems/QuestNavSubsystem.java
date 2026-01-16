@@ -121,10 +121,11 @@ public class QuestNavSubsystem extends SubsystemBase {
 
     /**
      * Attempts to immediately seed QuestNav pose from vision.
-     * @return true if seeding was successful (valid vision pose available)
+     * Requires at least 2 visible tags for accurate seeding.
+     * @return true if seeding was successful (valid vision pose with 2+ tags)
      */
     public boolean seedPoseFromVision() {
-        if (vision.hasRecentValidPose(0.5)) {
+        if (vision.getVisibleTagCount() >= 2 && vision.hasRecentValidPose(0.5)) {
             var visionPose = vision.getLatestPose2d();
             if (visionPose.isPresent()) {
                 resetPose(visionPose.get());

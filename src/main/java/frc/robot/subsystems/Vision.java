@@ -46,6 +46,9 @@ public class Vision extends SubsystemBase {
     private double latestEstimateTimestamp = 0.0;
     private final Set<Integer> visibleTagIds = new HashSet<>();
 
+    // Feeding control - can be disabled after QuestNav seeding
+    private boolean feedingEnabled = true;
+
     // Simulation
     private PhotonCameraSim cameraSim;
     private VisionSystemSim visionSim;
@@ -113,7 +116,10 @@ public class Vision extends SubsystemBase {
                 // Change our trust in the measurement based on the tags we can see
                 var estStdDevs = getEstimationStdDevs();
 
-                estConsumer.accept(est.estimatedPose.toPose2d(), est.timestampSeconds, estStdDevs);
+                // Only feed drivetrain if feeding is enabled (disabled after QuestNav seeding)
+                if (feedingEnabled) {
+                    estConsumer.accept(est.estimatedPose.toPose2d(), est.timestampSeconds, estStdDevs);
+                }
             });
         }
 
@@ -123,6 +129,7 @@ public class Vision extends SubsystemBase {
         SmartDashboard.putNumber("Vision/PoseX", latestEstimate.getX());
         SmartDashboard.putNumber("Vision/PoseY", latestEstimate.getY());
         SmartDashboard.putNumber("Vision/PoseRotation", latestEstimate.getRotation().getDegrees());
+        SmartDashboard.putBoolean("Vision/FeedingEnabled", feedingEnabled);
     }
 
     /**
@@ -172,6 +179,30 @@ public class Vision extends SubsystemBase {
      */
     public boolean isTagVisible(int tagId) {
         return visibleTagIds.contains(tagId);
+    }
+
+    /**
+     * Returns the count of currently visible AprilTags.
+     * @return Number of visible tags
+     */
+    public int getVisibleTagCount() {
+        return visibleTagIds.size();
+    }
+
+    /**
+     * Sets whether vision should feed pose estimates to the drivetrain.
+     * @param enabled true to enable feeding, false to disable
+     */
+    public void setFeedingEnabled(boolean enabled) {
+        this.feedingEnabled = enabled;
+    }
+
+    /**
+     * Returns whether vision is currently feeding pose estimates to the drivetrain.
+     * @return true if feeding is enabled
+     */
+    public boolean isFeedingEnabled() {
+        return feedingEnabled;
     }
 
     /**
