@@ -26,6 +26,8 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
 import frc.robot.Constants.TurretConstants;
+import frc.robot.utils.TurretAimingCalculator;
+import frc.robot.utils.TurretAimingCalculator.AimingResult;
 
 import static edu.wpi.first.units.Units.*;
 
@@ -206,6 +208,22 @@ public class Turret extends SubsystemBase {
 
     public double getTargetPositionDegrees() {
         return targetPositionDegrees;
+    }
+
+    /**
+     * Creates a command that continuously aims the turret at the target.
+     * The turret will track the target position as the robot moves.
+     *
+     * @param calculator The TurretAimingCalculator to use for calculations
+     * @return A command that continuously updates the turret position
+     */
+    public Command aimAtTargetCommand(TurretAimingCalculator calculator) {
+        return run(() -> {
+            AimingResult result = calculator.calculate();
+            if (result.isReachable()) {
+                setPosition(result.turretAngleDegrees());
+            }
+        }).withName("TurretAimAtTarget");
     }
 
     public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {

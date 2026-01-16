@@ -8,6 +8,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
@@ -133,6 +134,35 @@ public final class Constants {
     public static final double CANCODER_OFFSET = 0.0; // Rotations - tune during setup to align 0 degrees
   }
 
+  public static class TurretAimingConstants {
+    // Target positions (meters)
+    public static final Translation2d BLUE_TARGET_POSITION = new Translation2d(0.0, 5.55);
+    public static final Translation2d RED_TARGET_POSITION = new Translation2d(16.54, 5.55);
+
+    // Turret mounting offset from robot center (if not centered)
+    public static final double TURRET_OFFSET_X_METERS = 0.0;
+    public static final double TURRET_OFFSET_Y_METERS = 0.0;
+
+    // Turret zero direction relative to robot forward (degrees)
+    // 0 means turret 0 degrees points in the same direction as robot forward
+    public static final double TURRET_ZERO_ANGLE_DEGREES = 0.0;
+
+    // Aiming tolerance
+    public static final double AIM_TOLERANCE_DEGREES = 2.0;
+
+    // Valid shooting range
+    public static final double MIN_SHOOTING_DISTANCE_METERS = 1.5;
+    public static final double MAX_SHOOTING_DISTANCE_METERS = 10.0;
+
+    // Placeholder lookup tables (distance in meters -> value)
+    // Format: { {distance1, value1}, {distance2, value2}, ... }
+    // Hood angle lookup table (distance -> hood angle in degrees)
+    public static final double[][] HOOD_LOOKUP_TABLE = { { 1.5, 15.0 }, { 3.0, 25.0 }, { 5.0, 35.0 }, { 7.0, 40.0 }, { 10.0, 45.0 } };
+
+    // Flywheel RPM lookup table (distance -> RPM)
+    public static final double[][] FLYWHEEL_LOOKUP_TABLE = { { 1.5, 3000.0 }, { 3.0, 3500.0 }, { 5.0, 4000.0 }, { 7.0, 4500.0 }, { 10.0, 5000.0 } };
+  }
+
   public static class IntakeActuatorConstants {
     // Mechanical
     public static final double GEAR_RATIO = 1.0; // Motor rotations per mechanism rotation - UPDATE THIS
@@ -210,28 +240,18 @@ public final class Constants {
 
   public static class Vision {
     // Camera configuration record for multi-camera support
-    public record CameraConfig(
-        String name,
-        Transform3d robotToCam
-    ) {}
+    public record CameraConfig(String name, Transform3d robotToCam) {
+    }
 
     // Left camera
-    public static final CameraConfig LEFT_CAMERA = new CameraConfig(
-        "LEFT_CAMERA",
-        new Transform3d(
-            new Translation3d(0.3, 0.25, 0.5),  // 30cm fwd, 25cm left, 50cm up
-            new Rotation3d(0, Math.toRadians(-15), Math.toRadians(30))  // Pitched down 15°, yawed left 30°
-        )
-    );
+    public static final CameraConfig LEFT_CAMERA = new CameraConfig("LEFT_CAMERA", new Transform3d(new Translation3d(0.3, 0.25, 0.5), // 30cm fwd, 25cm left, 50cm up
+        new Rotation3d(0, Math.toRadians(-15), Math.toRadians(30)) // Pitched down 15°, yawed left 30°
+    ));
 
     // Right camera
-    public static final CameraConfig RIGHT_CAMERA = new CameraConfig(
-        "RIGHT_CAMERA",
-        new Transform3d(
-            new Translation3d(0.3, -0.25, 0.5),  // 30cm fwd, 25cm right, 50cm up
-            new Rotation3d(0, Math.toRadians(-15), Math.toRadians(-30))  // Pitched down 15°, yawed right 30°
-        )
-    );
+    public static final CameraConfig RIGHT_CAMERA = new CameraConfig("RIGHT_CAMERA", new Transform3d(new Translation3d(0.3, -0.25, 0.5), // 30cm fwd, 25cm right, 50cm up
+        new Rotation3d(0, Math.toRadians(-15), Math.toRadians(-30)) // Pitched down 15°, yawed right 30°
+    ));
 
     // All cameras
     public static final List<CameraConfig> CAMERAS = List.of(LEFT_CAMERA, RIGHT_CAMERA);
@@ -261,8 +281,7 @@ public final class Constants {
 
     // AprilTag target positions - add/modify based on your field positions
     public enum AprilTagTarget {
-      EXAMPLE_TAG_1(1, new Pose2d(2.0, 4.0, Rotation2d.fromDegrees(0))),
-      EXAMPLE_TAG_2(2, new Pose2d(3.0, 5.0, Rotation2d.fromDegrees(90))),
+      EXAMPLE_TAG_1(1, new Pose2d(2.0, 4.0, Rotation2d.fromDegrees(0))), EXAMPLE_TAG_2(2, new Pose2d(3.0, 5.0, Rotation2d.fromDegrees(90))),
       EXAMPLE_TAG_3(6, new Pose2d(4.0, 4.0, Rotation2d.fromDegrees(180)));
 
       private final int tagId;

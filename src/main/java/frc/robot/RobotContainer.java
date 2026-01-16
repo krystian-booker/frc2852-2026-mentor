@@ -11,6 +11,7 @@ import frc.robot.subsystems.Turret;
 import frc.robot.subsystems.LED;
 import frc.robot.subsystems.Vision;
 import frc.robot.utils.Telemetry;
+import frc.robot.utils.TurretAimingCalculator;
 
 import com.ctre.phoenix6.SignalLogger;
 
@@ -70,6 +71,9 @@ public class RobotContainer {
   private final Vision vision;
   private final QuestNavSubsystem questNav;
 
+  // Turret aiming calculator
+  private final TurretAimingCalculator turretAimingCalculator;
+
   // QuestNav seeding state
   private boolean isQuestNavSeeded = false;
   private Pose2d seededPose = null;
@@ -84,6 +88,12 @@ public class RobotContainer {
     // Initialize vision subsystems (after drivetrain)
     vision = new Vision(drivetrain::addVisionMeasurement);
     questNav = new QuestNavSubsystem(drivetrain, vision);
+
+    // Initialize turret aiming calculator with pose supplier from drivetrain
+    turretAimingCalculator = new TurretAimingCalculator(() -> drivetrain.getState().Pose);
+
+    // Set turret default command - continuously track the target
+    turret.setDefaultCommand(turret.aimAtTargetCommand(turretAimingCalculator));
 
     autoChooser = AutoBuilder.buildAutoChooser("Default");
     SmartDashboard.putData("Auto Mode", autoChooser);
