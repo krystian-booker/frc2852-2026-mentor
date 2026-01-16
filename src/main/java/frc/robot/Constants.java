@@ -169,4 +169,21 @@ public final class Constants {
     public static final int SMART_CURRENT_LIMIT = 60; // Amps
     public static final int SECONDARY_CURRENT_LIMIT = 80; // Amps
   }
+
+  public static class QuestNavConstants {
+    // Transform from robot center to Quest headset mounting position
+    // Measure these values based on where the Quest is mounted on your robot
+    public static final double QUEST_OFFSET_X_METERS = 0.0; // Forward/backward from robot center
+    public static final double QUEST_OFFSET_Y_METERS = 0.0; // Left/right from robot center
+    public static final double QUEST_OFFSET_Z_METERS = 0.0; // Up/down from robot center
+    public static final double QUEST_YAW_OFFSET_DEGREES = 0.0; // Rotation around vertical axis
+    public static final double QUEST_PITCH_OFFSET_DEGREES = 0.0; // Tilt forward/backward
+    public static final double QUEST_ROLL_OFFSET_DEGREES = 0.0; // Tilt left/right
+
+    // Standard deviations for pose estimation (meters, meters, radians)
+    // Lower values = trust QuestNav more, higher = trust wheel odometry more
+    public static final double STD_DEV_X = 0.02;
+    public static final double STD_DEV_Y = 0.02;
+    public static final double STD_DEV_THETA = 0.035;
+  }
 }

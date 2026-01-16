@@ -26,6 +26,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
+import frc.robot.subsystems.QuestNavSubsystem;
 
 public class RobotContainer {
 
@@ -56,10 +57,16 @@ public class RobotContainer {
   private final Telemetry logger = new Telemetry(MaxSpeed);
   public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
+  // Vision
+  private final QuestNavSubsystem questNav;
+
   // Auto setup
   private final SendableChooser<Command> autoChooser;
 
   public RobotContainer() {
+    // Initialize vision subsystem (after drivetrain)
+    questNav = new QuestNavSubsystem(drivetrain);
+
     autoChooser = AutoBuilder.buildAutoChooser("Default");
     SmartDashboard.putData("Auto Mode", autoChooser);
 
