@@ -197,6 +197,10 @@ public final class Constants {
     public static final double STD_DEV_X = 0.02;
     public static final double STD_DEV_Y = 0.02;
     public static final double STD_DEV_THETA = 0.035;
+
+    // Movement threshold for detecting if robot was moved while disabled (meters)
+    // If robot moves more than this distance from seeded position, re-seeding is required
+    public static final double SEEDING_MOVEMENT_THRESHOLD_METERS = 0.1;
   }
 
   public static class BlinkinConstants {

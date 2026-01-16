@@ -1,6 +1,7 @@
 package frc.robot;
 
 import frc.robot.Constants.OperatorConstants;
+import frc.robot.Constants.QuestNavConstants;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
@@ -26,6 +27,7 @@ import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.commands.FollowPathCommand;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -69,6 +71,7 @@ public class RobotContainer {
 
   // QuestNav seeding state
   private boolean isQuestNavSeeded = false;
+  private Pose2d seededPose = null;
 
   // Auto setup
   private final SendableChooser<Command> autoChooser;
@@ -161,14 +164,30 @@ public class RobotContainer {
    * Configure disabled mode bindings for QuestNav seeding.
    * LEDs start RED and turn GREEN once QuestNav is seeded from a multi-tag vision pose.
    * Seeding only happens while disabled, every 5 seconds.
+   * If the robot is moved after seeding, LEDs turn RED and re-seeding is allowed.
    */
   private void configureDisabledBindings() {
     Command seedingCommand = Commands.sequence(
         Commands.waitSeconds(5.0),
         Commands.runOnce(() -> {
+          // Check if robot has been moved since last seeding
+          if (isQuestNavSeeded && seededPose != null) {
+            Pose2d currentPose = questNav.getLatestPose();
+            double distance = currentPose.getTranslation().getDistance(seededPose.getTranslation());
+            if (distance > QuestNavConstants.SEEDING_MOVEMENT_THRESHOLD_METERS) {
+              // Robot was moved, reset seeding state
+              isQuestNavSeeded = false;
+              seededPose = null;
+              led.setPattern(LED.Pattern.RED);
+              vision.setFeedingEnabled(true);
+            }
+          }
+
+          // Attempt seeding if not seeded and 2+ tags visible
           if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
             if (questNav.seedPoseFromVision()) {
               isQuestNavSeeded = true;
+              seededPose = questNav.getLatestPose();
               led.setPattern(LED.Pattern.GREEN);
               vision.setFeedingEnabled(false);
             }
