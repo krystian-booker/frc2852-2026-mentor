@@ -32,6 +32,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.QuestNavSubsystem;
 
@@ -72,6 +73,9 @@ public class RobotContainer {
   // QuestNav seeding state
   private boolean isQuestNavSeeded = false;
   private Pose2d seededPose = null;
+
+  // Manual reseed mode state
+  private boolean reseedModeActive = false;
 
   // Auto setup
   private final SendableChooser<Command> autoChooser;
@@ -151,13 +155,37 @@ public class RobotContainer {
     // Use this when the gyro drifts or after manually repositioning the robot
     driverController.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
 
-    // START BUTTON - Seed QuestNav from Vision
-    // Attempts to reset QuestNav pose using the current vision estimate
-    driverController.start().onTrue(questNav.trySeedFromVision());
+    // BACK BUTTON - Enter Reseed Mode
+    // Enters manual reseed mode and sets LEDs to RED
+    driverController.back().onTrue(Commands.runOnce(() -> {
+      reseedModeActive = true;
+      led.setPattern(LED.Pattern.RED);
+    }));
 
-    // BACK BUTTON - Pathfind to Visible AprilTag Target
-    // Uses PathPlanner to navigate to a configured target if one is visible
-    driverController.back().onTrue(vision.pathfindToVisibleTarget(drivetrain));
+    // START BUTTON - Execute Reseed (if conditions met)
+    // Only seeds if reseed mode is active AND 2+ tags are visible
+    driverController.start().onTrue(Commands.either(
+        // If reseed mode active and 2+ tags visible: seed and double-flash
+        Commands.sequence(
+            Commands.runOnce(() -> {
+              questNav.seedPoseFromVision();
+              reseedModeActive = false;
+            }),
+            led.doubleFlashAndOffCommand(LED.Pattern.GREEN)
+        ),
+        // Otherwise do nothing
+        Commands.none(),
+        () -> reseedModeActive && vision.getVisibleTagCount() >= 2
+    ));
+
+    // Tag count monitoring for reseed mode
+    // When reseed mode is active and 2+ tags become visible, set LEDs GREEN
+    new Trigger(() -> reseedModeActive && vision.getVisibleTagCount() >= 2)
+        .onTrue(led.setPatternCommand(LED.Pattern.GREEN));
+
+    // When reseed mode is active and tags drop below 2, set LEDs back to RED
+    new Trigger(() -> reseedModeActive && vision.getVisibleTagCount() < 2)
+        .onTrue(led.setPatternCommand(LED.Pattern.RED));
   }
 
   /**

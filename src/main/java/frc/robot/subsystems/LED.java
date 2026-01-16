@@ -2,6 +2,7 @@ package frc.robot.subsystems;
 
 import edu.wpi.first.wpilibj.motorcontrol.Spark;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.Constants.BlinkinConstants;
@@ -70,12 +71,31 @@ public class LED extends SubsystemBase {
 
     /**
      * Creates a command to set the LED pattern.
-     * 
+     *
      * @param pattern The pattern to display
      * @return Command that sets the pattern
      */
     public Command setPatternCommand(Pattern pattern) {
         return runOnce(() -> setPattern(pattern));
+    }
+
+    /**
+     * Creates a command that double-flashes the LEDs with the given pattern then turns off.
+     * Pattern: ON (1s) -> OFF (1s) -> ON (1s) -> OFF
+     *
+     * @param flashPattern The pattern to flash
+     * @return Command that performs the double flash sequence
+     */
+    public Command doubleFlashAndOffCommand(Pattern flashPattern) {
+        return Commands.sequence(
+            setPatternCommand(flashPattern),
+            Commands.waitSeconds(1.0),
+            setPatternCommand(Pattern.BLACK),
+            Commands.waitSeconds(1.0),
+            setPatternCommand(flashPattern),
+            Commands.waitSeconds(1.0),
+            setPatternCommand(Pattern.BLACK)
+        );
     }
 
     @Override

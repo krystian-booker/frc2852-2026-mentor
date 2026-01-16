@@ -11,6 +11,7 @@ import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import java.util.List;
 
 public final class Constants {
   public static final double SIGNAL_UPDATE_FREQUENCY_HZ = 250.0; // Status signal update rate
@@ -208,11 +209,32 @@ public final class Constants {
   }
 
   public static class Vision {
-    // TODO: Update
-    public static final String kCameraName = "CAMERA_NAME";
+    // Camera configuration record for multi-camera support
+    public record CameraConfig(
+        String name,
+        Transform3d robotToCam
+    ) {}
 
-    // Cam mounted facing forward, half a meter forward of center, half a meter up from center.
-    public static final Transform3d kRobotToCam = new Transform3d(new Translation3d(0.5, 0.0, 0.5), new Rotation3d(0, 0, 0));
+    // Left camera
+    public static final CameraConfig LEFT_CAMERA = new CameraConfig(
+        "LEFT_CAMERA",
+        new Transform3d(
+            new Translation3d(0.3, 0.25, 0.5),  // 30cm fwd, 25cm left, 50cm up
+            new Rotation3d(0, Math.toRadians(-15), Math.toRadians(30))  // Pitched down 15°, yawed left 30°
+        )
+    );
+
+    // Right camera
+    public static final CameraConfig RIGHT_CAMERA = new CameraConfig(
+        "RIGHT_CAMERA",
+        new Transform3d(
+            new Translation3d(0.3, -0.25, 0.5),  // 30cm fwd, 25cm right, 50cm up
+            new Rotation3d(0, Math.toRadians(-15), Math.toRadians(-30))  // Pitched down 15°, yawed right 30°
+        )
+    );
+
+    // All cameras
+    public static final List<CameraConfig> CAMERAS = List.of(LEFT_CAMERA, RIGHT_CAMERA);
 
     // The layout of the AprilTags on the field
     public static final AprilTagFieldLayout kTagLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);

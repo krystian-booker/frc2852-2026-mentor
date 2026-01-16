@@ -7,6 +7,7 @@ import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.Timer;
@@ -17,7 +18,9 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Robot;
 import frc.robot.Constants.Vision.AprilTagTarget;
+import frc.robot.Constants.Vision.CameraConfig;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -36,21 +39,44 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.path.PathConstraints;
 
 public class Vision extends SubsystemBase {
-    private final PhotonCamera camera;
-    private final PhotonPoseEstimator photonEstimator;
-    private Matrix<N3, N1> curStdDevs;
+    /**
+     * Inner class representing a single camera instance with its own pose estimator and state.
+     */
+    private static class CameraInstance {
+        final String name;
+        final PhotonCamera camera;
+        final PhotonPoseEstimator poseEstimator;
+        final Transform3d robotToCam;
+
+        Matrix<N3, N1> currentStdDevs = kSingleTagStdDevs;
+        Pose2d latestEstimate = new Pose2d();
+        double latestTimestamp = 0.0;
+        final Set<Integer> visibleTagIds = new HashSet<>();
+
+        // For simulation
+        PhotonCameraSim cameraSim;
+
+        CameraInstance(String name, Transform3d robotToCam) {
+            this.name = name;
+            this.robotToCam = robotToCam;
+            this.camera = new PhotonCamera(name);
+            this.poseEstimator = new PhotonPoseEstimator(kTagLayout, robotToCam);
+        }
+    }
+
+    private final List<CameraInstance> cameras = new ArrayList<>();
+    private final Set<Integer> aggregatedVisibleTagIds = new HashSet<>();
     private final EstimateConsumer estConsumer;
 
-    // State tracking for pose estimation
+    // State tracking for best pose estimation across all cameras
+    private Matrix<N3, N1> curStdDevs = kSingleTagStdDevs;
     private Pose2d latestEstimate = new Pose2d();
     private double latestEstimateTimestamp = 0.0;
-    private final Set<Integer> visibleTagIds = new HashSet<>();
 
     // Feeding control - can be disabled after QuestNav seeding
     private boolean feedingEnabled = true;
 
-    // Simulation
-    private PhotonCameraSim cameraSim;
+    // Simulation - shared across all cameras
     private VisionSystemSim visionSim;
 
     /**
@@ -58,82 +84,156 @@ public class Vision extends SubsystemBase {
      */
     public Vision(EstimateConsumer estConsumer) {
         this.estConsumer = estConsumer;
-        camera = new PhotonCamera(kCameraName);
-        photonEstimator = new PhotonPoseEstimator(kTagLayout, kRobotToCam);
 
-        // ----- Simulation
+        // Initialize simulation first (if simulating) so cameras can be added to it
         if (Robot.isSimulation()) {
-            // Create the vision system simulation which handles cameras and targets on the field.
             visionSim = new VisionSystemSim("main");
-            // Add all the AprilTags inside the tag layout as visible targets to this simulated field.
             visionSim.addAprilTags(kTagLayout);
-            // Create simulated camera properties. These can be set to mimic your actual camera.
-            var cameraProp = new SimCameraProperties();
-            cameraProp.setCalibration(960, 720, Rotation2d.fromDegrees(90));
-            cameraProp.setCalibError(0.35, 0.10);
-            cameraProp.setFPS(15);
-            cameraProp.setAvgLatencyMs(50);
-            cameraProp.setLatencyStdDevMs(15);
-            // Create a PhotonCameraSim which will update the linked PhotonCamera's values with visible
-            // targets.
-            cameraSim = new PhotonCameraSim(camera, cameraProp);
-            // Add the simulated camera to view the targets on this simulated field.
-            visionSim.addCamera(cameraSim, kRobotToCam);
+        }
 
-            cameraSim.enableDrawWireframe(true);
+        // Create camera instances from configuration
+        for (CameraConfig config : CAMERAS) {
+            CameraInstance camInstance = new CameraInstance(config.name(), config.robotToCam());
+            cameras.add(camInstance);
+
+            // Setup simulation for this camera
+            if (Robot.isSimulation()) {
+                var cameraProp = new SimCameraProperties();
+                cameraProp.setCalibration(960, 720, Rotation2d.fromDegrees(90));
+                cameraProp.setCalibError(0.35, 0.10);
+                cameraProp.setFPS(15);
+                cameraProp.setAvgLatencyMs(50);
+                cameraProp.setLatencyStdDevMs(15);
+
+                camInstance.cameraSim = new PhotonCameraSim(camInstance.camera, cameraProp);
+                visionSim.addCamera(camInstance.cameraSim, config.robotToCam());
+                camInstance.cameraSim.enableDrawWireframe(true);
+            }
         }
     }
 
     @Override
     public void periodic() {
-        // Clear visible tags for this frame
-        visibleTagIds.clear();
+        // Clear aggregated visible tags for this frame
+        aggregatedVisibleTagIds.clear();
 
-        Optional<EstimatedRobotPose> visionEst = Optional.empty();
-        for (var result : camera.getAllUnreadResults()) {
-            // Track visible tags
-            for (var target : result.getTargets()) {
-                visibleTagIds.add(target.getFiducialId());
-            }
+        // Track the best estimate across all cameras (lowest std dev sum wins)
+        CameraInstance bestCamera = null;
+        double bestStdDevSum = Double.MAX_VALUE;
+        EstimatedRobotPose bestEstimate = null;
 
-            visionEst = photonEstimator.estimateCoprocMultiTagPose(result);
-            if (visionEst.isEmpty()) {
-                visionEst = photonEstimator.estimateLowestAmbiguityPose(result);
-            }
-            updateEstimationStdDevs(visionEst, result.getTargets());
+        // Process each camera
+        for (CameraInstance cam : cameras) {
+            cam.visibleTagIds.clear();
 
-            if (Robot.isSimulation()) {
-                visionEst.ifPresentOrElse(est -> getSimDebugField().getObject("VisionEstimation").setPose(est.estimatedPose.toPose2d()), () -> {
-                    getSimDebugField().getObject("VisionEstimation").setPoses();
-                });
-            }
-
-            visionEst.ifPresent(est -> {
-                // Store latest estimate for pose access
-                latestEstimate = est.estimatedPose.toPose2d();
-                latestEstimateTimestamp = est.timestampSeconds;
-
-                // Change our trust in the measurement based on the tags we can see
-                var estStdDevs = getEstimationStdDevs();
-
-                // Only feed drivetrain if feeding is enabled (disabled after QuestNav seeding)
-                if (feedingEnabled) {
-                    estConsumer.accept(est.estimatedPose.toPose2d(), est.timestampSeconds, estStdDevs);
+            for (var result : cam.camera.getAllUnreadResults()) {
+                // Track visible tags for this camera
+                for (var target : result.getTargets()) {
+                    cam.visibleTagIds.add(target.getFiducialId());
+                    aggregatedVisibleTagIds.add(target.getFiducialId());
                 }
-            });
+
+                // Estimate pose - prefer multi-tag, fall back to lowest ambiguity
+                Optional<EstimatedRobotPose> visionEst = cam.poseEstimator.estimateCoprocMultiTagPose(result);
+                if (visionEst.isEmpty()) {
+                    visionEst = cam.poseEstimator.estimateLowestAmbiguityPose(result);
+                }
+
+                // Calculate standard deviations for this camera's estimate
+                updateCameraEstimationStdDevs(cam, visionEst, result.getTargets());
+
+                if (visionEst.isPresent()) {
+                    // Update camera's latest estimate
+                    cam.latestEstimate = visionEst.get().estimatedPose.toPose2d();
+                    cam.latestTimestamp = visionEst.get().timestampSeconds;
+
+                    // Calculate confidence score (sum of std devs - lower is better)
+                    double stdDevSum = cam.currentStdDevs.get(0, 0) +
+                                       cam.currentStdDevs.get(1, 0) +
+                                       cam.currentStdDevs.get(2, 0);
+
+                    // Check if this is the best estimate so far
+                    if (stdDevSum < bestStdDevSum) {
+                        bestStdDevSum = stdDevSum;
+                        bestCamera = cam;
+                        bestEstimate = visionEst.get();
+                    }
+                }
+            }
+
+            // Per-camera telemetry
+            SmartDashboard.putNumber("Vision/" + cam.name + "/TagCount", cam.visibleTagIds.size());
+            SmartDashboard.putString("Vision/" + cam.name + "/VisibleTags", cam.visibleTagIds.toString());
         }
 
-        // Telemetry
+        // Use the best estimate if we have one
+        if (bestCamera != null && bestEstimate != null) {
+            latestEstimate = bestEstimate.estimatedPose.toPose2d();
+            latestEstimateTimestamp = bestEstimate.timestampSeconds;
+            curStdDevs = bestCamera.currentStdDevs;
+
+            // Simulation debug visualization
+            if (Robot.isSimulation()) {
+                getSimDebugField().getObject("VisionEstimation").setPose(latestEstimate);
+            }
+
+            // Feed to drivetrain if enabled
+            if (feedingEnabled) {
+                estConsumer.accept(latestEstimate, latestEstimateTimestamp, curStdDevs);
+            }
+        } else if (Robot.isSimulation()) {
+            getSimDebugField().getObject("VisionEstimation").setPoses();
+        }
+
+        // Aggregated telemetry (backward compatible)
         SmartDashboard.putBoolean("Vision/HasValidPose", hasRecentValidPose(POSE_VALIDITY_TIMEOUT));
-        SmartDashboard.putString("Vision/VisibleTags", visibleTagIds.toString());
+        SmartDashboard.putString("Vision/VisibleTags", aggregatedVisibleTagIds.toString());
+        SmartDashboard.putNumber("Vision/TotalVisibleTagCount", aggregatedVisibleTagIds.size());
         SmartDashboard.putNumber("Vision/PoseX", latestEstimate.getX());
         SmartDashboard.putNumber("Vision/PoseY", latestEstimate.getY());
         SmartDashboard.putNumber("Vision/PoseRotation", latestEstimate.getRotation().getDegrees());
         SmartDashboard.putBoolean("Vision/FeedingEnabled", feedingEnabled);
+        SmartDashboard.putString("Vision/BestCamera", bestCamera != null ? bestCamera.name : "none");
     }
 
     /**
-     * Returns the latest estimated pose from vision.
+     * Calculates standard deviations for a specific camera's pose estimate.
+     */
+    private void updateCameraEstimationStdDevs(CameraInstance cam, Optional<EstimatedRobotPose> estimatedPose, List<PhotonTrackedTarget> targets) {
+        if (estimatedPose.isEmpty()) {
+            cam.currentStdDevs = kSingleTagStdDevs;
+            return;
+        }
+
+        var estStdDevs = kSingleTagStdDevs;
+        int numTags = 0;
+        double avgDist = 0;
+
+        for (var tgt : targets) {
+            var tagPose = cam.poseEstimator.getFieldTags().getTagPose(tgt.getFiducialId());
+            if (tagPose.isEmpty())
+                continue;
+            numTags++;
+            avgDist += tagPose.get().toPose2d().getTranslation().getDistance(
+                estimatedPose.get().estimatedPose.toPose2d().getTranslation());
+        }
+
+        if (numTags == 0) {
+            cam.currentStdDevs = kSingleTagStdDevs;
+        } else {
+            avgDist /= numTags;
+            if (numTags > 1)
+                estStdDevs = kMultiTagStdDevs;
+            if (numTags == 1 && avgDist > 4)
+                estStdDevs = VecBuilder.fill(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE);
+            else
+                estStdDevs = estStdDevs.times(1 + (avgDist * avgDist / 30));
+            cam.currentStdDevs = estStdDevs;
+        }
+    }
+
+    /**
+     * Returns the latest estimated pose from vision (best estimate across all cameras).
      * @return Optional containing the pose if available, empty if no pose has been estimated
      */
     public Optional<Pose2d> getLatestPose2d() {
@@ -165,28 +265,56 @@ public class Vision extends SubsystemBase {
     }
 
     /**
-     * Returns the set of currently visible AprilTag IDs.
+     * Returns the set of currently visible AprilTag IDs across all cameras.
      * @return Set of visible tag IDs
      */
     public Set<Integer> getVisibleTagIds() {
-        return new HashSet<>(visibleTagIds);
+        return new HashSet<>(aggregatedVisibleTagIds);
     }
 
     /**
-     * Checks if a specific AprilTag is currently visible.
+     * Checks if a specific AprilTag is currently visible by any camera.
      * @param tagId The tag ID to check
      * @return true if the tag is currently visible
      */
     public boolean isTagVisible(int tagId) {
-        return visibleTagIds.contains(tagId);
+        return aggregatedVisibleTagIds.contains(tagId);
     }
 
     /**
-     * Returns the count of currently visible AprilTags.
-     * @return Number of visible tags
+     * Returns the count of currently visible AprilTags across all cameras.
+     * @return Number of visible tags (union of all cameras)
      */
     public int getVisibleTagCount() {
-        return visibleTagIds.size();
+        return aggregatedVisibleTagIds.size();
+    }
+
+    /**
+     * Returns the count of visible AprilTags for a specific camera.
+     * @param cameraName The name of the camera
+     * @return Number of visible tags for that camera, or 0 if camera not found
+     */
+    public int getVisibleTagCountForCamera(String cameraName) {
+        for (CameraInstance cam : cameras) {
+            if (cam.name.equals(cameraName)) {
+                return cam.visibleTagIds.size();
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Returns the names of cameras that currently have visible tags.
+     * @return List of camera names with visible tags
+     */
+    public List<String> getCamerasWithVisibleTags() {
+        List<String> result = new ArrayList<>();
+        for (CameraInstance cam : cameras) {
+            if (!cam.visibleTagIds.isEmpty()) {
+                result.add(cam.name);
+            }
+        }
+        return result;
     }
 
     /**
@@ -210,7 +338,7 @@ public class Vision extends SubsystemBase {
      * @return Optional containing a visible target, or empty if none visible
      */
     public Optional<AprilTagTarget> getVisibleTarget() {
-        for (int tagId : visibleTagIds) {
+        for (int tagId : aggregatedVisibleTagIds) {
             AprilTagTarget target = AprilTagTarget.fromTagId(tagId);
             if (target != null) {
                 return Optional.of(target);
@@ -302,52 +430,7 @@ public class Vision extends SubsystemBase {
     }
 
     /**
-     * Calculates new standard deviations. This algorithm is a heuristic that creates dynamic standard deviations based on number of tags, estimation strategy, and distance from the tags.
-     *
-     * @param estimatedPose The estimated pose to guess standard deviations for.
-     * @param targets All targets in this camera frame
-     */
-    private void updateEstimationStdDevs(Optional<EstimatedRobotPose> estimatedPose, List<PhotonTrackedTarget> targets) {
-        if (estimatedPose.isEmpty()) {
-            // No pose input. Default to single-tag std devs
-            curStdDevs = kSingleTagStdDevs;
-
-        } else {
-            // Pose present. Start running Heuristic
-            var estStdDevs = kSingleTagStdDevs;
-            int numTags = 0;
-            double avgDist = 0;
-
-            // Precalculation - see how many tags we found, and calculate an average-distance metric
-            for (var tgt : targets) {
-                var tagPose = photonEstimator.getFieldTags().getTagPose(tgt.getFiducialId());
-                if (tagPose.isEmpty())
-                    continue;
-                numTags++;
-                avgDist += tagPose.get().toPose2d().getTranslation().getDistance(estimatedPose.get().estimatedPose.toPose2d().getTranslation());
-            }
-
-            if (numTags == 0) {
-                // No tags visible. Default to single-tag std devs
-                curStdDevs = kSingleTagStdDevs;
-            } else {
-                // One or more tags visible, run the full heuristic.
-                avgDist /= numTags;
-                // Decrease std devs if multiple targets are visible
-                if (numTags > 1)
-                    estStdDevs = kMultiTagStdDevs;
-                // Increase std devs based on (average) distance
-                if (numTags == 1 && avgDist > 4)
-                    estStdDevs = VecBuilder.fill(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE);
-                else
-                    estStdDevs = estStdDevs.times(1 + (avgDist * avgDist / 30));
-                curStdDevs = estStdDevs;
-            }
-        }
-    }
-
-    /**
-     * Returns the latest standard deviations of the estimated pose from {@link #getEstimatedGlobalPose()}, for use with {@link edu.wpi.first.math.estimator.SwerveDrivePoseEstimator
+     * Returns the latest standard deviations of the estimated pose, for use with {@link edu.wpi.first.math.estimator.SwerveDrivePoseEstimator
      * SwerveDrivePoseEstimator}. This should only be used when there are targets visible.
      */
     public Matrix<N3, N1> getEstimationStdDevs() {
