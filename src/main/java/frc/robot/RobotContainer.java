@@ -224,6 +224,10 @@ public class RobotContainer {
     ).repeatedly().ignoringDisable(true);
 
     RobotModeTriggers.disabled().whileTrue(seedingCommand);
+
+    // Turn off LEDs when auto or teleop starts
+    RobotModeTriggers.autonomous().onTrue(led.setPatternCommand(LED.Pattern.BLACK));
+    RobotModeTriggers.teleop().onTrue(led.setPatternCommand(LED.Pattern.BLACK));
   }
 
   /**
