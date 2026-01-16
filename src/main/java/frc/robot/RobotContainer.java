@@ -7,6 +7,8 @@ import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
+import frc.robot.utils.Telemetry;
+
 import com.ctre.phoenix6.SignalLogger;
 
 import edu.wpi.first.wpilibj.DriverStation;
