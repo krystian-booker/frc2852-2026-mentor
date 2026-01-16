@@ -7,6 +7,7 @@ import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
+import frc.robot.subsystems.Vision;
 import frc.robot.utils.Telemetry;
 
 import com.ctre.phoenix6.SignalLogger;
@@ -60,14 +61,16 @@ public class RobotContainer {
   public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
   // Vision
+  private final Vision vision;
   private final QuestNavSubsystem questNav;
 
   // Auto setup
   private final SendableChooser<Command> autoChooser;
 
   public RobotContainer() {
-    // Initialize vision subsystem (after drivetrain)
-    questNav = new QuestNavSubsystem(drivetrain);
+    // Initialize vision subsystems (after drivetrain)
+    vision = new Vision(drivetrain::addVisionMeasurement);
+    questNav = new QuestNavSubsystem(drivetrain, vision);
 
     autoChooser = AutoBuilder.buildAutoChooser("Default");
     SmartDashboard.putData("Auto Mode", autoChooser);
@@ -135,6 +138,14 @@ public class RobotContainer {
     // Resets the gyro's "forward" direction to the robot's current facing direction
     // Use this when the gyro drifts or after manually repositioning the robot
     driverController.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
+
+    // START BUTTON - Seed QuestNav from Vision
+    // Attempts to reset QuestNav pose using the current vision estimate
+    driverController.start().onTrue(questNav.trySeedFromVision());
+
+    // BACK BUTTON - Pathfind to Visible AprilTag Target
+    // Uses PathPlanner to navigate to a configured target if one is visible
+    driverController.back().onTrue(vision.pathfindToVisibleTarget(drivetrain));
   }
 
   /**

@@ -1,5 +1,17 @@
 package frc.robot;
 
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
+import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.VecBuilder;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.numbers.N1;
+import edu.wpi.first.math.numbers.N3;
+
 public final class Constants {
   public static final double SIGNAL_UPDATE_FREQUENCY_HZ = 250.0; // Status signal update rate
 
@@ -186,4 +198,72 @@ public final class Constants {
     public static final double STD_DEV_Y = 0.02;
     public static final double STD_DEV_THETA = 0.035;
   }
+
+  public static class BlinkinConstants {
+    public static final int PWM_PORT = 0;
+  }
+
+  public static class Vision {
+    // TODO: Update
+    public static final String kCameraName = "CAMERA_NAME";
+
+    // Cam mounted facing forward, half a meter forward of center, half a meter up from center.
+    public static final Transform3d kRobotToCam = new Transform3d(new Translation3d(0.5, 0.0, 0.5), new Rotation3d(0, 0, 0));
+
+    // The layout of the AprilTags on the field
+    public static final AprilTagFieldLayout kTagLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
+
+    // The standard deviations of our vision estimated poses, which affect correction rate
+    // (Fake values. Experiment and determine estimation noise on an actual robot.)
+    public static final Matrix<N3, N1> kSingleTagStdDevs = VecBuilder.fill(4, 4, 8);
+    public static final Matrix<N3, N1> kMultiTagStdDevs = VecBuilder.fill(0.5, 0.5, 1);
+
+    // Pose validity timeout - max age in seconds for a pose to be considered valid
+    public static final double POSE_VALIDITY_TIMEOUT = 0.5;
+
+    // PID gains for simple drive-to-target
+    public static final double DRIVE_P = 2.0;
+    public static final double DRIVE_I = 0.0;
+    public static final double DRIVE_D = 0.0;
+    public static final double ROTATION_P = 3.0;
+    public static final double ROTATION_I = 0.0;
+    public static final double ROTATION_D = 0.0;
+
+    // Tolerances for drive-to-target
+    public static final double POSITION_TOLERANCE_METERS = 0.05;
+    public static final double ROTATION_TOLERANCE_RADIANS = Math.toRadians(2.0);
+
+    // AprilTag target positions - add/modify based on your field positions
+    public enum AprilTagTarget {
+      EXAMPLE_TAG_1(1, new Pose2d(2.0, 4.0, Rotation2d.fromDegrees(0))),
+      EXAMPLE_TAG_2(2, new Pose2d(3.0, 5.0, Rotation2d.fromDegrees(90))),
+      EXAMPLE_TAG_3(6, new Pose2d(4.0, 4.0, Rotation2d.fromDegrees(180)));
+
+      private final int tagId;
+      private final Pose2d targetPose;
+
+      AprilTagTarget(int tagId, Pose2d targetPose) {
+        this.tagId = tagId;
+        this.targetPose = targetPose;
+      }
+
+      public int getTagId() {
+        return tagId;
+      }
+
+      public Pose2d getTargetPose() {
+        return targetPose;
+      }
+
+      public static AprilTagTarget fromTagId(int tagId) {
+        for (AprilTagTarget target : values()) {
+          if (target.tagId == tagId) {
+            return target;
+          }
+        }
+        return null;
+      }
+    }
+  }
+
 }

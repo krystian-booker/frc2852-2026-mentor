@@ -9,7 +9,10 @@ import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.Constants.QuestNavConstants;
@@ -20,6 +23,7 @@ public class QuestNavSubsystem extends SubsystemBase {
 
     private final QuestNav questNav;
     private final CommandSwerveDrivetrain drivetrain;
+    private final Vision vision;
 
     // Transform from robot center to Quest headset
     private final Transform3d robotToQuest;
@@ -31,8 +35,9 @@ public class QuestNavSubsystem extends SubsystemBase {
     private boolean isConnected = false;
     private Pose2d latestRobotPose = new Pose2d();
 
-    public QuestNavSubsystem(CommandSwerveDrivetrain drivetrain) {
+    public QuestNavSubsystem(CommandSwerveDrivetrain drivetrain, Vision vision) {
         this.drivetrain = drivetrain;
+        this.vision = vision;
         this.questNav = new QuestNav();
 
         // Build transform from constants
@@ -112,5 +117,47 @@ public class QuestNavSubsystem extends SubsystemBase {
     /** Returns the latest robot pose from QuestNav. */
     public Pose2d getLatestPose() {
         return latestRobotPose;
+    }
+
+    /**
+     * Attempts to immediately seed QuestNav pose from vision.
+     * @return true if seeding was successful (valid vision pose available)
+     */
+    public boolean seedPoseFromVision() {
+        if (vision.hasRecentValidPose(0.5)) {
+            var visionPose = vision.getLatestPose2d();
+            if (visionPose.isPresent()) {
+                resetPose(visionPose.get());
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Creates a command that waits for a valid vision pose and then seeds QuestNav.
+     * @param timeout Maximum time to wait for a valid pose in seconds
+     * @return Command that seeds QuestNav when vision pose is available
+     */
+    public Command seedFromVisionCommand(double timeout) {
+        Timer timer = new Timer();
+        return Commands.sequence(
+            Commands.runOnce(timer::restart),
+            Commands.waitUntil(() -> vision.hasRecentValidPose(0.5) || timer.hasElapsed(timeout)),
+            Commands.runOnce(() -> {
+                if (vision.hasRecentValidPose(0.5)) {
+                    seedPoseFromVision();
+                }
+            })
+        );
+    }
+
+    /**
+     * Creates an instant command that attempts to seed QuestNav from vision.
+     * Does nothing if no valid vision pose is available.
+     * @return Command that attempts immediate vision seeding
+     */
+    public Command trySeedFromVision() {
+        return Commands.runOnce(this::seedPoseFromVision);
     }
 }
