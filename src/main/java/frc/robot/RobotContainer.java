@@ -17,6 +17,7 @@ import com.ctre.phoenix6.SignalLogger;
 
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 
@@ -95,7 +96,7 @@ public class RobotContainer {
     // Set turret default command - continuously track the target
     turret.setDefaultCommand(turret.aimAtTargetCommand(turretAimingCalculator));
 
-    autoChooser = AutoBuilder.buildAutoChooser("Default");
+    autoChooser = AutoBuilder.buildAutoChooser();
     SmartDashboard.putData("Auto Mode", autoChooser);
 
     if (DriverStation.isTest()) {
@@ -112,7 +113,7 @@ public class RobotContainer {
     drivetrain.registerTelemetry(logger::telemeterize);
 
     // Warmup PathPlanner to avoid Java pauses
-    FollowPathCommand.warmupCommand().schedule();
+    CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand());
   }
 
   private void configureBindings() {
