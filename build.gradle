@@ -105,3 +105,39 @@ wpi.java.configureTestTasks(test)
 tasks.withType(JavaCompile) {
     options.compilerArgs.add '-XDstringConcat=inline'
 }
+
+// Task to generate turret lookup tables from calibration CSV
+task generateTurretLookupTables {
+    description = 'Generate TurretLookupTables.java from calibration CSV'
+    group = 'code generation'
+
+    def csvFile = file('src/main/deploy/calibration/turret_calibration_data.csv')
+    def outputFile = file('src/main/java/frc/robot/generated/TurretLookupTables.java')
+    def toolsDir = file('tools')
+    def toolSource = file('tools/GenerateLookupTables.java')
+
+    inputs.file(csvFile).optional()
+    inputs.file(toolSource)
+    outputs.file(outputFile)
+
+    onlyIf { csvFile.exists() }
+
+    doLast {
+        // Compile the tool
+        def compiledDir = file("${buildDir}/tools-classes")
+        compiledDir.mkdirs()
+
+        exec {
+            commandLine 'javac', '-d', compiledDir.absolutePath, toolSource.absolutePath
+        }
+
+        // Run the tool
+        javaexec {
+            mainClass = 'GenerateLookupTables'
+            classpath = files(compiledDir)
+            args = [csvFile.absolutePath, outputFile.absolutePath]
+        }
+    }
+}
+
+compileJava.dependsOn generateTurretLookupTables

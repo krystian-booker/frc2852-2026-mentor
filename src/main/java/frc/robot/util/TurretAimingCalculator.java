@@ -8,6 +8,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.TurretAimingConstants;
+import frc.robot.generated.TurretLookupTables;
 
 /**
  * Utility class that calculates the turret angle needed to point at a specific
@@ -107,24 +108,32 @@ public class TurretAimingCalculator {
 
     /**
      * Gets the recommended hood angle based on distance to target.
-     * Uses interpolation from lookup table.
+     * Uses interpolation from generated lookup table if available,
+     * falls back to default constants if no calibration data exists.
      *
      * @return Hood angle in degrees
      */
     public double getHoodAngle() {
         AimingResult result = calculate();
-        return interpolate(result.distanceMeters(), TurretAimingConstants.HOOD_LOOKUP_TABLE);
+        double[][] table = TurretLookupTables.HOOD_LOOKUP_TABLE.length > 0
+                ? TurretLookupTables.HOOD_LOOKUP_TABLE
+                : TurretAimingConstants.HOOD_LOOKUP_TABLE;
+        return interpolate(result.distanceMeters(), table);
     }
 
     /**
      * Gets the recommended flywheel RPM based on distance to target.
-     * Uses interpolation from lookup table.
+     * Uses interpolation from generated lookup table if available,
+     * falls back to default constants if no calibration data exists.
      *
      * @return Flywheel speed in RPM
      */
     public double getFlywheelRPM() {
         AimingResult result = calculate();
-        return interpolate(result.distanceMeters(), TurretAimingConstants.FLYWHEEL_LOOKUP_TABLE);
+        double[][] table = TurretLookupTables.FLYWHEEL_LOOKUP_TABLE.length > 0
+                ? TurretLookupTables.FLYWHEEL_LOOKUP_TABLE
+                : TurretAimingConstants.FLYWHEEL_LOOKUP_TABLE;
+        return interpolate(result.distanceMeters(), table);
     }
 
     /**

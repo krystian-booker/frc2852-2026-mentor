@@ -2,6 +2,7 @@ package frc.robot;
 
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
+import frc.robot.commands.TurretCalibrationCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
@@ -15,7 +16,6 @@ import frc.robot.util.TurretAimingCalculator;
 
 import com.ctre.phoenix6.SignalLogger;
 
-import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -96,15 +96,18 @@ public class RobotContainer {
     // Set turret default command - continuously track the target
     turret.setDefaultCommand(turret.aimAtTargetCommand(turretAimingCalculator));
 
+    // Warmup PathPlanner to avoid Java pauses
+    CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand());
+
     autoChooser = AutoBuilder.buildAutoChooser();
     SmartDashboard.putData("Auto Mode", autoChooser);
 
-    if (DriverStation.isTest()) {
-      configureTestBindings();
-    } else {
-      configureBindings();
-      configureSwerveBindings();
-    }
+    // Configure normal bindings (always available)
+    configureBindings();
+    configureSwerveBindings();
+
+    // Configure test mode bindings (activated when entering test mode)
+    configureTestBindings();
 
     // Configure disabled mode QuestNav seeding
     configureDisabledBindings();
@@ -112,8 +115,6 @@ public class RobotContainer {
     // Telemetry setup
     drivetrain.registerTelemetry(logger::telemeterize);
 
-    // Warmup PathPlanner to avoid Java pauses
-    CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand());
   }
 
   private void configureBindings() {
@@ -182,12 +183,10 @@ public class RobotContainer {
               questNav.seedPoseFromVision();
               reseedModeActive = false;
             }),
-            led.doubleFlashAndOffCommand(LED.Pattern.GREEN)
-        ),
+            led.doubleFlashAndOffCommand(LED.Pattern.GREEN)),
         // Otherwise do nothing
         Commands.none(),
-        () -> reseedModeActive && vision.getVisibleTagCount() >= 2
-    ));
+        () -> reseedModeActive && vision.getVisibleTagCount() >= 2));
 
     // Tag count monitoring for reseed mode
     // When reseed mode is active and 2+ tags become visible, set LEDs GREEN
@@ -201,7 +200,8 @@ public class RobotContainer {
 
   /**
    * Configure disabled mode bindings for QuestNav seeding.
-   * LEDs start RED and turn GREEN once QuestNav is seeded from a multi-tag vision pose.
+   * LEDs start RED and turn GREEN once QuestNav is seeded from a multi-tag vision
+   * pose.
    * Seeding only happens while disabled, every 5 seconds.
    * If the robot is moved after seeding, LEDs turn RED and re-seeding is allowed.
    */
@@ -231,8 +231,7 @@ public class RobotContainer {
               vision.setFeedingEnabled(false);
             }
           }
-        })
-    ).repeatedly().ignoringDisable(true);
+        })).repeatedly().ignoringDisable(true);
 
     RobotModeTriggers.disabled().whileTrue(seedingCommand);
 
@@ -242,53 +241,65 @@ public class RobotContainer {
   }
 
   /**
-   * Configure SysId bindings
+   * Configure test mode bindings using RobotModeTriggers.
+   * These bindings are only active when the robot is in test mode.
    *
    * Button mapping:
    * A - Quasistatic Forward
    * B - Quasistatic Reverse
    * X - Dynamic Forward
    * Y - Dynamic Reverse
+   * Right Bumper - Toggle Turret Calibration Mode
    */
   private void configureTestBindings() {
-    // Start CTRE SignalLogger for Phoenix 6 SysId
-    SignalLogger.start();
+    // Start CTRE SignalLogger when entering test mode
+    RobotModeTriggers.test().onTrue(Commands.runOnce(() -> SignalLogger.start()));
+
+    // Turret Calibration Mode
+    // Right bumper toggles calibration mode - reads NetworkTables inputs from
+    // Elastic,
+    // applies to hood/flywheel in real-time, and saves calibration points to CSV
+    TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
+        hood, flywheel, () -> drivetrain.getState().Pose, turretAimingCalculator);
+
+    // Only allow toggling calibration mode while in test mode
+    RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
 
     // Swerve
-    // driverController.a().whileTrue(drivetrain.sysIdQuasistatic(Direction.kForward));
-    // driverController.b().whileTrue(drivetrain.sysIdQuasistatic(Direction.kReverse));
-    // driverController.x().whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
-    // driverController.y().whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kForward));
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kReverse));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
+    // RobotModeTriggers.test().and(driverController.y()).whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
 
     // Flywheel
-    // driverController.a().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    // driverController.b().whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-    // driverController.x().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kForward));
-    // driverController.y().whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    // RobotModeTriggers.test().and(driverController.y()).whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
 
     // Hood
-    // driverController.a().whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    // driverController.b().whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-    // driverController.x().whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kForward));
-    // driverController.y().whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    // RobotModeTriggers.test().and(driverController.y()).whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kReverse));
 
     // Turret
-    // driverController.a().whileTrue(turret.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    // driverController.b().whileTrue(turret.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-    // driverController.x().whileTrue(turret.sysIdDynamic(SysIdRoutine.Direction.kForward));
-    // driverController.y().whileTrue(turret.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(turret.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(turret.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(turret.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    // RobotModeTriggers.test().and(driverController.y()).whileTrue(turret.sysIdDynamic(SysIdRoutine.Direction.kReverse));
 
     // Intake
-    // driverController.a().whileTrue(intake.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    // driverController.b().whileTrue(intake.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-    // driverController.x().whileTrue(intake.sysIdDynamic(SysIdRoutine.Direction.kForward));
-    // driverController.y().whileTrue(intake.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intake.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intake.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(intake.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    // RobotModeTriggers.test().and(driverController.y()).whileTrue(intake.sysIdDynamic(SysIdRoutine.Direction.kReverse));
 
     // Intake Actuator
-    // driverController.a().whileTrue(intakeActuator.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    // driverController.b().whileTrue(intakeActuator.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-    // driverController.x().whileTrue(intakeActuator.sysIdDynamic(SysIdRoutine.Direction.kForward));
-    // driverController.y().whileTrue(intakeActuator.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    // RobotModeTriggers.test().and(driverController.y()).whileTrue(intakeActuator.sysIdDynamic(SysIdRoutine.Direction.kReverse));
   }
 
   public Command getAutonomousCommand() {

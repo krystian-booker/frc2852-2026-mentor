@@ -87,6 +87,10 @@ public class Vision extends SubsystemBase {
 
         // Initialize simulation first (if simulating) so cameras can be added to it
         if (Robot.isSimulation()) {
+            // Disable PhotonVision version checking in simulation to prevent
+            // "coprocessor is not sending new data" warnings
+            PhotonCamera.setVersionCheckEnabled(false);
+
             visionSim = new VisionSystemSim("main");
             visionSim.addAprilTags(kTagLayout);
         }

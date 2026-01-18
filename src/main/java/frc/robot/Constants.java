@@ -238,6 +238,33 @@ public final class Constants {
     public static final int PWM_PORT = 0;
   }
 
+  public static class CalibrationConstants {
+    // Field dimensions
+    public static final double FIELD_LENGTH_METERS = 16.54;
+    public static final double FIELD_WIDTH_METERS = 8.21;
+
+    // Grid configuration - 0.5m spacing as requested
+    public static final double GRID_CELL_SIZE_METERS = 0.5;
+    public static final double CALIBRATION_START_X = 1.0;
+    public static final double CALIBRATION_START_Y = 1.0;
+    public static final double CALIBRATION_END_X = 15.5;
+    public static final double CALIBRATION_END_Y = 7.0;
+
+    // Calculated grid size (29 columns x 13 rows = 377 cells)
+    public static final int GRID_COLS = (int) ((CALIBRATION_END_X - CALIBRATION_START_X) / GRID_CELL_SIZE_METERS) + 1;
+    public static final int GRID_ROWS = (int) ((CALIBRATION_END_Y - CALIBRATION_START_Y) / GRID_CELL_SIZE_METERS) + 1;
+
+    // Position tolerance for grid cell detection
+    public static final double POSITION_TOLERANCE_METERS = 0.15;
+
+    // Default values for inputs
+    public static final double DEFAULT_HOOD_ANGLE = 15.0;
+    public static final double DEFAULT_FLYWHEEL_RPM = 3000.0;
+
+    // Calibration file path on roboRIO
+    public static final String CALIBRATION_FILE_PATH = "/home/lvuser/deploy/calibration/turret_calibration_data.csv";
+  }
+
   public static class Vision {
     // Camera configuration record for multi-camera support
     public record CameraConfig(String name, Transform3d robotToCam) {
