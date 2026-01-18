@@ -1,6 +1,7 @@
 plugins {
     id "java"
     id "edu.wpi.first.GradleRIO" version "2026.1.1"
+    id "jacoco"
 }
 
 java {
@@ -78,6 +79,15 @@ dependencies {
 test {
     useJUnitPlatform()
     systemProperty 'junit.jupiter.extensions.autodetection.enabled', 'true'
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
 }
 
 // Simulation configuration (e.g. environment variables).
@@ -104,4 +114,13 @@ wpi.java.configureTestTasks(test)
 // Configure string concat to always inline compile
 tasks.withType(JavaCompile) {
     options.compilerArgs.add '-XDstringConcat=inline'
+}
+
+// Task to run the turret aiming visualizer (standalone, no WPILib required)
+task runTurretVisualizer(type: JavaExec) {
+    description = 'Run the TurretAimingCalculator visualizer for testing'
+    group = 'application'
+
+    mainClass = 'frc.robot.util.TurretVisualizerApp'
+    classpath = sourceSets.main.runtimeClasspath
 }

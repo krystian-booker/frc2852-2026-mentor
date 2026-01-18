@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"C:\\\\Users\\\\Krystian\\\\source\\\\repos\\\\frc2852-2026-mentor\\\\src\\\\main\\\\java\\\\frc\\\\robot\\\\subsystems\")",
+      "Bash(./gradlew build:*)",
+      "Bash(./gradlew test:*)",
+      "Bash(./gradlew clean test:*)",
+      "Bash(./gradlew jacocoTestReport:*)",
+      "Bash(./gradlew compileJava:*)",
+      "Bash(gradlew.bat compileJava:*)",
+      "Bash(./gradlew.bat compileJava:*)"
+    ]
+  }
+}
