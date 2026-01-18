@@ -10,8 +10,8 @@ import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
 import frc.robot.subsystems.LED;
 import frc.robot.subsystems.Vision;
-import frc.robot.utils.Telemetry;
-import frc.robot.utils.TurretAimingCalculator;
+import frc.robot.util.Telemetry;
+import frc.robot.util.TurretAimingCalculator;
 
 import com.ctre.phoenix6.SignalLogger;
 

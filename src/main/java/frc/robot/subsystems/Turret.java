@@ -26,8 +26,8 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
 import frc.robot.Constants.TurretConstants;
-import frc.robot.utils.TurretAimingCalculator;
-import frc.robot.utils.TurretAimingCalculator.AimingResult;
+import frc.robot.util.TurretAimingCalculator;
+import frc.robot.util.TurretAimingCalculator.AimingResult;
 
 import static edu.wpi.first.units.Units.*;
 
