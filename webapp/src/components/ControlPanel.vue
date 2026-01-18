@@ -1,38 +1,97 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import { useNTDouble, useNTBoolean, publishDouble } from '../composables/useNetworkTables'
+import { TOPICS } from '../constants/topics'
 
 // Read actual values from robot
-const actualHoodAngle = useNTDouble('/TurretCalibration/Actual/HoodAngle', 25)
-const actualFlywheelRPM = useNTDouble('/TurretCalibration/Actual/FlywheelRPM', 3000)
-const hoodAtPosition = useNTBoolean('/TurretCalibration/Actual/HoodAtPosition', false)
-const flywheelAtSetpoint = useNTBoolean('/TurretCalibration/Actual/FlywheelAtSetpoint', false)
+const actualHoodAngle = useNTDouble(TOPICS.ACTUAL_HOOD_ANGLE, 25)
+const actualFlywheelRPM = useNTDouble(TOPICS.ACTUAL_FLYWHEEL_RPM, 3000)
+const hoodAtPosition = useNTBoolean(TOPICS.HOOD_AT_POSITION, false)
+const flywheelAtSetpoint = useNTBoolean(TOPICS.FLYWHEEL_AT_SETPOINT, false)
+
+// Read constants from robot (with fallback defaults)
+const minHoodAngle = useNTDouble(TOPICS.CONSTANTS.MIN_HOOD_ANGLE, 0)
+const maxHoodAngle = useNTDouble(TOPICS.CONSTANTS.MAX_HOOD_ANGLE, 45)
+const minFlywheelRPM = useNTDouble(TOPICS.CONSTANTS.MIN_FLYWHEEL_RPM, 1000)
+const maxFlywheelRPM = useNTDouble(TOPICS.CONSTANTS.MAX_FLYWHEEL_RPM, 6000)
 
 // Input values (local state, published to NT)
 const inputHoodAngle = ref(25)
 const inputFlywheelRPM = ref(3000)
 
-// Min/max values (match Java constants)
-const hoodMin = 15
-const hoodMax = 60
-const flywheelMin = 1000
-const flywheelMax = 6000
+// Track whether constants have been received from robot
+const constantsReceived = ref(false)
 
-// Publish changes to NetworkTables
+// Debounced publish functions (100ms debounce to reduce network traffic)
+const debouncedPublishHoodAngle = useDebounceFn((value: number) => {
+  publishDouble(TOPICS.INPUT_HOOD_ANGLE, value)
+}, 100)
+
+const debouncedPublishFlywheelRPM = useDebounceFn((value: number) => {
+  publishDouble(TOPICS.INPUT_FLYWHEEL_RPM, value)
+}, 100)
+
+// Publish changes to NetworkTables with debouncing (only after constants received)
 watch(inputHoodAngle, (value) => {
-  publishDouble('/TurretCalibration/Input/HoodAngle', value)
+  if (constantsReceived.value) {
+    debouncedPublishHoodAngle(value)
+  }
 })
 
 watch(inputFlywheelRPM, (value) => {
-  publishDouble('/TurretCalibration/Input/FlywheelRPM', value)
+  if (constantsReceived.value) {
+    debouncedPublishFlywheelRPM(value)
+  }
 })
 
-// Initialize with NT values on mount
-onMounted(() => {
-  // Optionally read initial values from NT
-  publishDouble('/TurretCalibration/Input/HoodAngle', inputHoodAngle.value)
-  publishDouble('/TurretCalibration/Input/FlywheelRPM', inputFlywheelRPM.value)
-})
+// Unified watcher for all constants - waits for all values before publishing
+// This prevents race condition where separate watchers could fire out of order
+// and publish unclamped values
+watch(
+  [minHoodAngle, maxHoodAngle, minFlywheelRPM, maxFlywheelRPM],
+  ([newMinHood, newMaxHood, newMinRPM, newMaxRPM]) => {
+    // Clamp hood angle to valid range
+    if (inputHoodAngle.value < newMinHood) {
+      inputHoodAngle.value = newMinHood
+    } else if (inputHoodAngle.value > newMaxHood) {
+      inputHoodAngle.value = newMaxHood
+    }
+
+    // Clamp flywheel RPM to valid range
+    if (inputFlywheelRPM.value < newMinRPM) {
+      inputFlywheelRPM.value = newMinRPM
+    } else if (inputFlywheelRPM.value > newMaxRPM) {
+      inputFlywheelRPM.value = newMaxRPM
+    }
+
+    // On first receipt of constants, publish clamped initial values
+    if (!constantsReceived.value) {
+      constantsReceived.value = true
+      // Publish clamped initial values immediately (no debounce for initialization)
+      publishDouble(TOPICS.INPUT_HOOD_ANGLE, inputHoodAngle.value)
+      publishDouble(TOPICS.INPUT_FLYWHEEL_RPM, inputFlywheelRPM.value)
+    }
+  }
+)
+
+// Blur handlers to clamp values when user finishes typing
+// HTML5 min/max attributes don't prevent typing invalid values
+const clampHoodAngle = () => {
+  if (inputHoodAngle.value < minHoodAngle.value) {
+    inputHoodAngle.value = minHoodAngle.value
+  } else if (inputHoodAngle.value > maxHoodAngle.value) {
+    inputHoodAngle.value = maxHoodAngle.value
+  }
+}
+
+const clampFlywheelRPM = () => {
+  if (inputFlywheelRPM.value < minFlywheelRPM.value) {
+    inputFlywheelRPM.value = minFlywheelRPM.value
+  } else if (inputFlywheelRPM.value > maxFlywheelRPM.value) {
+    inputFlywheelRPM.value = maxFlywheelRPM.value
+  }
+}
 </script>
 
 <template>
@@ -51,17 +110,18 @@ onMounted(() => {
         <input
           type="range"
           v-model.number="inputHoodAngle"
-          :min="hoodMin"
-          :max="hoodMax"
+          :min="minHoodAngle"
+          :max="maxHoodAngle"
           step="0.5"
         />
         <input
           type="number"
           v-model.number="inputHoodAngle"
-          :min="hoodMin"
-          :max="hoodMax"
+          :min="minHoodAngle"
+          :max="maxHoodAngle"
           step="0.5"
           class="value-input"
+          @blur="clampHoodAngle"
         />
         <span class="unit">deg</span>
       </div>
@@ -83,17 +143,18 @@ onMounted(() => {
         <input
           type="range"
           v-model.number="inputFlywheelRPM"
-          :min="flywheelMin"
-          :max="flywheelMax"
+          :min="minFlywheelRPM"
+          :max="maxFlywheelRPM"
           step="50"
         />
         <input
           type="number"
           v-model.number="inputFlywheelRPM"
-          :min="flywheelMin"
-          :max="flywheelMax"
+          :min="minFlywheelRPM"
+          :max="maxFlywheelRPM"
           step="50"
           class="value-input"
+          @blur="clampFlywheelRPM"
         />
         <span class="unit">RPM</span>
       </div>

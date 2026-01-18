@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useCalibrationStore } from '../stores/calibration'
+import { publishDouble, triggerBoolean } from '../composables/useNetworkTables'
+import { TOPICS } from '../constants/topics'
 
 const store = useCalibrationStore()
+
+// Sequence number for delete operations - prevents race conditions
+// Robot only processes delete if sequence > lastProcessedSequence
+const deleteSequence = ref(0)
 
 const sortedPoints = computed(() =>
   [...store.points].sort((a, b) => {
@@ -11,8 +17,27 @@ const sortedPoints = computed(() =>
   })
 )
 
-const removePoint = (row: number, col: number) => {
-  store.removePoint(row, col)
+const removePoint = async (row: number, col: number) => {
+  // Confirm before deleting
+  if (!confirm(`Delete calibration point at grid position [${row}, ${col}]?`)) {
+    return
+  }
+
+  // Increment sequence number for this delete operation
+  deleteSequence.value++
+  const currentSequence = deleteSequence.value
+
+  // Publish target position with sequence number and trigger robot-side delete
+  // Robot is source of truth - data will sync back via NT subscription
+  // Sequence number ensures robot only processes if sequence > lastProcessedSequence
+  await Promise.all([
+    publishDouble(TOPICS.DELETE_TARGET.ROW, row),
+    publishDouble(TOPICS.DELETE_TARGET.COL, col),
+    publishDouble(TOPICS.DELETE_TARGET.SEQUENCE, currentSequence)
+  ])
+  // Delay to ensure row/col/sequence are published before trigger (200ms is robust for FRC network conditions)
+  await new Promise(resolve => setTimeout(resolve, 200))
+  await triggerBoolean(TOPICS.DELETE_TARGET_POINT)
 }
 </script>
 

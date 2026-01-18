@@ -9,6 +9,7 @@ import edu.wpi.first.networktables.BooleanSubscriber;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.IntegerPublisher;
+import edu.wpi.first.networktables.IntegerSubscriber;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringArrayPublisher;
@@ -19,6 +20,7 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 
 import frc.robot.Constants.CalibrationConstants;
+import frc.robot.Constants.FlywheelConstants;
 import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.TurretAimingConstants;
 import frc.robot.subsystems.Flywheel;
@@ -74,9 +76,8 @@ public class TurretCalibrationCommand extends Command {
     private final BooleanPublisher allianceMismatchPub;
     private final BooleanPublisher duplicatePointWarningPub;
 
-    // Validation constants
-    private static final double MIN_FLYWHEEL_RPM = 1000.0;
-    private static final double MAX_FLYWHEEL_RPM = 6000.0;
+    // Data freshness publisher
+    private final DoublePublisher lastUpdateTimestampPub;
 
     // Subscribers (Elastic -> Robot)
     private final DoubleSubscriber inputHoodAngleSub;
@@ -84,12 +85,26 @@ public class TurretCalibrationCommand extends Command {
     private final BooleanSubscriber savePointSub;
     private final BooleanSubscriber exportSub;
     private final BooleanSubscriber clearDataSub;
+    private final BooleanSubscriber deletePointSub;
     private final StringSubscriber allianceSelectSub;
+
+    // Targeted delete subscribers (for deleting specific points from webapp DataTable)
+    private final IntegerSubscriber deleteTargetRowSub;
+    private final IntegerSubscriber deleteTargetColSub;
+    private final IntegerSubscriber deleteTargetSequenceSub;
+    private final BooleanSubscriber deleteTargetPointSub;
 
     // State
     private boolean lastSavePointValue = false;
     private boolean lastExportValue = false;
     private boolean lastClearDataValue = false;
+    private boolean lastDeletePointValue = false;
+    private boolean lastDeleteTargetPointValue = false;
+    private long lastProcessedDeleteSequence = 0; // For sequence validation
+
+    // File save retry configuration
+    private static final int MAX_SAVE_RETRIES = 3;
+    private static final long SAVE_RETRY_DELAY_MS = 100;
 
     /**
      * Creates a new TurretCalibrationCommand.
@@ -98,14 +113,16 @@ public class TurretCalibrationCommand extends Command {
      * @param flywheel          The flywheel subsystem
      * @param poseSupplier      Supplier for the robot's current pose
      * @param aimingCalculator  The turret aiming calculator for distance calculation
+     * @param dataRecorder      Shared CalibrationDataRecorder instance for persistence
      */
     public TurretCalibrationCommand(Hood hood, Flywheel flywheel,
-            Supplier<Pose2d> poseSupplier, TurretAimingCalculator aimingCalculator) {
+            Supplier<Pose2d> poseSupplier, TurretAimingCalculator aimingCalculator,
+            CalibrationDataRecorder dataRecorder) {
         this.hood = hood;
         this.flywheel = flywheel;
         this.poseSupplier = poseSupplier;
         this.aimingCalculator = aimingCalculator;
-        this.dataRecorder = new CalibrationDataRecorder();
+        this.dataRecorder = dataRecorder;
 
         // Initialize NetworkTables
         table = NetworkTableInstance.getDefault().getTable("TurretCalibration");
@@ -152,6 +169,9 @@ public class TurretCalibrationCommand extends Command {
         allianceMismatchPub = table.getBooleanTopic("Validation/AllianceMismatch").publish();
         duplicatePointWarningPub = table.getBooleanTopic("Validation/DuplicatePoint").publish();
 
+        // Data freshness publisher
+        lastUpdateTimestampPub = table.getSubTable("Data").getDoubleTopic("LastUpdateTimestamp").publish();
+
         // Subscribers with default values
         inputHoodAngleSub = table.getDoubleTopic("Input/HoodAngle")
                 .subscribe(CalibrationConstants.DEFAULT_HOOD_ANGLE);
@@ -160,13 +180,28 @@ public class TurretCalibrationCommand extends Command {
         savePointSub = table.getBooleanTopic("SavePoint").subscribe(false);
         exportSub = table.getBooleanTopic("Export").subscribe(false);
         clearDataSub = table.getBooleanTopic("ClearData").subscribe(false);
+        deletePointSub = table.getBooleanTopic("DeleteCurrentPoint").subscribe(false);
         allianceSelectSub = allianceTable.getStringTopic("active").subscribe("Blue");
+
+        // Targeted delete subscribers (for webapp DataTable deletions)
+        deleteTargetRowSub = table.getIntegerTopic("DeleteTarget/Row").subscribe(-1);
+        deleteTargetColSub = table.getIntegerTopic("DeleteTarget/Col").subscribe(-1);
+        deleteTargetSequenceSub = table.getIntegerTopic("DeleteTarget/Sequence").subscribe(0);
+        deleteTargetPointSub = table.getBooleanTopic("DeleteTargetPoint").subscribe(false);
 
         // Set initial values for inputs so they appear in Elastic
         table.getDoubleTopic("Input/HoodAngle").publish()
                 .set(CalibrationConstants.DEFAULT_HOOD_ANGLE);
         table.getDoubleTopic("Input/FlywheelRPM").publish()
                 .set(CalibrationConstants.DEFAULT_FLYWHEEL_RPM);
+
+        // Publish constants for webapp to read (one-time on startup)
+        table.getDoubleTopic("Constants/MinFlywheelRPM").publish().set(FlywheelConstants.MIN_RPM);
+        table.getDoubleTopic("Constants/MaxFlywheelRPM").publish().set(FlywheelConstants.MAX_RPM);
+        table.getDoubleTopic("Constants/MinHoodAngle").publish().set(HoodConstants.MIN_POSITION_DEGREES);
+        table.getDoubleTopic("Constants/MaxHoodAngle").publish().set(HoodConstants.MAX_POSITION_DEGREES);
+        table.getIntegerTopic("Grid/Rows").publish().set(CalibrationConstants.GRID_ROWS);
+        table.getIntegerTopic("Grid/Cols").publish().set(CalibrationConstants.GRID_COLS);
 
         addRequirements(hood, flywheel);
     }
@@ -179,10 +214,17 @@ public class TurretCalibrationCommand extends Command {
         pointsSavedPub.set(dataRecorder.getPointCount());
         calibrationInfoPub.set("Distance-based calibration works for both alliances!");
 
-        // Reset edge detection
-        lastSavePointValue = savePointSub.get();
-        lastExportValue = exportSub.get();
-        lastClearDataValue = clearDataSub.get();
+        // Publish current points to NetworkTables so webapp can sync on startup
+        dataRecorder.publishPointsToNetworkTables();
+
+        // Reset edge detection - initialize to true (defensive default)
+        // This ensures the first edge detection requires a fresh button press,
+        // avoiding race conditions if button state changed between command creation and initialization
+        lastSavePointValue = true;
+        lastExportValue = true;
+        lastClearDataValue = true;
+        lastDeletePointValue = true;
+        lastDeleteTargetPointValue = true;
     }
 
     @Override
@@ -191,6 +233,16 @@ public class TurretCalibrationCommand extends Command {
         Pose2d pose = poseSupplier.get();
         if (pose == null) {
             statusPub.set("Error: Pose unavailable - check drivetrain");
+            // Zero out position publishers to prevent stale data display
+            positionXPub.set(0);
+            positionYPub.set(0);
+            distancePub.set(0);
+            // Set grid position to invalid
+            gridRowPub.set(-1);
+            gridColPub.set(-1);
+            // Ensure save is not possible without valid pose
+            readyToSavePub.set(false);
+            validationWarningPub.set("Pose unavailable - cannot save");
             return;
         }
         double robotX = pose.getX();
@@ -207,8 +259,9 @@ public class TurretCalibrationCommand extends Command {
         double inputHoodAngle = inputHoodAngleSub.get();
         double inputFlywheelRPM = inputFlywheelRPMSub.get();
 
-        // Read selected alliance
-        String selectedAlliance = allianceSelectSub.get();
+        // Read selected alliance (normalize: trim and capitalize first letter)
+        String rawAlliance = allianceSelectSub.get();
+        String selectedAlliance = normalizeAlliance(rawAlliance);
         allianceCurrentPub.set(selectedAlliance);
 
         // Apply inputs to subsystems in real-time
@@ -239,6 +292,10 @@ public class TurretCalibrationCommand extends Command {
         boolean flywheelRPMValid = isFlywheelRPMValid(inputFlywheelRPM);
         boolean allianceMismatch = isAllianceMismatch(selectedAlliance);
         boolean hasDuplicatePoint = dataRecorder.hasPointAt(gridRow, gridCol);
+        boolean gridPositionValid = gridRow >= 0 && gridRow < CalibrationConstants.GRID_ROWS
+                && gridCol >= 0 && gridCol < CalibrationConstants.GRID_COLS;
+        boolean allianceValid = "Blue".equals(selectedAlliance) || "Red".equals(selectedAlliance);
+        boolean positionClamped = isXOutsideBounds(robotX) || isYOutsideBounds(robotY);
 
         // Publish validation state
         distanceValidPub.set(distanceValid);
@@ -266,7 +323,7 @@ public class TurretCalibrationCommand extends Command {
         }
         if (!flywheelRPMValid) {
             warnings.append(String.format("Flywheel RPM %.0f outside valid range (%.0f-%.0f). ",
-                    inputFlywheelRPM, MIN_FLYWHEEL_RPM, MAX_FLYWHEEL_RPM));
+                    inputFlywheelRPM, FlywheelConstants.MIN_RPM, FlywheelConstants.MAX_RPM));
         }
         if (allianceMismatch) {
             warnings.append("Selected alliance differs from DriverStation. ");
@@ -274,9 +331,21 @@ public class TurretCalibrationCommand extends Command {
         if (hasDuplicatePoint) {
             warnings.append("Point exists at this grid cell. ");
         }
+        if (!gridPositionValid) {
+            warnings.append(String.format("Grid position [%d,%d] outside valid bounds. ", gridRow, gridCol));
+        }
+        if (!allianceValid) {
+            warnings.append(String.format("Invalid alliance '%s' (must be Blue or Red). ", selectedAlliance));
+        }
+        if (positionClamped) {
+            warnings.append(String.format("Robot at (%.1f, %.1f) is outside calibration area - position clamped. ",
+                    robotX, robotY));
+        }
 
-        // Determine if ready to save (setpoints reached)
-        boolean readyToSave = hoodAtPosition && flywheelAtSetpoint;
+        // Determine if ready to save (setpoints reached, values within valid ranges, and position/alliance valid)
+        boolean readyToSave = hoodAtPosition && flywheelAtSetpoint
+                && distanceValid && hoodAngleValid && flywheelRPMValid
+                && gridPositionValid && allianceValid;
         readyToSavePub.set(readyToSave);
         validationWarningPub.set(warnings.toString());
 
@@ -301,6 +370,35 @@ public class TurretCalibrationCommand extends Command {
             handleClearData();
         }
         lastClearDataValue = currentClearData;
+
+        // Handle Delete Point button (edge-triggered)
+        boolean currentDeletePoint = deletePointSub.get();
+        if (currentDeletePoint && !lastDeletePointValue) {
+            handleDeletePoint(gridRow, gridCol);
+        }
+        lastDeletePointValue = currentDeletePoint;
+
+        // Handle Delete Target Point (from webapp DataTable - deletes specific row/col, not current position)
+        // Uses sequence number validation to prevent race conditions - only processes if sequence > lastProcessed
+        boolean currentDeleteTargetPoint = deleteTargetPointSub.get();
+        if (currentDeleteTargetPoint && !lastDeleteTargetPointValue) {
+            int targetRow = (int) deleteTargetRowSub.get();
+            int targetCol = (int) deleteTargetColSub.get();
+            long sequence = deleteTargetSequenceSub.get();
+
+            // Only process if sequence is newer than last processed
+            if (sequence > lastProcessedDeleteSequence) {
+                handleDeleteTargetPoint(targetRow, targetCol);
+                lastProcessedDeleteSequence = sequence;
+            } else {
+                // Stale delete request - log but don't process
+                System.out.println("Ignoring stale delete request (seq=" + sequence + ", lastProcessed=" + lastProcessedDeleteSequence + ")");
+            }
+        }
+        lastDeleteTargetPointValue = currentDeleteTargetPoint;
+
+        // Publish timestamp for data freshness indicator (seconds since epoch)
+        lastUpdateTimestampPub.set(System.currentTimeMillis() / 1000.0);
     }
 
     @Override
@@ -347,6 +445,22 @@ public class TurretCalibrationCommand extends Command {
         }
         return (int) ((y - CalibrationConstants.CALIBRATION_START_Y)
                 / CalibrationConstants.GRID_CELL_SIZE_METERS);
+    }
+
+    /**
+     * Checks if the X position is outside the calibration bounds (being clamped).
+     */
+    private boolean isXOutsideBounds(double x) {
+        return x < CalibrationConstants.CALIBRATION_START_X
+                || x > CalibrationConstants.CALIBRATION_END_X;
+    }
+
+    /**
+     * Checks if the Y position is outside the calibration bounds (being clamped).
+     */
+    private boolean isYOutsideBounds(double y) {
+        return y < CalibrationConstants.CALIBRATION_START_Y
+                || y > CalibrationConstants.CALIBRATION_END_Y;
     }
 
     /**
@@ -399,7 +513,24 @@ public class TurretCalibrationCommand extends Command {
      * Validates flywheel RPM is within reasonable range.
      */
     private boolean isFlywheelRPMValid(double rpm) {
-        return rpm >= MIN_FLYWHEEL_RPM && rpm <= MAX_FLYWHEEL_RPM;
+        return rpm >= FlywheelConstants.MIN_RPM && rpm <= FlywheelConstants.MAX_RPM;
+    }
+
+    /**
+     * Normalizes alliance string: trims whitespace and capitalizes properly.
+     * Handles case-insensitivity ("blue" -> "Blue", "RED" -> "Red").
+     */
+    private String normalizeAlliance(String alliance) {
+        if (alliance == null) {
+            return "Blue"; // Default
+        }
+        String trimmed = alliance.trim().toLowerCase();
+        if (trimmed.equals("red")) {
+            return "Red";
+        } else if (trimmed.equals("blue")) {
+            return "Blue";
+        }
+        return "Blue"; // Default for invalid input
     }
 
     /**
@@ -421,6 +552,12 @@ public class TurretCalibrationCommand extends Command {
             double hoodAngle, double flywheelRPM, int gridRow, int gridCol, String alliance,
             boolean readyToSave, boolean hasDuplicatePoint) {
 
+        // Check for valid distance (protects against null/unavailable pose)
+        if (distance <= 0) {
+            statusPub.set("Cannot save: Invalid distance - check pose data!");
+            return;
+        }
+
         // Check if setpoints are reached
         if (!readyToSave) {
             statusPub.set("Cannot save: Hood/Flywheel not at setpoint!");
@@ -428,24 +565,64 @@ public class TurretCalibrationCommand extends Command {
         }
 
         // Handle duplicate point - update existing instead of adding new
-        if (hasDuplicatePoint) {
-            dataRecorder.updatePointAt(gridRow, gridCol, robotX, robotY, distance,
-                    hoodAngle, flywheelRPM, alliance);
-            statusPub.set(String.format("Point Updated at [%d,%d]!", gridRow, gridCol));
-        } else {
-            dataRecorder.addPoint(robotX, robotY, distance, hoodAngle, flywheelRPM,
-                    gridRow, gridCol, alliance);
-            int count = dataRecorder.getPointCount();
-            int total = dataRecorder.getTotalGridCells();
-            statusPub.set(String.format("Point Saved! (%d/%d)", count, total));
+        try {
+            if (hasDuplicatePoint) {
+                dataRecorder.updatePointAt(gridRow, gridCol, robotX, robotY, distance,
+                        hoodAngle, flywheelRPM, alliance);
+                statusPub.set(String.format("Point Updated at [%d,%d]!", gridRow, gridCol));
+            } else {
+                dataRecorder.addPoint(robotX, robotY, distance, hoodAngle, flywheelRPM,
+                        gridRow, gridCol, alliance);
+                int count = dataRecorder.getPointCount();
+                int total = dataRecorder.getTotalGridCells();
+                statusPub.set(String.format("Point Saved! (%d/%d)", count, total));
+            }
+        } catch (IllegalArgumentException e) {
+            String errorMsg = "Save failed: " + e.getMessage();
+            statusPub.set(errorMsg);
+            DriverStation.reportError("Calibration save error: " + e.getMessage(), false);
+            return;
         }
 
         pointsSavedPub.set(dataRecorder.getPointCount());
 
-        // Auto-save after each point
-        if (!dataRecorder.saveToFile()) {
-            statusPub.set("Warning: Save failed! Check console.");
+        // Auto-save after each point with retry logic
+        saveWithRetry("Point save");
+    }
+
+    /**
+     * Attempts to save calibration data with retry logic.
+     * @param context Description of the save context for error messages
+     */
+    private void saveWithRetry(String context) {
+        for (int attempt = 1; attempt <= MAX_SAVE_RETRIES; attempt++) {
+            if (dataRecorder.saveToFile()) {
+                return; // Success
+            }
+
+            // Log retry attempt
+            String retryMsg = String.format("%s: Save attempt %d/%d failed, retrying...",
+                    context, attempt, MAX_SAVE_RETRIES);
+            System.err.println(retryMsg);
+            statusPub.set(retryMsg);
+
+            // Wait before retry (except on last attempt)
+            if (attempt < MAX_SAVE_RETRIES) {
+                try {
+                    Thread.sleep(SAVE_RETRY_DELAY_MS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
         }
+
+        // All retries failed - CRITICAL warning
+        String criticalMsg = "CRITICAL: " + context + " - all " + MAX_SAVE_RETRIES +
+                " save attempts failed! Data may be lost on reboot!";
+        System.err.println(criticalMsg);
+        statusPub.set(criticalMsg);
+        DriverStation.reportError(criticalMsg, false);
     }
 
     /**
@@ -469,6 +646,42 @@ public class TurretCalibrationCommand extends Command {
         dataRecorder.clearData();
         pointsSavedPub.set(0);
         statusPub.set("All calibration data cleared");
+    }
+
+    /**
+     * Handles the delete point command for the current grid cell.
+     */
+    private void handleDeletePoint(int gridRow, int gridCol) {
+        boolean removed = dataRecorder.removePointAt(gridRow, gridCol);
+        if (removed) {
+            pointsSavedPub.set(dataRecorder.getPointCount());
+            statusPub.set(String.format("Point deleted at [%d,%d]", gridRow, gridCol));
+            // Auto-save after deletion with retry logic
+            saveWithRetry("Delete save");
+        } else {
+            statusPub.set(String.format("No point to delete at [%d,%d]", gridRow, gridCol));
+        }
+    }
+
+    /**
+     * Handles the delete target point command from the webapp DataTable.
+     * Deletes a specific point at the given row/col, not necessarily the current position.
+     */
+    private void handleDeleteTargetPoint(int targetRow, int targetCol) {
+        if (targetRow < 0 || targetCol < 0) {
+            statusPub.set("Delete failed: Invalid target position");
+            return;
+        }
+
+        boolean removed = dataRecorder.removePointAt(targetRow, targetCol);
+        if (removed) {
+            pointsSavedPub.set(dataRecorder.getPointCount());
+            statusPub.set(String.format("Point deleted at [%d,%d]", targetRow, targetCol));
+            // Auto-save after deletion with retry logic
+            saveWithRetry("Target delete save");
+        } else {
+            statusPub.set(String.format("No point to delete at [%d,%d]", targetRow, targetCol));
+        }
     }
 
 }

@@ -8,7 +8,14 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(npm install:*)",
       "Bash(npx vue-tsc:*)",
-      "Bash(timeout 10 npm run dev)"
+      "Bash(timeout 10 npm run dev)",
+      "Bash(./gradlew compileJava:*)",
+      "Bash(npm run build:*)",
+      "Bash(python -c:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_network_requests",
+      "mcp__plugin_playwright_playwright__browser_close"
     ]
   }
 }

@@ -4,6 +4,7 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
 import frc.robot.commands.TurretCalibrationCommand;
 import frc.robot.generated.TunerConstants;
+import frc.robot.util.CalibrationDataRecorder;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Intake;
@@ -31,6 +32,8 @@ import com.pathplanner.lib.commands.FollowPathCommand;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
@@ -75,6 +78,9 @@ public class RobotContainer {
   // Turret aiming calculator
   private final TurretAimingCalculator turretAimingCalculator;
 
+  // Shared calibration data recorder (persists across test mode toggles)
+  private final CalibrationDataRecorder calibrationDataRecorder;
+
   // QuestNav seeding state
   private boolean isQuestNavSeeded = false;
   private Pose2d seededPose = null;
@@ -92,6 +98,22 @@ public class RobotContainer {
 
     // Initialize turret aiming calculator with pose supplier from drivetrain
     turretAimingCalculator = new TurretAimingCalculator(() -> drivetrain.getState().Pose);
+
+    // Initialize shared calibration data recorder and load existing data
+    calibrationDataRecorder = new CalibrationDataRecorder();
+    var loadStatusPub = NetworkTableInstance.getDefault()
+        .getTable("TurretCalibration").getStringTopic("LoadStatus").publish();
+    if (calibrationDataRecorder.loadFromFile()) {
+      int pointCount = calibrationDataRecorder.getPointCount();
+      String msg = pointCount > 0
+          ? String.format("Loaded %d calibration points from file", pointCount)
+          : "No existing calibration data found";
+      loadStatusPub.set(msg);
+    } else {
+      String errorMsg = "Failed to load calibration data from file - starting with empty data";
+      DriverStation.reportWarning(errorMsg, false);
+      loadStatusPub.set("ERROR: " + errorMsg);
+    }
 
     // Set turret default command - continuously track the target
     turret.setDefaultCommand(turret.aimAtTargetCommand(turretAimingCalculator));
@@ -260,7 +282,8 @@ public class RobotContainer {
     // Elastic,
     // applies to hood/flywheel in real-time, and saves calibration points to CSV
     TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
-        hood, flywheel, () -> drivetrain.getState().Pose, turretAimingCalculator);
+        hood, flywheel, () -> drivetrain.getState().Pose, turretAimingCalculator,
+        calibrationDataRecorder);
 
     // Only allow toggling calibration mode while in test mode
     RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);

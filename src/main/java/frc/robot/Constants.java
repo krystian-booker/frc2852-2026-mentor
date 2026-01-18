@@ -51,6 +51,10 @@ public final class Constants {
     // Mechanical
     public static final double GEAR_RATIO = 2.0; // Motor rotations per flywheel rotation
 
+    // RPM Limits
+    public static final double MIN_RPM = 1000.0; // Minimum flywheel RPM for calibration/validation
+    public static final double MAX_RPM = 6000.0; // Maximum flywheel RPM for calibration/validation
+
     // PID/Feedforward Gains
     public static final double S = 0.0; // Static friction (Amps)
     public static final double V = 0.12; // Velocity feedforward (Amps per RPS)
@@ -238,19 +242,44 @@ public final class Constants {
     public static final int PWM_PORT = 0;
   }
 
+  /**
+   * Constants for the turret calibration system.
+   *
+   * <p><strong>Grid vs Bucket Spacing Design:</strong>
+   * The calibration system uses two different spacing granularities by design:
+   *
+   * <ul>
+   *   <li><strong>UI Grid (0.5m cell size):</strong> Used by the webapp to display robot position
+   *       and track which cells have been calibrated. The larger spacing makes the grid visually
+   *       manageable and provides clear guidance for where to position the robot.</li>
+   *   <li><strong>Build-time Distance Buckets (0.25m):</strong> Used by GenerateLookupTables.java
+   *       when processing calibration data. The finer granularity allows multiple samples taken
+   *       within the same UI grid cell to be grouped into different distance buckets, providing
+   *       more precise interpolation data.</li>
+   * </ul>
+   *
+   * <p>This is intentional: a single UI grid cell may contain multiple calibration points at
+   * slightly different distances, and the build-time processing preserves this detail for
+   * better interpolation accuracy.
+   */
   public static class CalibrationConstants {
     // Field dimensions
     public static final double FIELD_LENGTH_METERS = 16.54;
     public static final double FIELD_WIDTH_METERS = 8.21;
 
-    // Grid configuration - 0.5m spacing as requested
+    /**
+     * Grid cell size for UI display (0.5m).
+     * This determines the visual grid shown in the webapp.
+     * Note: Build-time processing uses 0.25m distance buckets for finer granularity.
+     * See GenerateLookupTables.java for details.
+     */
     public static final double GRID_CELL_SIZE_METERS = 0.5;
     public static final double CALIBRATION_START_X = 1.0;
     public static final double CALIBRATION_START_Y = 1.0;
     public static final double CALIBRATION_END_X = 15.5;
     public static final double CALIBRATION_END_Y = 7.0;
 
-    // Calculated grid size (29 columns x 13 rows = 377 cells)
+    // Calculated grid size (30 columns x 13 rows = 390 cells)
     public static final int GRID_COLS = (int) ((CALIBRATION_END_X - CALIBRATION_START_X) / GRID_CELL_SIZE_METERS) + 1;
     public static final int GRID_ROWS = (int) ((CALIBRATION_END_Y - CALIBRATION_START_Y) / GRID_CELL_SIZE_METERS) + 1;
 

@@ -1,38 +1,24 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useNTDouble, useNTInteger, useNTBoolean, triggerBoolean } from '../composables/useNetworkTables'
+import { useNTBoolean, triggerBoolean } from '../composables/useNetworkTables'
 import { useCalibrationStore } from '../stores/calibration'
 import { exportCSV } from '../utils/csvExport'
+import { TOPICS } from '../constants/topics'
 
 const store = useCalibrationStore()
 
-// Read current values for saving
-const posX = useNTDouble('/TurretCalibration/Position/X', 0)
-const posY = useNTDouble('/TurretCalibration/Position/Y', 0)
-const distance = useNTDouble('/TurretCalibration/Distance', 0)
-const inputHoodAngle = useNTDouble('/TurretCalibration/Input/HoodAngle', 25)
-const inputFlywheelRPM = useNTDouble('/TurretCalibration/Input/FlywheelRPM', 3000)
-const gridRow = useNTInteger('/TurretCalibration/Grid/CurrentRow', 0)
-const gridCol = useNTInteger('/TurretCalibration/Grid/CurrentCol', 0)
-const readyToSave = useNTBoolean('/TurretCalibration/Validation/ReadyToSave', false)
+// Subscribe to validation state for save button
+const readyToSave = useNTBoolean(TOPICS.VALIDATION.READY_TO_SAVE, false)
 
 const exportMessage = ref('')
+const importMessage = ref('')
+const importIsError = ref(false)  // Dedicated error state instead of string matching
+const fileInput = ref<HTMLInputElement | null>(null)
 
-const savePoint = () => {
-  // Save to local store
-  store.addPoint({
-    robotX: posX.value,
-    robotY: posY.value,
-    distanceToTarget: distance.value,
-    hoodAngleDegrees: inputHoodAngle.value,
-    flywheelRPM: inputFlywheelRPM.value,
-    gridRow: gridRow.value,
-    gridCol: gridCol.value,
-    alliance: 'Blue' // Could be made configurable
-  })
-
-  // Also trigger robot-side save
-  triggerBoolean('/TurretCalibration/SavePoint')
+const savePoint = async () => {
+  // Trigger robot-side save only - robot is source of truth
+  // Data will sync back to webapp via NetworkTables subscription
+  await triggerBoolean(TOPICS.SAVE_POINT)
 }
 
 const handleExport = async () => {
@@ -41,14 +27,81 @@ const handleExport = async () => {
 
   if (success) {
     exportMessage.value = `Exported ${store.pointCount} points`
-    setTimeout(() => { exportMessage.value = '' }, 3000)
+  } else {
+    exportMessage.value = 'Export cancelled'
+  }
+  setTimeout(() => { exportMessage.value = '' }, 3000)
+}
+
+const triggerImport = () => {
+  fileInput.value?.click()
+}
+
+const handleImport = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  try {
+    const content = await file.text()
+    const result = store.importFromCSV(content)
+
+    if (result.imported > 0) {
+      importMessage.value = `Imported ${result.imported} points`
+      importIsError.value = false
+      if (result.errors.length > 0) {
+        importMessage.value += ` (${result.errors.length} errors)`
+        console.warn('CSV import errors:', result.errors)
+      }
+    } else if (result.errors.length > 0) {
+      importMessage.value = `Import failed: ${result.errors[0]}`
+      importIsError.value = true
+    } else {
+      importMessage.value = 'No valid data found in CSV'
+      importIsError.value = true
+    }
+
+    setTimeout(() => {
+      importMessage.value = ''
+      importIsError.value = false
+    }, 5000)
+  } catch (e) {
+    importMessage.value = `Import failed: ${e}`
+    importIsError.value = true
+    setTimeout(() => {
+      importMessage.value = ''
+      importIsError.value = false
+    }, 5000)
+  }
+
+  // Reset input so same file can be selected again
+  input.value = ''
+}
+
+const clearData = async () => {
+  if (confirm('Clear all calibration data? This cannot be undone.')) {
+    // Trigger robot-side clear only - robot is source of truth
+    // Data will sync back to webapp via NetworkTables subscription
+    await triggerBoolean(TOPICS.CLEAR_DATA)
   }
 }
 
-const clearData = () => {
-  if (confirm('Clear all calibration data? This cannot be undone.')) {
-    store.clearAllPoints()
-    triggerBoolean('/TurretCalibration/ClearData')
+const deletePoint = async () => {
+  // Trigger robot-side delete only - robot is source of truth
+  // Data will sync back to webapp via NetworkTables subscription
+  await triggerBoolean(TOPICS.DELETE_CURRENT_POINT)
+}
+
+const undoMessage = ref('')
+
+const handleUndo = () => {
+  if (store.canUndo) {
+    const description = store.lastUndoDescription
+    const success = store.undo()
+    if (success) {
+      undoMessage.value = `Undone: ${description}`
+      setTimeout(() => { undoMessage.value = '' }, 3000)
+    }
   }
 }
 </script>
@@ -78,13 +131,47 @@ const clearData = () => {
         Export CSV
       </button>
 
+      <button class="btn btn-secondary" @click="triggerImport">
+        Import CSV
+      </button>
+
+      <button class="btn btn-warning" @click="deletePoint">
+        Delete Point
+      </button>
+
+      <button
+        class="btn btn-undo"
+        :class="{ disabled: !store.canUndo }"
+        :disabled="!store.canUndo"
+        @click="handleUndo"
+        :title="store.canUndo ? store.lastUndoDescription : 'Nothing to undo'"
+      >
+        Undo
+      </button>
+
       <button class="btn btn-danger" @click="clearData">
         Clear All
       </button>
     </div>
 
-    <div v-if="exportMessage" class="export-message">
+    <input
+      ref="fileInput"
+      type="file"
+      accept=".csv"
+      style="display: none"
+      @change="handleImport"
+    />
+
+    <div v-if="exportMessage" class="export-message success">
       {{ exportMessage }}
+    </div>
+
+    <div v-if="importMessage" class="export-message" :class="{ error: importIsError }">
+      {{ importMessage }}
+    </div>
+
+    <div v-if="undoMessage" class="export-message success">
+      {{ undoMessage }}
     </div>
   </div>
 </template>
@@ -136,10 +223,12 @@ h3 {
 .button-row {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .btn {
   flex: 1;
+  min-width: 100px;
   padding: 12px 16px;
   border: none;
   border-radius: 6px;
@@ -173,6 +262,32 @@ h3 {
   background: #5c6bc0;
 }
 
+.btn-warning {
+  background: transparent;
+  border: 1px solid #ff9800;
+  color: #ff9800;
+}
+
+.btn-warning:hover {
+  background: rgba(255, 152, 0, 0.1);
+}
+
+.btn-undo {
+  background: transparent;
+  border: 1px solid #9c27b0;
+  color: #9c27b0;
+}
+
+.btn-undo:hover:not(.disabled) {
+  background: rgba(156, 39, 176, 0.1);
+}
+
+.btn-undo.disabled {
+  border-color: #555;
+  color: #555;
+  cursor: not-allowed;
+}
+
 .btn-danger {
   background: transparent;
   border: 1px solid #f44336;
@@ -187,9 +302,22 @@ h3 {
   margin-top: 12px;
   padding: 8px;
   border-radius: 4px;
-  background: rgba(76, 175, 80, 0.1);
-  color: #4caf50;
   font-size: 12px;
   text-align: center;
+}
+
+.export-message.success {
+  background: rgba(76, 175, 80, 0.1);
+  color: #4caf50;
+}
+
+.export-message.error {
+  background: rgba(244, 67, 54, 0.1);
+  color: #f44336;
+}
+
+.export-message:not(.success):not(.error) {
+  background: rgba(33, 150, 243, 0.1);
+  color: #2196f3;
 }
 </style>

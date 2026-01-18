@@ -127,15 +127,17 @@ task generateTurretLookupTables {
         def compiledDir = file("${buildDir}/tools-classes")
         compiledDir.mkdirs()
 
-        exec {
+        def compileResult = exec {
             commandLine 'javac', '-d', compiledDir.absolutePath, toolSource.absolutePath
+            ignoreExitValue = false  // Fail build if javac fails
         }
 
         // Run the tool
-        javaexec {
+        def runResult = javaexec {
             mainClass = 'GenerateLookupTables'
             classpath = files(compiledDir)
             args = [csvFile.absolutePath, outputFile.absolutePath]
+            ignoreExitValue = false  // Fail build if tool execution fails
         }
     }
 }
