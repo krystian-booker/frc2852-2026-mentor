@@ -10,6 +10,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StringPublisher;
+
 import frc.robot.Constants.CalibrationConstants;
 
 /**
@@ -47,6 +50,7 @@ public class CalibrationDataRecorder {
 
     private final List<CalibrationPoint> points;
     private final String filePath;
+    private final StringPublisher errorPub;
 
     /**
      * Creates a new CalibrationDataRecorder with the default file path.
@@ -63,6 +67,10 @@ public class CalibrationDataRecorder {
     public CalibrationDataRecorder(String filePath) {
         this.filePath = filePath;
         this.points = new ArrayList<>();
+        this.errorPub = NetworkTableInstance.getDefault()
+                .getTable("TurretCalibration")
+                .getStringTopic("Error")
+                .publish();
         ensureDirectoryExists();
     }
 
@@ -73,7 +81,11 @@ public class CalibrationDataRecorder {
         File file = new File(filePath);
         File parentDir = file.getParentFile();
         if (parentDir != null && !parentDir.exists()) {
-            parentDir.mkdirs();
+            if (!parentDir.mkdirs() && !parentDir.exists()) {
+                String errorMsg = "Failed to create calibration directory: " + parentDir.getAbsolutePath();
+                System.err.println(errorMsg);
+                errorPub.set(errorMsg);
+            }
         }
     }
 
@@ -88,9 +100,25 @@ public class CalibrationDataRecorder {
      * @param gridRow          Grid row index
      * @param gridCol          Grid column index
      * @param alliance         Alliance color ("Blue" or "Red")
+     * @throws IllegalArgumentException if any values are invalid (NaN, Infinity, or out of range)
      */
     public void addPoint(double robotX, double robotY, double distanceToTarget,
             double hoodAngleDegrees, double flywheelRPM, int gridRow, int gridCol, String alliance) {
+        // Validate inputs
+        if (Double.isNaN(distanceToTarget) || Double.isInfinite(distanceToTarget) || distanceToTarget <= 0) {
+            throw new IllegalArgumentException("Invalid distance: " + distanceToTarget);
+        }
+        if (Double.isNaN(hoodAngleDegrees) || Double.isInfinite(hoodAngleDegrees)) {
+            throw new IllegalArgumentException("Invalid hood angle: " + hoodAngleDegrees);
+        }
+        if (Double.isNaN(flywheelRPM) || Double.isInfinite(flywheelRPM) || flywheelRPM <= 0) {
+            throw new IllegalArgumentException("Invalid flywheel RPM: " + flywheelRPM);
+        }
+        if (Double.isNaN(robotX) || Double.isInfinite(robotX) ||
+            Double.isNaN(robotY) || Double.isInfinite(robotY)) {
+            throw new IllegalArgumentException("Invalid robot position: (" + robotX + ", " + robotY + ")");
+        }
+
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
         CalibrationPoint point = new CalibrationPoint(
                 timestamp, robotX, robotY, distanceToTarget,
@@ -136,9 +164,12 @@ public class CalibrationDataRecorder {
                 writer.println(point.toCsvRow());
             }
             writer.flush();
+            errorPub.set(""); // Clear any previous error
             return true;
         } catch (IOException e) {
-            System.err.println("Failed to save calibration data: " + e.getMessage());
+            String errorMsg = "Failed to save calibration data: " + e.getMessage();
+            System.err.println(errorMsg);
+            errorPub.set(errorMsg);
             return false;
         }
     }
@@ -150,7 +181,11 @@ public class CalibrationDataRecorder {
         points.clear();
         File file = new File(filePath);
         if (file.exists()) {
-            file.delete();
+            if (!file.delete() && file.exists()) {
+                String errorMsg = "Failed to delete calibration file: " + filePath;
+                System.err.println(errorMsg);
+                errorPub.set(errorMsg);
+            }
         }
     }
 
@@ -209,5 +244,33 @@ public class CalibrationDataRecorder {
     public boolean hasPointAt(int gridRow, int gridCol) {
         return points.stream()
                 .anyMatch(p -> p.gridRow() == gridRow && p.gridCol() == gridCol);
+    }
+
+    /**
+     * Updates an existing point at the given grid position, or adds a new one if not found.
+     *
+     * @param gridRow          Row index
+     * @param gridCol          Column index
+     * @param robotX           Robot X position in meters
+     * @param robotY           Robot Y position in meters
+     * @param distanceToTarget Distance to target in meters
+     * @param hoodAngleDegrees Hood angle in degrees
+     * @param flywheelRPM      Flywheel speed in RPM
+     * @param alliance         Alliance color
+     * @return true if an existing point was updated, false if a new point was added
+     */
+    public boolean updatePointAt(int gridRow, int gridCol, double robotX, double robotY,
+            double distanceToTarget, double hoodAngleDegrees, double flywheelRPM, String alliance) {
+        // Find and remove existing point at this grid position
+        boolean removed = points.removeIf(p -> p.gridRow() == gridRow && p.gridCol() == gridCol);
+
+        // Add the new point
+        String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
+        CalibrationPoint newPoint = new CalibrationPoint(
+                timestamp, robotX, robotY, distanceToTarget,
+                hoodAngleDegrees, flywheelRPM, gridRow, gridCol, alliance);
+        points.add(newPoint);
+
+        return removed;
     }
 }

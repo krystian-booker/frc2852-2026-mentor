@@ -176,7 +176,7 @@ public class Flywheel extends SubsystemBase {
         return sysIdRoutine.dynamic(direction);
     }
 
-    private double getCurrentVelocityRPM() {
+    public double getCurrentVelocityRPM() {
         BaseStatusSignal.refreshAll(leaderVelocity);
         return leaderVelocity.getValue().in(RotationsPerSecond) * 60.0;
     }

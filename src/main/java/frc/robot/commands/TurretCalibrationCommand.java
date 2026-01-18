@@ -1,5 +1,6 @@
 package frc.robot.commands;
 
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import edu.wpi.first.math.geometry.Pose2d;
@@ -13,9 +14,13 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringArrayPublisher;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.networktables.StringSubscriber;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
 
 import frc.robot.Constants.CalibrationConstants;
+import frc.robot.Constants.HoodConstants;
+import frc.robot.Constants.TurretAimingConstants;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
 import frc.robot.util.CalibrationDataRecorder;
@@ -59,6 +64,19 @@ public class TurretCalibrationCommand extends Command {
     private final StringPublisher allianceSelectedPub;
     private final StringPublisher allianceActivePub;
     private final StringPublisher allianceDefaultPub;
+
+    // Validation publishers
+    private final BooleanPublisher readyToSavePub;
+    private final StringPublisher validationWarningPub;
+    private final BooleanPublisher distanceValidPub;
+    private final BooleanPublisher hoodAngleValidPub;
+    private final BooleanPublisher flywheelRPMValidPub;
+    private final BooleanPublisher allianceMismatchPub;
+    private final BooleanPublisher duplicatePointWarningPub;
+
+    // Validation constants
+    private static final double MIN_FLYWHEEL_RPM = 1000.0;
+    private static final double MAX_FLYWHEEL_RPM = 6000.0;
 
     // Subscribers (Elastic -> Robot)
     private final DoubleSubscriber inputHoodAngleSub;
@@ -125,6 +143,15 @@ public class TurretCalibrationCommand extends Command {
         allianceSelectedPub.set("Blue");
         allianceActivePub.set("Blue");
 
+        // Validation publishers
+        readyToSavePub = table.getBooleanTopic("Validation/ReadyToSave").publish();
+        validationWarningPub = table.getStringTopic("Validation/Warning").publish();
+        distanceValidPub = table.getBooleanTopic("Validation/DistanceValid").publish();
+        hoodAngleValidPub = table.getBooleanTopic("Validation/HoodAngleValid").publish();
+        flywheelRPMValidPub = table.getBooleanTopic("Validation/FlywheelRPMValid").publish();
+        allianceMismatchPub = table.getBooleanTopic("Validation/AllianceMismatch").publish();
+        duplicatePointWarningPub = table.getBooleanTopic("Validation/DuplicatePoint").publish();
+
         // Subscribers with default values
         inputHoodAngleSub = table.getDoubleTopic("Input/HoodAngle")
                 .subscribe(CalibrationConstants.DEFAULT_HOOD_ANGLE);
@@ -162,6 +189,10 @@ public class TurretCalibrationCommand extends Command {
     public void execute() {
         // Get current pose and calculate derived values
         Pose2d pose = poseSupplier.get();
+        if (pose == null) {
+            statusPub.set("Error: Pose unavailable - check drivetrain");
+            return;
+        }
         double robotX = pose.getX();
         double robotY = pose.getY();
 
@@ -189,7 +220,7 @@ public class TurretCalibrationCommand extends Command {
         positionYPub.set(robotY);
         distancePub.set(distance);
         actualHoodAnglePub.set(hood.getCurrentPositionDegrees());
-        actualFlywheelRPMPub.set(getCurrentFlywheelRPM());
+        actualFlywheelRPMPub.set(flywheel.getCurrentVelocityRPM());
         hoodAtPositionPub.set(hood.atPosition());
         flywheelAtSetpointPub.set(flywheel.atSetpoint());
         gridRowPub.set(gridRow);
@@ -200,10 +231,60 @@ public class TurretCalibrationCommand extends Command {
         nextTargetXPub.set(nextTarget[0]);
         nextTargetYPub.set(nextTarget[1]);
 
+        // Perform validation checks
+        boolean hoodAtPosition = hood.atPosition();
+        boolean flywheelAtSetpoint = flywheel.atSetpoint();
+        boolean distanceValid = isDistanceValid(distance);
+        boolean hoodAngleValid = isHoodAngleValid(inputHoodAngle);
+        boolean flywheelRPMValid = isFlywheelRPMValid(inputFlywheelRPM);
+        boolean allianceMismatch = isAllianceMismatch(selectedAlliance);
+        boolean hasDuplicatePoint = dataRecorder.hasPointAt(gridRow, gridCol);
+
+        // Publish validation state
+        distanceValidPub.set(distanceValid);
+        hoodAngleValidPub.set(hoodAngleValid);
+        flywheelRPMValidPub.set(flywheelRPMValid);
+        allianceMismatchPub.set(allianceMismatch);
+        duplicatePointWarningPub.set(hasDuplicatePoint);
+
+        // Build validation warning message
+        StringBuilder warnings = new StringBuilder();
+        if (!hoodAtPosition) {
+            warnings.append("Hood not at setpoint. ");
+        }
+        if (!flywheelAtSetpoint) {
+            warnings.append("Flywheel not at setpoint. ");
+        }
+        if (!distanceValid) {
+            warnings.append(String.format("Distance %.1fm outside valid range (%.1f-%.1fm). ",
+                    distance, TurretAimingConstants.MIN_SHOOTING_DISTANCE_METERS,
+                    TurretAimingConstants.MAX_SHOOTING_DISTANCE_METERS));
+        }
+        if (!hoodAngleValid) {
+            warnings.append(String.format("Hood angle %.1f° outside valid range (%.0f-%.0f°). ",
+                    inputHoodAngle, HoodConstants.MIN_POSITION_DEGREES, HoodConstants.MAX_POSITION_DEGREES));
+        }
+        if (!flywheelRPMValid) {
+            warnings.append(String.format("Flywheel RPM %.0f outside valid range (%.0f-%.0f). ",
+                    inputFlywheelRPM, MIN_FLYWHEEL_RPM, MAX_FLYWHEEL_RPM));
+        }
+        if (allianceMismatch) {
+            warnings.append("Selected alliance differs from DriverStation. ");
+        }
+        if (hasDuplicatePoint) {
+            warnings.append("Point exists at this grid cell. ");
+        }
+
+        // Determine if ready to save (setpoints reached)
+        boolean readyToSave = hoodAtPosition && flywheelAtSetpoint;
+        readyToSavePub.set(readyToSave);
+        validationWarningPub.set(warnings.toString());
+
         // Handle Save Point button (edge-triggered on rising edge)
         boolean currentSavePoint = savePointSub.get();
         if (currentSavePoint && !lastSavePointValue) {
-            saveCurrentPoint(robotX, robotY, distance, inputHoodAngle, inputFlywheelRPM, gridRow, gridCol, selectedAlliance);
+            trySaveCurrentPoint(robotX, robotY, distance, inputHoodAngle, inputFlywheelRPM,
+                    gridRow, gridCol, selectedAlliance, readyToSave, hasDuplicatePoint);
         }
         lastSavePointValue = currentSavePoint;
 
@@ -299,19 +380,72 @@ public class TurretCalibrationCommand extends Command {
     }
 
     /**
-     * Saves the current calibration point.
+     * Validates distance is within shooting range.
      */
-    private void saveCurrentPoint(double robotX, double robotY, double distance,
-            double hoodAngle, double flywheelRPM, int gridRow, int gridCol, String alliance) {
-        dataRecorder.addPoint(robotX, robotY, distance, hoodAngle, flywheelRPM, gridRow, gridCol, alliance);
+    private boolean isDistanceValid(double distance) {
+        return distance >= TurretAimingConstants.MIN_SHOOTING_DISTANCE_METERS
+                && distance <= TurretAimingConstants.MAX_SHOOTING_DISTANCE_METERS;
+    }
 
-        int count = dataRecorder.getPointCount();
-        int total = dataRecorder.getTotalGridCells();
-        pointsSavedPub.set(count);
-        statusPub.set(String.format("Point Saved! (%d/%d)", count, total));
+    /**
+     * Validates hood angle is within mechanical limits.
+     */
+    private boolean isHoodAngleValid(double hoodAngle) {
+        return hoodAngle >= HoodConstants.MIN_POSITION_DEGREES
+                && hoodAngle <= HoodConstants.MAX_POSITION_DEGREES;
+    }
+
+    /**
+     * Validates flywheel RPM is within reasonable range.
+     */
+    private boolean isFlywheelRPMValid(double rpm) {
+        return rpm >= MIN_FLYWHEEL_RPM && rpm <= MAX_FLYWHEEL_RPM;
+    }
+
+    /**
+     * Checks if selected alliance differs from DriverStation alliance.
+     */
+    private boolean isAllianceMismatch(String selectedAlliance) {
+        Optional<Alliance> dsAlliance = DriverStation.getAlliance();
+        if (dsAlliance.isEmpty()) {
+            return false; // No mismatch if DriverStation alliance unknown
+        }
+        String dsAllianceStr = dsAlliance.get() == Alliance.Blue ? "Blue" : "Red";
+        return !selectedAlliance.equals(dsAllianceStr);
+    }
+
+    /**
+     * Attempts to save the current calibration point with validation.
+     */
+    private void trySaveCurrentPoint(double robotX, double robotY, double distance,
+            double hoodAngle, double flywheelRPM, int gridRow, int gridCol, String alliance,
+            boolean readyToSave, boolean hasDuplicatePoint) {
+
+        // Check if setpoints are reached
+        if (!readyToSave) {
+            statusPub.set("Cannot save: Hood/Flywheel not at setpoint!");
+            return;
+        }
+
+        // Handle duplicate point - update existing instead of adding new
+        if (hasDuplicatePoint) {
+            dataRecorder.updatePointAt(gridRow, gridCol, robotX, robotY, distance,
+                    hoodAngle, flywheelRPM, alliance);
+            statusPub.set(String.format("Point Updated at [%d,%d]!", gridRow, gridCol));
+        } else {
+            dataRecorder.addPoint(robotX, robotY, distance, hoodAngle, flywheelRPM,
+                    gridRow, gridCol, alliance);
+            int count = dataRecorder.getPointCount();
+            int total = dataRecorder.getTotalGridCells();
+            statusPub.set(String.format("Point Saved! (%d/%d)", count, total));
+        }
+
+        pointsSavedPub.set(dataRecorder.getPointCount());
 
         // Auto-save after each point
-        dataRecorder.saveToFile();
+        if (!dataRecorder.saveToFile()) {
+            statusPub.set("Warning: Save failed! Check console.");
+        }
     }
 
     /**
@@ -337,12 +471,4 @@ public class TurretCalibrationCommand extends Command {
         statusPub.set("All calibration data cleared");
     }
 
-    /**
-     * Gets the current flywheel velocity in RPM.
-     * Uses SmartDashboard value since Flywheel doesn't expose getter directly.
-     */
-    private double getCurrentFlywheelRPM() {
-        return edu.wpi.first.wpilibj.smartdashboard.SmartDashboard
-                .getNumber("Flywheel/Velocity RPM", 0.0);
-    }
 }
