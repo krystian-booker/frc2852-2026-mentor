@@ -1,14 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useCalibrationStore } from '../stores/calibration'
-import { publishDouble, triggerBoolean } from '../composables/useNetworkTables'
-import { TOPICS } from '../constants/topics'
+import ConfirmModal from './ConfirmModal.vue'
 
 const store = useCalibrationStore()
-
-// Sequence number for delete operations - prevents race conditions
-// Robot only processes delete if sequence > lastProcessedSequence
-const deleteSequence = ref(0)
 
 const sortedPoints = computed(() =>
   [...store.points].sort((a, b) => {
@@ -17,27 +12,26 @@ const sortedPoints = computed(() =>
   })
 )
 
-const removePoint = async (row: number, col: number) => {
-  // Confirm before deleting
-  if (!confirm(`Delete calibration point at grid position [${row}, ${col}]?`)) {
-    return
+// Modal state for delete confirmation
+const showDeleteModal = ref(false)
+const deleteTarget = ref<{ row: number; col: number } | null>(null)
+
+const requestDelete = (row: number, col: number) => {
+  deleteTarget.value = { row, col }
+  showDeleteModal.value = true
+}
+
+const confirmDelete = () => {
+  if (deleteTarget.value) {
+    store.removePoint(deleteTarget.value.row, deleteTarget.value.col)
   }
+  showDeleteModal.value = false
+  deleteTarget.value = null
+}
 
-  // Increment sequence number for this delete operation
-  deleteSequence.value++
-  const currentSequence = deleteSequence.value
-
-  // Publish target position with sequence number and trigger robot-side delete
-  // Robot is source of truth - data will sync back via NT subscription
-  // Sequence number ensures robot only processes if sequence > lastProcessedSequence
-  await Promise.all([
-    publishDouble(TOPICS.DELETE_TARGET.ROW, row),
-    publishDouble(TOPICS.DELETE_TARGET.COL, col),
-    publishDouble(TOPICS.DELETE_TARGET.SEQUENCE, currentSequence)
-  ])
-  // Delay to ensure row/col/sequence are published before trigger (200ms is robust for FRC network conditions)
-  await new Promise(resolve => setTimeout(resolve, 200))
-  await triggerBoolean(TOPICS.DELETE_TARGET_POINT)
+const cancelDelete = () => {
+  showDeleteModal.value = false
+  deleteTarget.value = null
 }
 </script>
 
@@ -69,7 +63,7 @@ const removePoint = async (row: number, col: number) => {
             <td class="cell-number">{{ point.hoodAngleDegrees.toFixed(1) }}°</td>
             <td class="cell-number">{{ point.flywheelRPM.toFixed(0) }}</td>
             <td class="cell-action">
-              <button @click="removePoint(point.gridRow, point.gridCol)" class="delete-btn">
+              <button @click="requestDelete(point.gridRow, point.gridCol)" class="delete-btn">
                 ×
               </button>
             </td>
@@ -77,6 +71,16 @@ const removePoint = async (row: number, col: number) => {
         </tbody>
       </table>
     </div>
+
+    <ConfirmModal
+      v-if="showDeleteModal && deleteTarget"
+      title="Delete Point"
+      :message="`Delete calibration point at grid position [${deleteTarget.row}, ${deleteTarget.col}]?`"
+      confirm-text="Delete"
+      :danger="true"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+    />
   </div>
 </template>
 

@@ -22,10 +22,10 @@ export const FIELD_DIMENSIONS = {
 
 // Calibration area bounds in meters
 export const CALIBRATION_AREA = {
-  minX: 1.0,
-  maxX: 15.5,
-  minY: 1.0,
-  maxY: 7.0,
+  minX: 0,
+  maxX: FIELD_DIMENSIONS.widthMeters,
+  minY: 0,
+  maxY: FIELD_DIMENSIONS.heightMeters,
   cellSize: 0.5,
 }
 
@@ -35,8 +35,8 @@ export const PIXELS_PER_METER = {
   y: PLAYABLE_AREA.height / FIELD_DIMENSIONS.heightMeters, // ~222.5
 }
 
-// Grid dimensions
+// Grid dimensions (calculated from field size and cell size)
 export const GRID = {
-  rows: 13,
-  cols: 30,
+  rows: Math.ceil(FIELD_DIMENSIONS.heightMeters / CALIBRATION_AREA.cellSize), // 17
+  cols: Math.ceil(FIELD_DIMENSIONS.widthMeters / CALIBRATION_AREA.cellSize),  // 34
 }

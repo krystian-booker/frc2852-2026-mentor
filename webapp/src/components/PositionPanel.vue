@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useNTDouble, useNTInteger } from '../composables/useNetworkTables'
+import { TOPICS } from '../constants/topics'
 
-const posX = useNTDouble('/TurretCalibration/Position/X', 0)
-const posY = useNTDouble('/TurretCalibration/Position/Y', 0)
-const distance = useNTDouble('/TurretCalibration/Distance', 0)
-const gridRow = useNTInteger('/TurretCalibration/Grid/CurrentRow', 0)
-const gridCol = useNTInteger('/TurretCalibration/Grid/CurrentCol', 0)
-const nextTargetX = useNTDouble('/TurretCalibration/Grid/NextTargetX', 0)
-const nextTargetY = useNTDouble('/TurretCalibration/Grid/NextTargetY', 0)
+const posX = useNTDouble(TOPICS.POSITION_X, 0)
+const posY = useNTDouble(TOPICS.POSITION_Y, 0)
+const distance = useNTDouble(TOPICS.DISTANCE, 0)
+const gridRow = useNTInteger(TOPICS.GRID.CURRENT_ROW, 0)
+const gridCol = useNTInteger(TOPICS.GRID.CURRENT_COL, 0)
+const nextTargetX = useNTDouble(TOPICS.GRID.NEXT_TARGET_X, 0)
+const nextTargetY = useNTDouble(TOPICS.GRID.NEXT_TARGET_Y, 0)
 
 const formattedX = computed(() => posX.value.toFixed(2))
 const formattedY = computed(() => posY.value.toFixed(2))

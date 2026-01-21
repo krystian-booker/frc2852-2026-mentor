@@ -14,29 +14,19 @@ export interface CalibrationPoint {
 }
 
 const STORAGE_KEY = 'turret-calibration-points'
-const MAX_UNDO_STACK_SIZE = 10
-
-// Undo operation type
-interface UndoOperation {
-  type: 'delete' | 'clear'
-  points: CalibrationPoint[]
-  timestamp: number
-}
 
 export const useCalibrationStore = defineStore('calibration', () => {
   // Calibration points stored in memory
   const points = ref<CalibrationPoint[]>([])
 
-  // Undo stack for point deletions (last 10 operations)
-  const undoStack = ref<UndoOperation[]>([])
-
   // Grid configuration (defaults, can be updated from NetworkTables)
-  const gridRows = ref(13)
-  const gridCols = ref(30)
+  // Full field: 16.54m x 8.07m with 0.5m cells = 34 cols x 17 rows
+  const gridRows = ref(17)
+  const gridCols = ref(34)
 
   // Validation bounds (defaults, should be updated from NetworkTables constants)
   const minHoodAngle = ref(0)
-  const maxHoodAngle = ref(45)
+  const maxHoodAngle = ref(90)
   const minFlywheelRPM = ref(1000)
   const maxFlywheelRPM = ref(6000)
 
@@ -94,6 +84,15 @@ export const useCalibrationStore = defineStore('calibration', () => {
     maxFlywheelRPM.value = maxRPM
   }
 
+  // Local validation helpers
+  const isHoodAngleValid = (angle: number): boolean => {
+    return angle >= minHoodAngle.value && angle <= maxHoodAngle.value
+  }
+
+  const isFlywheelRPMValid = (rpm: number): boolean => {
+    return rpm >= minFlywheelRPM.value && rpm <= maxFlywheelRPM.value
+  }
+
   // Add a calibration point
   const addPoint = (point: Omit<CalibrationPoint, 'timestamp'>) => {
     const newPoint: CalibrationPoint = {
@@ -107,39 +106,16 @@ export const useCalibrationStore = defineStore('calibration', () => {
     )
 
     if (existingIndex >= 0) {
-      // Update existing point
       points.value[existingIndex] = newPoint
     } else {
-      // Add new point
       points.value.push(newPoint)
     }
 
     saveToStorage()
   }
 
-  // Push operation to undo stack
-  const pushToUndoStack = (operation: UndoOperation) => {
-    undoStack.value.push(operation)
-    // Keep only last MAX_UNDO_STACK_SIZE operations
-    if (undoStack.value.length > MAX_UNDO_STACK_SIZE) {
-      undoStack.value.shift()
-    }
-  }
-
   // Remove a point by grid position
   const removePoint = (gridRow: number, gridCol: number) => {
-    // Find the point being deleted for undo
-    const deletedPoint = points.value.find(
-      p => p.gridRow === gridRow && p.gridCol === gridCol
-    )
-    if (deletedPoint) {
-      pushToUndoStack({
-        type: 'delete',
-        points: [deletedPoint],
-        timestamp: Date.now()
-      })
-    }
-
     points.value = points.value.filter(
       p => !(p.gridRow === gridRow && p.gridCol === gridCol)
     )
@@ -148,61 +124,13 @@ export const useCalibrationStore = defineStore('calibration', () => {
 
   // Clear all points
   const clearAllPoints = () => {
-    // Save all points for undo before clearing
-    if (points.value.length > 0) {
-      pushToUndoStack({
-        type: 'clear',
-        points: [...points.value],
-        timestamp: Date.now()
-      })
-    }
     points.value = []
     saveToStorage()
   }
 
-  // Undo last deletion operation
-  const undo = (): boolean => {
-    const operation = undoStack.value.pop()
-    if (!operation) {
-      return false
-    }
-
-    // Restore points
-    for (const point of operation.points) {
-      // Only restore if no point exists at this position
-      const existingIndex = points.value.findIndex(
-        p => p.gridRow === point.gridRow && p.gridCol === point.gridCol
-      )
-      if (existingIndex < 0) {
-        points.value.push(point)
-      }
-    }
-
-    saveToStorage()
-    return true
-  }
-
-  // Check if undo is available
-  const canUndo = computed(() => undoStack.value.length > 0)
-
-  // Get description of last undo operation
-  const lastUndoDescription = computed(() => {
-    if (undoStack.value.length === 0) return ''
-    const op = undoStack.value[undoStack.value.length - 1]
-    if (op.type === 'clear') {
-      return `Restore ${op.points.length} cleared points`
-    }
-    return `Restore point at [${op.points[0].gridRow}, ${op.points[0].gridCol}]`
-  })
-
   // Check if point exists at grid position
   const hasPointAt = (gridRow: number, gridCol: number): boolean => {
     return points.value.some(p => p.gridRow === gridRow && p.gridCol === gridCol)
-  }
-
-  // Get point at grid position
-  const getPointAt = (gridRow: number, gridCol: number): CalibrationPoint | undefined => {
-    return points.value.find(p => p.gridRow === gridRow && p.gridCol === gridCol)
   }
 
   // Computed: total grid cells
@@ -240,7 +168,6 @@ export const useCalibrationStore = defineStore('calibration', () => {
       if (!headerSkipped) {
         headerSkipped = true
         const lowerLine = line.toLowerCase()
-        // Check for known header keywords (column names from CSV format)
         const headerKeywords = ['timestamp', 'robot_x', 'robot_y', 'distance_to_target', 'hood_angle', 'flywheel_rpm', 'grid_row', 'grid_col']
         const isHeader = headerKeywords.some(keyword => lowerLine.includes(keyword))
         if (isHeader) {
@@ -265,7 +192,6 @@ export const useCalibrationStore = defineStore('calibration', () => {
         const gridCol = parseInt(parts[7].trim(), 10)
         const alliance = parts.length >= 9 ? parts[8].trim() || 'Unknown' : 'Unknown'
 
-        // Validate data
         if (isNaN(robotX) || isNaN(robotY) || isNaN(distanceToTarget) ||
             isNaN(hoodAngleDegrees) || isNaN(flywheelRPM) ||
             isNaN(gridRow) || isNaN(gridCol)) {
@@ -278,7 +204,6 @@ export const useCalibrationStore = defineStore('calibration', () => {
           continue
         }
 
-        // Validate against mechanical limits (using dynamic bounds from robot)
         if (hoodAngleDegrees < minHoodAngle.value || hoodAngleDegrees > maxHoodAngle.value) {
           errors.push(`Line ${i + 1}: Hood angle ${hoodAngleDegrees.toFixed(1)}° outside valid range (${minHoodAngle.value}-${maxHoodAngle.value}°)`)
           continue
@@ -289,7 +214,6 @@ export const useCalibrationStore = defineStore('calibration', () => {
           continue
         }
 
-        // Add or update point
         const existingIndex = points.value.findIndex(
           p => p.gridRow === gridRow && p.gridCol === gridCol
         )
@@ -324,113 +248,6 @@ export const useCalibrationStore = defineStore('calibration', () => {
     return { imported, errors }
   }
 
-  // Track if we have unsaved local changes (for future conflict detection)
-  const hasLocalChanges = ref(false)
-
-  /**
-   * Syncs calibration data from robot via NetworkTables.
-   * Parses the serialized CSV rows and merges with local points.
-   * Robot data takes precedence, but local-only points are preserved with a warning.
-   * localStorage is kept as a backup cache (write-only).
-   *
-   * @param serializedPoints Array of CSV row strings from robot
-   * @param version Data version number from robot
-   * @returns Object with sync results: { synced: number, localOnlyCount: number, conflicts: number }
-   */
-  const syncFromRobot = (serializedPoints: string[], version?: number): {
-    synced: number
-    localOnlyCount: number
-    conflicts: number
-  } => {
-    const newPoints: CalibrationPoint[] = []
-
-    for (const row of serializedPoints) {
-      if (!row || row.trim() === '') continue
-
-      const parts = row.split(',')
-      // CSV format: timestamp,robot_x,robot_y,distance_to_target,hood_angle_degrees,flywheel_rpm,grid_row,grid_col,alliance
-      if (parts.length < 8) continue
-
-      try {
-        const timestamp = parts[0].trim()
-        const robotX = parseFloat(parts[1].trim())
-        const robotY = parseFloat(parts[2].trim())
-        const distanceToTarget = parseFloat(parts[3].trim())
-        const hoodAngleDegrees = parseFloat(parts[4].trim())
-        const flywheelRPM = parseFloat(parts[5].trim())
-        const gridRow = parseInt(parts[6].trim(), 10)
-        const gridCol = parseInt(parts[7].trim(), 10)
-        const alliance = parts.length >= 9 ? parts[8].trim() || 'Unknown' : 'Unknown'
-
-        // Validate parsed values
-        if (isNaN(robotX) || isNaN(robotY) || isNaN(distanceToTarget) ||
-            isNaN(hoodAngleDegrees) || isNaN(flywheelRPM) ||
-            isNaN(gridRow) || isNaN(gridCol)) {
-          console.warn('Skipping invalid point from robot:', row)
-          continue
-        }
-
-        newPoints.push({
-          timestamp,
-          robotX,
-          robotY,
-          distanceToTarget,
-          hoodAngleDegrees,
-          flywheelRPM,
-          gridRow,
-          gridCol,
-          alliance
-        })
-      } catch (e) {
-        console.warn('Error parsing point from robot:', row, e)
-      }
-    }
-
-    // Detect conflicts: local points at positions that robot also has (with different data)
-    let conflicts = 0
-    const robotPositions = new Set(newPoints.map(p => `${p.gridRow},${p.gridCol}`))
-    const localOnlyPoints: CalibrationPoint[] = []
-
-    for (const localPoint of points.value) {
-      const key = `${localPoint.gridRow},${localPoint.gridCol}`
-      if (!robotPositions.has(key)) {
-        // Local-only point - robot doesn't have it
-        localOnlyPoints.push(localPoint)
-      } else {
-        // Check if data differs (potential conflict)
-        const robotPoint = newPoints.find(p => p.gridRow === localPoint.gridRow && p.gridCol === localPoint.gridCol)
-        if (robotPoint &&
-            (Math.abs(robotPoint.hoodAngleDegrees - localPoint.hoodAngleDegrees) > 0.1 ||
-             Math.abs(robotPoint.flywheelRPM - localPoint.flywheelRPM) > 1)) {
-          conflicts++
-        }
-      }
-    }
-
-    // Log conflict/local-only warnings
-    if (localOnlyPoints.length > 0) {
-      console.warn(`Sync warning: ${localOnlyPoints.length} local-only points will be overwritten by robot data`)
-    }
-    if (conflicts > 0) {
-      console.warn(`Sync warning: ${conflicts} points have conflicting values (robot data will be used)`)
-    }
-
-    // Replace local points with robot data (robot is source of truth)
-    points.value = newPoints
-    hasLocalChanges.value = false
-    // Version parameter reserved for future conflict detection
-    void version
-
-    // Save to localStorage as backup cache
-    saveToStorage()
-
-    return {
-      synced: newPoints.length,
-      localOnlyCount: localOnlyPoints.length,
-      conflicts
-    }
-  }
-
   // Initialize
   loadFromStorage()
 
@@ -446,20 +263,14 @@ export const useCalibrationStore = defineStore('calibration', () => {
     removePoint,
     clearAllPoints,
     hasPointAt,
-    getPointAt,
     totalCells,
     pointCount,
     completionPercentage,
     generateCSV,
     importFromCSV,
-    loadFromStorage,
-    saveToStorage,
     setGridDimensions,
     setValidationBounds,
-    syncFromRobot,
-    // Undo functionality
-    undo,
-    canUndo,
-    lastUndoDescription
+    isHoodAngleValid,
+    isFlywheelRPMValid
   }
 })

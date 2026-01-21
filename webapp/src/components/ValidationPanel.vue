@@ -1,12 +1,51 @@
 <script setup lang="ts">
-import { useNTBoolean, useNTString } from '../composables/useNetworkTables'
+import { computed } from 'vue'
+import { useNTBoolean, useNTDouble, useNTInteger } from '../composables/useNetworkTables'
+import { useCalibrationStore } from '../stores/calibration'
+import { TOPICS } from '../constants/topics'
 
-const readyToSave = useNTBoolean('/TurretCalibration/Validation/ReadyToSave', false)
-const validationWarning = useNTString('/TurretCalibration/Validation/Warning', '')
-const distanceValid = useNTBoolean('/TurretCalibration/Validation/DistanceValid', true)
-const hoodAngleValid = useNTBoolean('/TurretCalibration/Validation/HoodAngleValid', true)
-const flywheelRPMValid = useNTBoolean('/TurretCalibration/Validation/FlywheelRPMValid', true)
-const duplicatePointWarning = useNTBoolean('/TurretCalibration/Validation/DuplicatePoint', false)
+const store = useCalibrationStore()
+
+// Subscribe to robot state needed for validation
+const hoodAtPosition = useNTBoolean(TOPICS.HOOD_AT_POSITION, false)
+const flywheelAtSetpoint = useNTBoolean(TOPICS.FLYWHEEL_AT_SETPOINT, false)
+const gridRow = useNTInteger(TOPICS.GRID.CURRENT_ROW, 0)
+const gridCol = useNTInteger(TOPICS.GRID.CURRENT_COL, 0)
+const inputHoodAngle = useNTDouble(TOPICS.INPUT_HOOD_ANGLE, 25)
+const inputFlywheelRPM = useNTDouble(TOPICS.INPUT_FLYWHEEL_RPM, 3000)
+
+// Compute validation state locally
+const hoodAngleValid = computed(() => store.isHoodAngleValid(inputHoodAngle.value))
+const flywheelRPMValid = computed(() => store.isFlywheelRPMValid(inputFlywheelRPM.value))
+const duplicatePointWarning = computed(() => store.hasPointAt(gridRow.value, gridCol.value))
+
+// Compute overall readyToSave state
+const readyToSave = computed(() => {
+  return hoodAtPosition.value &&
+         flywheelAtSetpoint.value &&
+         hoodAngleValid.value &&
+         flywheelRPMValid.value
+})
+
+// Build validation warning message
+const validationWarning = computed(() => {
+  const warnings: string[] = []
+
+  if (!hoodAtPosition.value) {
+    warnings.push('Hood not at setpoint.')
+  }
+  if (!flywheelAtSetpoint.value) {
+    warnings.push('Flywheel not at setpoint.')
+  }
+  if (!hoodAngleValid.value) {
+    warnings.push(`Hood angle ${inputHoodAngle.value.toFixed(1)}° outside valid range (${store.minHoodAngle}-${store.maxHoodAngle}°).`)
+  }
+  if (!flywheelRPMValid.value) {
+    warnings.push(`Flywheel RPM ${inputFlywheelRPM.value.toFixed(0)} outside valid range (${store.minFlywheelRPM}-${store.maxFlywheelRPM}).`)
+  }
+
+  return warnings.join(' ')
+})
 </script>
 
 <template>
@@ -19,9 +58,13 @@ const duplicatePointWarning = useNTBoolean('/TurretCalibration/Validation/Duplic
     </div>
 
     <div class="validation-checks">
-      <div class="check-item" :class="{ valid: distanceValid }">
-        <span class="icon">{{ distanceValid ? '✓' : '✗' }}</span>
-        Distance Valid
+      <div class="check-item" :class="{ valid: hoodAtPosition }">
+        <span class="icon">{{ hoodAtPosition ? '✓' : '✗' }}</span>
+        Hood At Position
+      </div>
+      <div class="check-item" :class="{ valid: flywheelAtSetpoint }">
+        <span class="icon">{{ flywheelAtSetpoint ? '✓' : '✗' }}</span>
+        Flywheel At Setpoint
       </div>
       <div class="check-item" :class="{ valid: hoodAngleValid }">
         <span class="icon">{{ hoodAngleValid ? '✓' : '✗' }}</span>

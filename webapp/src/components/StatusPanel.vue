@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useNTBoolean, useNTString, useNTDouble, useNTConnection, reconnect } from '../composables/useNetworkTables'
+import { ref, computed } from 'vue'
+import { useNTBoolean, useNTString, useNTConnection, reconnect } from '../composables/useNetworkTables'
 import { useCalibrationStore } from '../stores/calibration'
 import { TOPICS } from '../constants/topics'
 
@@ -8,8 +8,6 @@ const store = useCalibrationStore()
 const { connected, serverAddress, reconnecting } = useNTConnection()
 const enabled = useNTBoolean(TOPICS.ENABLED, false)
 const status = useNTString(TOPICS.STATUS, 'Not Connected')
-const error = useNTString(TOPICS.ERROR, '')
-const lastUpdateTimestamp = useNTDouble(TOPICS.DATA.LAST_UPDATE_TIMESTAMP, 0)
 
 // Data quality indicator based on calibration coverage
 const dataQuality = computed(() => {
@@ -28,44 +26,6 @@ const dataQuality = computed(() => {
     return { text: 'Partial', level: 'partial', color: '#ff9800' }
   }
   return { text: 'Low', level: 'low', color: '#f44336' }
-})
-
-// Track current time for freshness calculation
-const currentTime = ref(Date.now() / 1000)
-let timeInterval: ReturnType<typeof setInterval> | null = null
-
-onMounted(() => {
-  timeInterval = setInterval(() => {
-    currentTime.value = Date.now() / 1000
-  }, 1000)
-})
-
-onUnmounted(() => {
-  if (timeInterval) {
-    clearInterval(timeInterval)
-  }
-})
-
-// Calculate data freshness
-// Thresholds: 5s = live, 10s = warning, 30s = stale
-const dataFreshness = computed(() => {
-  if (lastUpdateTimestamp.value === 0) {
-    return { text: 'No data', stale: true, warning: false }
-  }
-  const secondsAgo = Math.floor(currentTime.value - lastUpdateTimestamp.value)
-  // Use Math.abs to handle minor clock skew (robot clock slightly ahead)
-  const absSecondsAgo = Math.abs(secondsAgo)
-  if (absSecondsAgo > 30) {
-    return { text: 'Stale', stale: true, warning: false }
-  }
-  if (absSecondsAgo > 10) {
-    return { text: `${absSecondsAgo}s ago`, stale: false, warning: true }
-  }
-  if (absSecondsAgo <= 5) {
-    return { text: 'Live', stale: false, warning: false }
-  }
-  // Show positive value even if clock skew causes negative
-  return { text: `${absSecondsAgo}s ago`, stale: false, warning: false }
 })
 
 const editingAddress = ref(false)
@@ -139,11 +99,6 @@ const handleRetry = () => {
       Calibration {{ enabled ? 'Active' : 'Inactive' }}
     </div>
 
-    <div class="data-freshness" :class="{ stale: dataFreshness.stale, warning: dataFreshness.warning }">
-      <span class="freshness-indicator"></span>
-      Data: {{ dataFreshness.text }}
-    </div>
-
     <div class="data-quality" :style="{ borderColor: dataQuality.color }">
       <span class="quality-indicator" :style="{ background: dataQuality.color }"></span>
       Coverage: {{ dataQuality.text }} ({{ store.completionPercentage }}%)
@@ -151,7 +106,9 @@ const handleRetry = () => {
 
     <div class="status-message">{{ status }}</div>
 
-    <div v-if="error" class="error-message">{{ error }}</div>
+    <div class="storage-info">
+      Data stored locally in browser ({{ store.pointCount }} points)
+    </div>
   </div>
 </template>
 
@@ -205,31 +162,6 @@ const handleRetry = () => {
 .calibration-enabled.active .indicator {
   background: #2196f3;
   box-shadow: 0 0 6px #2196f3;
-}
-
-.data-freshness {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  padding: 6px 8px;
-  background: #1a1a2e;
-  border-radius: 4px;
-}
-
-.freshness-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #4caf50;
-}
-
-.data-freshness.stale .freshness-indicator {
-  background: #f44336;
-}
-
-.data-freshness.warning .freshness-indicator {
-  background: #ff9800;
 }
 
 .data-quality {
@@ -346,12 +278,12 @@ const handleRetry = () => {
   border-radius: 4px;
 }
 
-.error-message {
-  color: #f44336;
-  font-size: 13px;
-  padding: 8px;
-  background: rgba(244, 67, 54, 0.1);
+.storage-info {
+  color: #666;
+  font-size: 12px;
+  padding: 6px 8px;
+  background: #1a1a2e;
   border-radius: 4px;
-  border: 1px solid rgba(244, 67, 54, 0.3);
+  text-align: center;
 }
 </style>

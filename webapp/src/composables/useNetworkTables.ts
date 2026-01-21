@@ -32,12 +32,11 @@ let ntInstance = NetworkTables.getInstanceByURI(serverAddress.value)
 
 // Cache for published topics to avoid re-publishing
 let doubleTopics = new Map<string, NetworkTablesTopic<number>>()
-let booleanTopics = new Map<string, NetworkTablesTopic<boolean>>()
 
 // Subscription registry to track active subscriptions for reconnection
 interface SubscriptionEntry {
   topicName: string
-  type: 'boolean' | 'double' | 'integer' | 'string' | 'stringArray'
+  type: 'boolean' | 'double' | 'integer' | 'string'
   callback: (value: any) => void
   ntTopic: NetworkTablesTopic<any> | null
   subscriberId: number | null
@@ -86,8 +85,7 @@ const subscribeEntry = (entry: SubscriptionEntry): void => {
     'boolean': NetworkTablesTypeInfos.kBoolean,
     'double': NetworkTablesTypeInfos.kDouble,
     'integer': NetworkTablesTypeInfos.kInteger,
-    'string': NetworkTablesTypeInfos.kString,
-    'stringArray': NetworkTablesTypeInfos.kStringArray
+    'string': NetworkTablesTypeInfos.kString
   }[entry.type]
 
   entry.ntTopic = ntInstance.createTopic(entry.topicName, typeInfo)
@@ -145,7 +143,6 @@ const scheduleReconnect = () => {
 
     // Clear topic caches and create new instance
     doubleTopics.clear()
-    booleanTopics.clear()
 
     // Cleanup old connection listener
     if (connectionListenerCleanup) {
@@ -213,7 +210,6 @@ export function reconnect(address: string): void {
 
   // Clear topic caches
   doubleTopics.clear()
-  booleanTopics.clear()
 
   // Cleanup old connection listener
   if (connectionListenerCleanup) {
@@ -311,25 +307,6 @@ export function useNTString(topic: string, defaultValue: string = ''): Ref<strin
   return value
 }
 
-export function useNTStringArray(topic: string, defaultValue: string[] = []): Ref<string[]> {
-  const value = ref<string[]>(defaultValue)
-  let registrationId: number | null = null
-
-  onMounted(() => {
-    registrationId = registerSubscription(topic, 'stringArray', (newValue) => {
-      value.value = newValue
-    })
-  })
-
-  onUnmounted(() => {
-    if (registrationId !== null) {
-      unregisterSubscription(registrationId)
-    }
-  })
-
-  return value
-}
-
 async function getOrCreateDoubleTopic(topic: string): Promise<NetworkTablesTopic<number>> {
   if (!doubleTopics.has(topic)) {
     const ntTopic = ntInstance.createTopic<number>(topic, NetworkTablesTypeInfos.kDouble)
@@ -339,37 +316,7 @@ async function getOrCreateDoubleTopic(topic: string): Promise<NetworkTablesTopic
   return doubleTopics.get(topic)!
 }
 
-async function getOrCreateBooleanTopic(topic: string): Promise<NetworkTablesTopic<boolean>> {
-  if (!booleanTopics.has(topic)) {
-    const ntTopic = ntInstance.createTopic<boolean>(topic, NetworkTablesTypeInfos.kBoolean)
-    await ntTopic.publish()
-    booleanTopics.set(topic, ntTopic)
-  }
-  return booleanTopics.get(topic)!
-}
-
 export async function publishDouble(topic: string, value: number): Promise<void> {
   const ntTopic = await getOrCreateDoubleTopic(topic)
   ntTopic.setValue(value)
 }
-
-export async function publishBoolean(topic: string, value: boolean): Promise<void> {
-  const ntTopic = await getOrCreateBooleanTopic(topic)
-  ntTopic.setValue(value)
-}
-
-export async function triggerBoolean(topic: string): Promise<void> {
-  const ntTopic = await getOrCreateBooleanTopic(topic)
-  ntTopic.setValue(true)
-  // Reset after a short delay for edge-triggered topics
-  // 150ms provides safety margin for robot running at 50Hz (20ms/loop)
-  // Return promise that resolves after reset completes
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      ntTopic.setValue(false)
-      resolve()
-    }, 150)
-  })
-}
-
-export { ntInstance }

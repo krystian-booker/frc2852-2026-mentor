@@ -3,16 +3,31 @@ import { computed, watch } from 'vue'
 import { useNTInteger } from '../composables/useNetworkTables'
 import { useCalibrationStore } from '../stores/calibration'
 import { useFieldCoordinates } from '../composables/useFieldCoordinates'
+import { TOPICS } from '../constants/topics'
+import { CALIBRATION_AREA, FIELD_DIMENSIONS } from '../constants/fieldConstants'
+
+const emit = defineEmits<{
+  (e: 'cellSelect', row: number, col: number): void
+}>()
+
+const props = defineProps<{
+  selectedRow?: number
+  selectedCol?: number
+}>()
 
 const store = useCalibrationStore()
 const { gridOverlayStyle, fieldImagePath } = useFieldCoordinates()
 
-const currentRow = useNTInteger('/TurretCalibration/Grid/CurrentRow', 0)
-const currentCol = useNTInteger('/TurretCalibration/Grid/CurrentCol', 0)
+const currentRow = useNTInteger(TOPICS.GRID.CURRENT_ROW, 0)
+const currentCol = useNTInteger(TOPICS.GRID.CURRENT_COL, 0)
 
 // Read grid dimensions from NetworkTables (updates store when changed)
-const ntGridRows = useNTInteger('/TurretCalibration/Grid/Rows', 13)
-const ntGridCols = useNTInteger('/TurretCalibration/Grid/Cols', 29)
+const ntGridRows = useNTInteger(TOPICS.GRID.ROWS, 17)
+const ntGridCols = useNTInteger(TOPICS.GRID.COLS, 34)
+
+// Calculate cell position in meters
+const getCellX = (col: number) => CALIBRATION_AREA.minX + col * CALIBRATION_AREA.cellSize
+const getCellY = (row: number) => CALIBRATION_AREA.minY + row * CALIBRATION_AREA.cellSize
 
 // Update store when NT values change
 watch([ntGridRows, ntGridCols], ([rows, cols]) => {
@@ -28,11 +43,16 @@ const gridCells = computed(() => {
     for (let col = 0; col < store.gridCols; col++) {
       const hasPoint = store.hasPointAt(row, col)
       const isCurrent = row === currentRow.value && col === currentCol.value
-      cells.push({ row, col, hasPoint, isCurrent })
+      const isSelected = row === props.selectedRow && col === props.selectedCol
+      cells.push({ row, col, hasPoint, isCurrent, isSelected })
     }
   }
   return cells
 })
+
+const handleCellClick = (row: number, col: number) => {
+  emit('cellSelect', row, col)
+}
 
 // Dynamic grid template columns based on store.gridCols
 const gridStyle = computed(() => ({
@@ -49,6 +69,10 @@ const gridStyle = computed(() => ({
       <span class="legend-item">
         <span class="cell-sample current"></span>
         Current Position
+      </span>
+      <span class="legend-item">
+        <span class="cell-sample selected"></span>
+        Selected
       </span>
       <span class="legend-item">
         <span class="cell-sample filled"></span>
@@ -70,17 +94,19 @@ const gridStyle = computed(() => ({
             class="grid-cell"
             :class="{
               'has-point': cell.hasPoint,
-              'is-current': cell.isCurrent
+              'is-current': cell.isCurrent,
+              'is-selected': cell.isSelected
             }"
-            :title="`[${cell.row}, ${cell.col}] - X: ${(1.0 + cell.col * 0.5).toFixed(1)}m, Y: ${(1.0 + cell.row * 0.5).toFixed(1)}m`"
+            :title="`[${cell.row}, ${cell.col}] - X: ${getCellX(cell.col).toFixed(1)}m, Y: ${getCellY(cell.row).toFixed(1)}m`"
+            @click="handleCellClick(cell.row, cell.col)"
           ></div>
         </div>
       </div>
     </div>
 
     <div class="axis-info">
-      <span class="axis-label">X: 1.0m → 15.5m</span>
-      <span class="axis-label">Y: 1.0m → 7.0m</span>
+      <span class="axis-label">X: 0m → {{ FIELD_DIMENSIONS.widthMeters.toFixed(1) }}m</span>
+      <span class="axis-label">Y: 0m → {{ FIELD_DIMENSIONS.heightMeters.toFixed(1) }}m</span>
     </div>
   </div>
 </template>
@@ -125,6 +151,11 @@ h3 {
   box-shadow: 0 0 6px #ff9800;
 }
 
+.cell-sample.selected {
+  background: rgba(33, 150, 243, 0.8);
+  box-shadow: 0 0 6px #2196f3;
+}
+
 .cell-sample.filled {
   background: rgba(76, 175, 80, 0.55);
 }
@@ -165,6 +196,12 @@ h3 {
   border-radius: 1px;
   transition: all 0.2s;
   pointer-events: auto;
+  cursor: pointer;
+}
+
+.grid-cell:hover {
+  background: rgba(100, 100, 100, 0.5);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .grid-cell.has-point {
@@ -181,6 +218,16 @@ h3 {
 
 .grid-cell.has-point.is-current {
   background: rgba(255, 152, 0, 0.8);
+}
+
+.grid-cell.is-selected {
+  background: rgba(33, 150, 243, 0.8);
+  border-color: rgba(33, 150, 243, 1);
+  box-shadow: 0 0 8px rgba(33, 150, 243, 0.8);
+}
+
+.grid-cell.has-point.is-selected {
+  background: rgba(33, 150, 243, 0.8);
 }
 
 @keyframes pulse {

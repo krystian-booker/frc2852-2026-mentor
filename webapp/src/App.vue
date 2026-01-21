@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue'
-import { useNTDouble, useNTInteger, useNTBoolean, useNTStringArray, triggerBoolean } from './composables/useNetworkTables'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { useNTDouble, useNTInteger, useNTBoolean } from './composables/useNetworkTables'
 import { useCalibrationStore } from './stores/calibration'
 import { exportCSV } from './utils/csvExport'
+import { TOPICS } from './constants/topics'
 import StatusPanel from './components/StatusPanel.vue'
 import PositionPanel from './components/PositionPanel.vue'
 import ControlPanel from './components/ControlPanel.vue'
@@ -10,29 +11,47 @@ import ValidationPanel from './components/ValidationPanel.vue'
 import ActionsPanel from './components/ActionsPanel.vue'
 import DataTable from './components/DataTable.vue'
 import CalibrationGrid from './components/CalibrationGrid.vue'
+import CellEditPanel from './components/CellEditPanel.vue'
 
 const store = useCalibrationStore()
 
-// Subscribe to values needed for keyboard shortcut save
-const readyToSave = useNTBoolean('/TurretCalibration/Validation/ReadyToSave', false)
+// Selected cell state for manual editing
+const selectedRow = ref<number | undefined>(undefined)
+const selectedCol = ref<number | undefined>(undefined)
+const hasSelectedCell = computed(() => selectedRow.value !== undefined && selectedCol.value !== undefined)
 
-// Subscribe to robot data for synchronization (robot is source of truth)
-const robotDataVersion = useNTInteger('/TurretCalibration/Data/Version', 0)
-const robotDataPoints = useNTStringArray('/TurretCalibration/Data/Points', [])
+const handleCellSelect = (row: number, col: number) => {
+  // Toggle selection if clicking the same cell
+  if (selectedRow.value === row && selectedCol.value === col) {
+    selectedRow.value = undefined
+    selectedCol.value = undefined
+  } else {
+    selectedRow.value = row
+    selectedCol.value = col
+  }
+}
+
+const handleCellEditClose = () => {
+  selectedRow.value = undefined
+  selectedCol.value = undefined
+}
+
+// Subscribe to robot state needed for local save
+const positionX = useNTDouble(TOPICS.POSITION_X, 0)
+const positionY = useNTDouble(TOPICS.POSITION_Y, 0)
+const distance = useNTDouble(TOPICS.DISTANCE, 0)
+const gridRow = useNTInteger(TOPICS.GRID.CURRENT_ROW, 0)
+const gridCol = useNTInteger(TOPICS.GRID.CURRENT_COL, 0)
+const hoodAtPosition = useNTBoolean(TOPICS.HOOD_AT_POSITION, false)
+const flywheelAtSetpoint = useNTBoolean(TOPICS.FLYWHEEL_AT_SETPOINT, false)
+const inputHoodAngle = useNTDouble(TOPICS.INPUT_HOOD_ANGLE, 25)
+const inputFlywheelRPM = useNTDouble(TOPICS.INPUT_FLYWHEEL_RPM, 3000)
 
 // Subscribe to robot constants for validation bounds
-const minHoodAngle = useNTDouble('/TurretCalibration/Constants/MinHoodAngle', 0)
-const maxHoodAngle = useNTDouble('/TurretCalibration/Constants/MaxHoodAngle', 45)
-const minFlywheelRPM = useNTDouble('/TurretCalibration/Constants/MinFlywheelRPM', 1000)
-const maxFlywheelRPM = useNTDouble('/TurretCalibration/Constants/MaxFlywheelRPM', 6000)
-
-// Watch for data version changes and sync from robot
-watch(robotDataVersion, (newVersion, oldVersion) => {
-  if (newVersion > 0 && newVersion !== oldVersion) {
-    const synced = store.syncFromRobot(robotDataPoints.value)
-    console.log(`Synced ${synced} calibration points from robot (version ${newVersion})`)
-  }
-})
+const minHoodAngle = useNTDouble(TOPICS.CONSTANTS.MIN_HOOD_ANGLE, 0)
+const maxHoodAngle = useNTDouble(TOPICS.CONSTANTS.MAX_HOOD_ANGLE, 90)
+const minFlywheelRPM = useNTDouble(TOPICS.CONSTANTS.MIN_FLYWHEEL_RPM, 1000)
+const maxFlywheelRPM = useNTDouble(TOPICS.CONSTANTS.MAX_FLYWHEEL_RPM, 6000)
 
 // Watch for constants changes and update store validation bounds
 watch(
@@ -43,6 +62,30 @@ watch(
   { immediate: true }
 )
 
+// Compute local validation for save
+const canSaveCurrentPoint = computed(() => {
+  return hoodAtPosition.value &&
+         flywheelAtSetpoint.value &&
+         store.isHoodAngleValid(inputHoodAngle.value) &&
+         store.isFlywheelRPMValid(inputFlywheelRPM.value)
+})
+
+// Local save function
+const saveCurrentPoint = () => {
+  if (!canSaveCurrentPoint.value) return
+
+  store.addPoint({
+    robotX: positionX.value,
+    robotY: positionY.value,
+    distanceToTarget: distance.value,
+    hoodAngleDegrees: inputHoodAngle.value,
+    flywheelRPM: inputFlywheelRPM.value,
+    gridRow: gridRow.value,
+    gridCol: gridCol.value,
+    alliance: 'Blue'  // Default alliance
+  })
+}
+
 const handleKeydown = async (event: KeyboardEvent) => {
   // Check for Ctrl (or Cmd on Mac) key
   const isModified = event.ctrlKey || event.metaKey
@@ -50,10 +93,10 @@ const handleKeydown = async (event: KeyboardEvent) => {
   if (isModified) {
     switch (event.key.toLowerCase()) {
       case 's':
-        // Ctrl+S = Save Point (robot-side only - data syncs back via NT)
+        // Ctrl+S = Save Point locally
         event.preventDefault()
-        if (readyToSave.value) {
-          await triggerBoolean('/TurretCalibration/SavePoint')
+        if (canSaveCurrentPoint.value) {
+          saveCurrentPoint()
         }
         break
 
@@ -94,7 +137,17 @@ onUnmounted(() => {
 
       <div class="center-column">
         <ControlPanel />
-        <CalibrationGrid />
+        <CalibrationGrid
+          :selected-row="selectedRow"
+          :selected-col="selectedCol"
+          @cell-select="handleCellSelect"
+        />
+        <CellEditPanel
+          v-if="hasSelectedCell"
+          :row="selectedRow!"
+          :col="selectedCol!"
+          @close="handleCellEditClose"
+        />
       </div>
 
       <div class="right-column">
@@ -105,7 +158,9 @@ onUnmounted(() => {
     <footer class="footer">
       <span>Connect to robot at port 5810 (NetworkTables)</span>
       <span>|</span>
-      <span>Export saves to src/main/deploy/calibration/</span>
+      <span>Click grid cells to edit manually</span>
+      <span>|</span>
+      <span>Data stored locally in browser</span>
     </footer>
   </div>
 </template>
