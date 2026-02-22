@@ -2,8 +2,10 @@ package frc.robot;
 
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
+import frc.robot.commands.ShootCommand;
 import frc.robot.commands.TurretCalibrationCommand;
 import frc.robot.generated.TunerConstants;
+import frc.robot.subsystems.Conveyor;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Intake;
@@ -41,6 +43,7 @@ import frc.robot.subsystems.QuestNavSubsystem;
 public class RobotContainer {
 
   // Subsystems
+  private final Conveyor conveyor = new Conveyor();
   private final Flywheel flywheel = new Flywheel();
   private final Hood hood = new Hood();
   private final Intake intake = new Intake();
@@ -121,6 +124,12 @@ public class RobotContainer {
     // Auto-extend intake actuator at the start of autonomous and teleop
     RobotModeTriggers.autonomous().onTrue(intakeActuator.extend());
     RobotModeTriggers.teleop().onTrue(intakeActuator.extend());
+
+    // RIGHT TRIGGER - Shoot (held)
+    // Spins up flywheel and sets hood from LUT, then feeds when ready
+    driverController.rightTrigger(0.5).whileTrue(
+        new ShootCommand(flywheel, hood, conveyor, intake, intakeActuator, turret, turretAimingCalculator)
+            .withName("Shoot"));
   }
 
   private void configureSwerveBindings() {
