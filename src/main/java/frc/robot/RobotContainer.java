@@ -99,6 +99,9 @@ public class RobotContainer {
     // Set turret default command - continuously track the target
     turret.setDefaultCommand(turret.aimAtTargetCommand(turretAimingCalculator));
 
+    // Set intake default command - always running
+    intake.setDefaultCommand(intake.run(intake::runIntake));
+
     // Warmup PathPlanner to avoid Java pauses
     CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand());
 

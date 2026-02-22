@@ -52,8 +52,8 @@ public class ShootCommand extends Command {
         this.turret = turret;
         this.aimingCalculator = aimingCalculator;
 
-        // Require all subsystems we command (not turret - its default command handles aiming)
-        addRequirements(flywheel, hood, conveyor, intake, intakeActuator);
+        // Require all subsystems we command (not turret/intake - their default commands run independently)
+        addRequirements(flywheel, hood, conveyor, intakeActuator);
     }
 
     @Override
@@ -78,12 +78,10 @@ public class ShootCommand extends Command {
         if (flywheelReady && hoodReady && turretReady) {
             isFeeding = true;
             conveyor.runFeed();
-            intake.runIntake();
             oscillateIntakeActuator();
         } else {
             if (isFeeding) {
                 conveyor.stop();
-                intake.stop();
             }
             isFeeding = false;
         }
@@ -101,7 +99,6 @@ public class ShootCommand extends Command {
     public void end(boolean interrupted) {
         flywheel.setVelocity(0);
         conveyor.stop();
-        intake.stop();
         isFeeding = false;
     }
 
