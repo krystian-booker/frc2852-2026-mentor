@@ -212,9 +212,9 @@ public class Hood extends SubsystemBase {
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("Hood/Position Degrees", getCurrentPositionDegrees());
-        SmartDashboard.putNumber("Hood/Target Degrees", targetPositionDegrees);
-        SmartDashboard.putNumber("Hood/CANCoder Degrees", getCANCoderPositionDegrees());
-        SmartDashboard.putBoolean("Hood/At Position", atPosition());
+        // SmartDashboard.putNumber("Hood/Position Degrees", getCurrentPositionDegrees());
+        // SmartDashboard.putNumber("Hood/Target Degrees", targetPositionDegrees);
+        // SmartDashboard.putNumber("Hood/CANCoder Degrees", getCANCoderPositionDegrees());
+        // SmartDashboard.putBoolean("Hood/At Position", atPosition());
     }
 }

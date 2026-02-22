@@ -93,10 +93,10 @@ public class QuestNavSubsystem extends SubsystemBase {
         }
 
         // Telemetry
-        SmartDashboard.putBoolean("QuestNav/Connected", isConnected);
-        SmartDashboard.putNumber("QuestNav/Pose X", latestRobotPose.getX());
-        SmartDashboard.putNumber("QuestNav/Pose Y", latestRobotPose.getY());
-        SmartDashboard.putNumber("QuestNav/Pose Rotation", latestRobotPose.getRotation().getDegrees());
+        // SmartDashboard.putBoolean("QuestNav/Connected", isConnected);
+        // SmartDashboard.putNumber("QuestNav/Pose X", latestRobotPose.getX());
+        // SmartDashboard.putNumber("QuestNav/Pose Y", latestRobotPose.getY());
+        // SmartDashboard.putNumber("QuestNav/Pose Rotation", latestRobotPose.getRotation().getDegrees());
     }
 
     /**

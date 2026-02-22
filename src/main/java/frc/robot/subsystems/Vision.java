@@ -166,8 +166,8 @@ public class Vision extends SubsystemBase {
             }
 
             // Per-camera telemetry
-            SmartDashboard.putNumber("Vision/" + cam.name + "/TagCount", cam.visibleTagIds.size());
-            SmartDashboard.putString("Vision/" + cam.name + "/VisibleTags", cam.visibleTagIds.toString());
+            // SmartDashboard.putNumber("Vision/" + cam.name + "/TagCount", cam.visibleTagIds.size());
+            // SmartDashboard.putString("Vision/" + cam.name + "/VisibleTags", cam.visibleTagIds.toString());
         }
 
         // Use the best estimate if we have one
@@ -190,14 +190,14 @@ public class Vision extends SubsystemBase {
         }
 
         // Aggregated telemetry (backward compatible)
-        SmartDashboard.putBoolean("Vision/HasValidPose", hasRecentValidPose(POSE_VALIDITY_TIMEOUT));
-        SmartDashboard.putString("Vision/VisibleTags", aggregatedVisibleTagIds.toString());
-        SmartDashboard.putNumber("Vision/TotalVisibleTagCount", aggregatedVisibleTagIds.size());
-        SmartDashboard.putNumber("Vision/PoseX", latestEstimate.getX());
-        SmartDashboard.putNumber("Vision/PoseY", latestEstimate.getY());
-        SmartDashboard.putNumber("Vision/PoseRotation", latestEstimate.getRotation().getDegrees());
-        SmartDashboard.putBoolean("Vision/FeedingEnabled", feedingEnabled);
-        SmartDashboard.putString("Vision/BestCamera", bestCamera != null ? bestCamera.name : "none");
+        // SmartDashboard.putBoolean("Vision/HasValidPose", hasRecentValidPose(POSE_VALIDITY_TIMEOUT));
+        // SmartDashboard.putString("Vision/VisibleTags", aggregatedVisibleTagIds.toString());
+        // SmartDashboard.putNumber("Vision/TotalVisibleTagCount", aggregatedVisibleTagIds.size());
+        // SmartDashboard.putNumber("Vision/PoseX", latestEstimate.getX());
+        // SmartDashboard.putNumber("Vision/PoseY", latestEstimate.getY());
+        // SmartDashboard.putNumber("Vision/PoseRotation", latestEstimate.getRotation().getDegrees());
+        // SmartDashboard.putBoolean("Vision/FeedingEnabled", feedingEnabled);
+        // SmartDashboard.putString("Vision/BestCamera", bestCamera != null ? bestCamera.name : "none");
     }
 
     /**

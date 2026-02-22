@@ -236,9 +236,9 @@ public class Turret extends SubsystemBase {
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("Turret/Position Degrees", getPositionDegrees());
-        SmartDashboard.putNumber("Turret/Target Degrees", targetPositionDegrees);
-        SmartDashboard.putNumber("Turret/CANCoder Degrees", getCANCoderPositionDegrees());
-        SmartDashboard.putBoolean("Turret/At Position", isAtPosition());
+        // SmartDashboard.putNumber("Turret/Position Degrees", getPositionDegrees());
+        // SmartDashboard.putNumber("Turret/Target Degrees", targetPositionDegrees);
+        // SmartDashboard.putNumber("Turret/CANCoder Degrees", getCANCoderPositionDegrees());
+        // SmartDashboard.putBoolean("Turret/At Position", isAtPosition());
     }
 }

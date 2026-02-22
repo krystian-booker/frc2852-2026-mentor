@@ -170,11 +170,11 @@ public class IntakeActuator extends SubsystemBase {
 
     public Command agitate() {
         return Commands.repeatingSequence(
-            run(() -> setPosition(IntakeActuatorConstants.AGITATE_MAX_DEGREES))
-                .until(this::atPosition),
-            run(() -> setPosition(IntakeActuatorConstants.AGITATE_MIN_DEGREES))
-                .until(this::atPosition)
-        ).withName("IntakeActuator.agitate");
+                run(() -> setPosition(IntakeActuatorConstants.AGITATE_MAX_DEGREES))
+                        .until(this::atPosition),
+                run(() -> setPosition(IntakeActuatorConstants.AGITATE_MIN_DEGREES))
+                        .until(this::atPosition))
+                .withName("IntakeActuator.agitate");
     }
 
     // SysId
@@ -193,12 +193,12 @@ public class IntakeActuator extends SubsystemBase {
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("IntakeActuator/Position Degrees", getCurrentPositionDegrees());
-        SmartDashboard.putNumber("IntakeActuator/Target Degrees", targetPositionDegrees);
-        SmartDashboard.putNumber("IntakeActuator/Velocity", encoder.getVelocity());
-        SmartDashboard.putBoolean("IntakeActuator/At Position", atPosition());
-        SmartDashboard.putNumber("IntakeActuator/Applied Output", motor.getAppliedOutput());
-        SmartDashboard.putNumber("IntakeActuator/Output Current", getOutputCurrent());
-        SmartDashboard.putBoolean("IntakeActuator/Is Extended", isExtended());
+        // SmartDashboard.putNumber("IntakeActuator/Position Degrees", getCurrentPositionDegrees());
+        // SmartDashboard.putNumber("IntakeActuator/Target Degrees", targetPositionDegrees);
+        // SmartDashboard.putNumber("IntakeActuator/Velocity", encoder.getVelocity());
+        // SmartDashboard.putBoolean("IntakeActuator/At Position", atPosition());
+        // SmartDashboard.putNumber("IntakeActuator/Applied Output", motor.getAppliedOutput());
+        // SmartDashboard.putNumber("IntakeActuator/Output Current", getOutputCurrent());
+        // SmartDashboard.putBoolean("IntakeActuator/Is Extended", isExtended());
     }
 }

@@ -80,7 +80,7 @@ public class Intake extends SubsystemBase {
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("Intake/Velocity RPS", getVelocityRPS());
-        SmartDashboard.putNumber("Intake/Applied Output", motor.getAppliedOutput());
+        // SmartDashboard.putNumber("Intake/Velocity RPS", getVelocityRPS());
+        // SmartDashboard.putNumber("Intake/Applied Output", motor.getAppliedOutput());
     }
 }

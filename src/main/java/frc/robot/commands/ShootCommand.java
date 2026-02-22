@@ -89,12 +89,12 @@ public class ShootCommand extends Command {
         }
 
         // Telemetry
-        SmartDashboard.putBoolean("Shoot/Feeding", isFeeding);
-        SmartDashboard.putBoolean("Shoot/FlywheelReady", flywheelReady);
-        SmartDashboard.putBoolean("Shoot/HoodReady", hoodReady);
-        SmartDashboard.putBoolean("Shoot/TurretReady", turretReady);
-        SmartDashboard.putNumber("Shoot/TargetRPM", targetRPM);
-        SmartDashboard.putNumber("Shoot/TargetHoodAngle", targetHoodAngle);
+        // SmartDashboard.putBoolean("Shoot/Feeding", isFeeding);
+        // SmartDashboard.putBoolean("Shoot/FlywheelReady", flywheelReady);
+        // SmartDashboard.putBoolean("Shoot/HoodReady", hoodReady);
+        // SmartDashboard.putBoolean("Shoot/TurretReady", turretReady);
+        // SmartDashboard.putNumber("Shoot/TargetRPM", targetRPM);
+        // SmartDashboard.putNumber("Shoot/TargetHoodAngle", targetHoodAngle);
     }
 
     @Override

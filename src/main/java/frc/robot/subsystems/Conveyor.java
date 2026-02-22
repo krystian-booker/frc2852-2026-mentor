@@ -127,9 +127,9 @@ public class Conveyor extends SubsystemBase {
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("Conveyor/Floor Velocity RPS", getFloorVelocityRPS());
-        SmartDashboard.putNumber("Conveyor/Takeup Velocity RPS", getTakeupVelocityRPS());
-        SmartDashboard.putNumber("Conveyor/Floor Output", floorMotor.getAppliedOutput());
-        SmartDashboard.putNumber("Conveyor/Takeup Output", takeupMotor.getAppliedOutput());
+        // SmartDashboard.putNumber("Conveyor/Floor Velocity RPS", getFloorVelocityRPS());
+        // SmartDashboard.putNumber("Conveyor/Takeup Velocity RPS", getTakeupVelocityRPS());
+        // SmartDashboard.putNumber("Conveyor/Floor Output", floorMotor.getAppliedOutput());
+        // SmartDashboard.putNumber("Conveyor/Takeup Output", takeupMotor.getAppliedOutput());
     }
 }
