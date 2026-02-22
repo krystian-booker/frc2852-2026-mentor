@@ -15,6 +15,7 @@ import edu.wpi.first.math.numbers.N3;
 import java.util.List;
 
 public final class Constants {
+
   public static final double SIGNAL_UPDATE_FREQUENCY_HZ = 250.0; // Status signal update rate
 
   public static class OperatorConstants {
@@ -26,16 +27,11 @@ public final class Constants {
 
     // Intake
     public static final int INTAKE_ACTUATOR_MOTOR = 13;
-    public static final int INTAKE_MOTOR = 14;
-
-    // Climber
-    public static final int CLIMBER_LEFT_MOTOR = 15;
-    public static final int CLIMBER_RIGHT_MOTOR = 16;
+    public static final int INTAKE_ROLLER_MOTOR = 14;
 
     // Conveyor
     public static final int CONVEYOR_FLOOR_MOTOR = 17;
-    public static final int CONVEYOR_LEFT_INDEX_MOTOR = 18;
-    public static final int CONVEYOR_RIGHT_INDEX_MOTOR = 19;
+    public static final int CONVEYOR_TAKE_UP_MOTOR = 18;
 
     // Shooter
     public static final int FLYWHEEL_LEADER_MOTOR = 20;
@@ -44,7 +40,6 @@ public final class Constants {
     public static final int TURRET_CANCODER = 23;
     public static final int HOOD_MOTOR = 24;
     public static final int HOOD_CANCODER = 25;
-    public static final int TAKEUP_MOTOR = 26;
   }
 
   public static class FlywheelConstants {
@@ -161,10 +156,12 @@ public final class Constants {
     // Placeholder lookup tables (distance in meters -> value)
     // Format: { {distance1, value1}, {distance2, value2}, ... }
     // Hood angle lookup table (distance -> hood angle in degrees)
-    public static final double[][] HOOD_LOOKUP_TABLE = { { 1.5, 15.0 }, { 3.0, 25.0 }, { 5.0, 35.0 }, { 7.0, 40.0 }, { 10.0, 45.0 } };
+    public static final double[][] HOOD_LOOKUP_TABLE = { { 1.5, 15.0 }, { 3.0, 25.0 }, { 5.0, 35.0 }, { 7.0, 40.0 },
+        { 10.0, 45.0 } };
 
     // Flywheel RPM lookup table (distance -> RPM)
-    public static final double[][] FLYWHEEL_LOOKUP_TABLE = { { 1.5, 3000.0 }, { 3.0, 3500.0 }, { 5.0, 4000.0 }, { 7.0, 4500.0 }, { 10.0, 5000.0 } };
+    public static final double[][] FLYWHEEL_LOOKUP_TABLE = { { 1.5, 3000.0 }, { 3.0, 3500.0 }, { 5.0, 4000.0 },
+        { 7.0, 4500.0 }, { 10.0, 5000.0 } };
   }
 
   public static class IntakeActuatorConstants {
@@ -245,22 +242,22 @@ public final class Constants {
   /**
    * Constants for the turret calibration system.
    *
-   * <p><strong>Grid vs Bucket Spacing Design:</strong>
-   * The calibration system uses two different spacing granularities by design:
+   * <p>
+   * <strong>Grid vs Bucket Spacing Design:</strong> The calibration system uses two different spacing granularities by
+   * design:
    *
    * <ul>
-   *   <li><strong>UI Grid (0.5m cell size):</strong> Used by the webapp to display robot position
-   *       and track which cells have been calibrated. The larger spacing makes the grid visually
-   *       manageable and provides clear guidance for where to position the robot.</li>
-   *   <li><strong>Build-time Distance Buckets (0.25m):</strong> Used by GenerateLookupTables.java
-   *       when processing calibration data. The finer granularity allows multiple samples taken
-   *       within the same UI grid cell to be grouped into different distance buckets, providing
-   *       more precise interpolation data.</li>
+   * <li><strong>UI Grid (0.5m cell size):</strong> Used by the webapp to display robot position and track which cells
+   * have been calibrated. The larger spacing makes the grid visually manageable and provides clear guidance for where
+   * to position the robot.</li>
+   * <li><strong>Build-time Distance Buckets (0.25m):</strong> Used by GenerateLookupTables.java when processing
+   * calibration data. The finer granularity allows multiple samples taken within the same UI grid cell to be grouped
+   * into different distance buckets, providing more precise interpolation data.</li>
    * </ul>
    *
-   * <p>This is intentional: a single UI grid cell may contain multiple calibration points at
-   * slightly different distances, and the build-time processing preserves this detail for
-   * better interpolation accuracy.
+   * <p>
+   * This is intentional: a single UI grid cell may contain multiple calibration points at slightly different distances,
+   * and the build-time processing preserves this detail for better interpolation accuracy.
    */
   public static class CalibrationConstants {
     // Field dimensions
@@ -268,10 +265,8 @@ public final class Constants {
     public static final double FIELD_WIDTH_METERS = 8.21;
 
     /**
-     * Grid cell size for UI display (0.5m).
-     * This determines the visual grid shown in the webapp.
-     * Note: Build-time processing uses 0.25m distance buckets for finer granularity.
-     * See GenerateLookupTables.java for details.
+     * Grid cell size for UI display (0.5m). This determines the visual grid shown in the webapp. Note: Build-time
+     * processing uses 0.25m distance buckets for finer granularity. See GenerateLookupTables.java for details.
      */
     public static final double GRID_CELL_SIZE_METERS = 0.5;
     public static final double CALIBRATION_START_X = 1.0;
@@ -300,14 +295,16 @@ public final class Constants {
     }
 
     // Left camera
-    public static final CameraConfig LEFT_CAMERA = new CameraConfig("LEFT_CAMERA", new Transform3d(new Translation3d(0.3, 0.25, 0.5), // 30cm fwd, 25cm left, 50cm up
-        new Rotation3d(0, Math.toRadians(-15), Math.toRadians(30)) // Pitched down 15°, yawed left 30°
-    ));
+    public static final CameraConfig LEFT_CAMERA = new CameraConfig("LEFT_CAMERA",
+        new Transform3d(new Translation3d(0.3, 0.25, 0.5), // 30cm fwd, 25cm left, 50cm up
+            new Rotation3d(0, Math.toRadians(-15), Math.toRadians(30)) // Pitched down 15°, yawed left 30°
+        ));
 
     // Right camera
-    public static final CameraConfig RIGHT_CAMERA = new CameraConfig("RIGHT_CAMERA", new Transform3d(new Translation3d(0.3, -0.25, 0.5), // 30cm fwd, 25cm right, 50cm up
-        new Rotation3d(0, Math.toRadians(-15), Math.toRadians(-30)) // Pitched down 15°, yawed right 30°
-    ));
+    public static final CameraConfig RIGHT_CAMERA = new CameraConfig("RIGHT_CAMERA",
+        new Transform3d(new Translation3d(0.3, -0.25, 0.5), // 30cm fwd, 25cm right, 50cm up
+            new Rotation3d(0, Math.toRadians(-15), Math.toRadians(-30)) // Pitched down 15°, yawed right 30°
+        ));
 
     // All cameras
     public static final List<CameraConfig> CAMERAS = List.of(LEFT_CAMERA, RIGHT_CAMERA);
@@ -337,7 +334,8 @@ public final class Constants {
 
     // AprilTag target positions - add/modify based on your field positions
     public enum AprilTagTarget {
-      EXAMPLE_TAG_1(1, new Pose2d(2.0, 4.0, Rotation2d.fromDegrees(0))), EXAMPLE_TAG_2(2, new Pose2d(3.0, 5.0, Rotation2d.fromDegrees(90))),
+      EXAMPLE_TAG_1(1, new Pose2d(2.0, 4.0, Rotation2d.fromDegrees(0))),
+      EXAMPLE_TAG_2(2, new Pose2d(3.0, 5.0, Rotation2d.fromDegrees(90))),
       EXAMPLE_TAG_3(6, new Pose2d(4.0, 4.0, Rotation2d.fromDegrees(180)));
 
       private final int tagId;

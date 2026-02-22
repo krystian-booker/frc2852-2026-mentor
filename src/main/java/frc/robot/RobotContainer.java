@@ -118,7 +118,6 @@ public class RobotContainer {
   }
 
   private void configureBindings() {
-    driverController.leftBumper().toggleOnTrue(intakeActuator.extendWithSafety(intake));
   }
 
   private void configureSwerveBindings() {
@@ -199,11 +198,9 @@ public class RobotContainer {
   }
 
   /**
-   * Configure disabled mode bindings for QuestNav seeding.
-   * LEDs start RED and turn GREEN once QuestNav is seeded from a multi-tag vision
-   * pose.
-   * Seeding only happens while disabled, every 5 seconds.
-   * If the robot is moved after seeding, LEDs turn RED and re-seeding is allowed.
+   * Configure disabled mode bindings for QuestNav seeding. LEDs start RED and turn GREEN once QuestNav is seeded from a
+   * multi-tag vision pose. Seeding only happens while disabled, every 5 seconds. If the robot is moved after seeding,
+   * LEDs turn RED and re-seeding is allowed.
    */
   private void configureDisabledBindings() {
     Command seedingCommand = Commands.sequence(
@@ -241,15 +238,11 @@ public class RobotContainer {
   }
 
   /**
-   * Configure test mode bindings using RobotModeTriggers.
-   * These bindings are only active when the robot is in test mode.
+   * Configure test mode bindings using RobotModeTriggers. These bindings are only active when the robot is in test
+   * mode.
    *
-   * Button mapping:
-   * A - Quasistatic Forward
-   * B - Quasistatic Reverse
-   * X - Dynamic Forward
-   * Y - Dynamic Reverse
-   * Right Bumper - Toggle Turret Calibration Mode
+   * Button mapping: A - Quasistatic Forward B - Quasistatic Reverse X - Dynamic Forward Y - Dynamic Reverse Right
+   * Bumper - Toggle Turret Calibration Mode
    */
   private void configureTestBindings() {
     // Start CTRE SignalLogger when entering test mode

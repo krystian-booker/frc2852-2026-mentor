@@ -23,7 +23,7 @@ public class Intake extends SubsystemBase {
 
     public Intake() {
         // Initialize hardware
-        motor = new SparkFlex(CANIds.INTAKE_MOTOR, MotorType.kBrushless);
+        motor = new SparkFlex(CANIds.INTAKE_ROLLER_MOTOR, MotorType.kBrushless);
         encoder = motor.getEncoder();
 
         // Configure motor
