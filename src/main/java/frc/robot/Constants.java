@@ -185,6 +185,10 @@ public final class Constants {
     // Current Spike Safety Retraction
     public static final double CURRENT_SPIKE_THRESHOLD_AMPS = 35.0; // Threshold to trigger safety retraction
     public static final double EXTENDED_POSITION_THRESHOLD_DEGREES = 85.0; // Consider "extended" above this
+
+    // Agitate command positions
+    public static final double AGITATE_MIN_DEGREES = 60.0;
+    public static final double AGITATE_MAX_DEGREES = 90.0;
   }
 
   public static class IntakeConstants {

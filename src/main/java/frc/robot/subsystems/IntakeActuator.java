@@ -13,6 +13,7 @@ import com.revrobotics.spark.config.SparkFlexConfig;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
@@ -165,6 +166,15 @@ public class IntakeActuator extends SubsystemBase {
         return run(() -> setPosition(IntakeActuatorConstants.MAX_POSITION_DEGREES))
                 .until(this::atPosition)
                 .withName("IntakeActuator.extend");
+    }
+
+    public Command agitate() {
+        return Commands.repeatingSequence(
+            run(() -> setPosition(IntakeActuatorConstants.AGITATE_MAX_DEGREES))
+                .until(this::atPosition),
+            run(() -> setPosition(IntakeActuatorConstants.AGITATE_MIN_DEGREES))
+                .until(this::atPosition)
+        ).withName("IntakeActuator.agitate");
     }
 
     // SysId

@@ -118,6 +118,9 @@ public class RobotContainer {
   }
 
   private void configureBindings() {
+    // Auto-extend intake actuator at the start of autonomous and teleop
+    RobotModeTriggers.autonomous().onTrue(intakeActuator.extend());
+    RobotModeTriggers.teleop().onTrue(intakeActuator.extend());
   }
 
   private void configureSwerveBindings() {
