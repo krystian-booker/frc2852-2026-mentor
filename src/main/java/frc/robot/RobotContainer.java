@@ -54,6 +54,8 @@ public class RobotContainer {
   // Controllers
   private final CommandXboxController driverController = new CommandXboxController(
       OperatorConstants.DRIVER_CONTROLLER_PORT);
+  private final CommandXboxController operatorController = new CommandXboxController(
+      OperatorConstants.OPERATOR_CONTROLLER_PORT);
 
   // Swerve constants
   private double MaxSpeed = 1.0 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
@@ -96,8 +98,26 @@ public class RobotContainer {
     // Initialize turret aiming calculator with pose supplier from drivetrain
     turretAimingCalculator = new TurretAimingCalculator(() -> drivetrain.getState().Pose);
 
-    // Set turret default command - continuously track the target
-    turret.setDefaultCommand(turret.aimAtTargetCommand(turretAimingCalculator));
+    // Set turret default command - auto-aim with operator stick override
+    turret.setDefaultCommand(turret.run(() -> {
+      double stickX = operatorController.getLeftX();
+      double stickY = operatorController.getLeftY();
+      double magnitude = Math.hypot(stickX, stickY);
+
+      if (magnitude > 0.15) {
+        // Manual field-oriented override
+        double fieldAngleRad = Math.atan2(-stickX, -stickY);
+        double robotHeadingRad = drivetrain.getState().Pose.getRotation().getRadians();
+        double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) % 360.0;
+        if (turretAngleDeg < 0)
+          turretAngleDeg += 360.0;
+        turret.setPosition(turretAngleDeg);
+      } else {
+        // Auto-aim at target
+        var result = turretAimingCalculator.calculate();
+        turret.setPosition(result.turretAngleDegrees());
+      }
+    }).withName("TurretAimWithOverride"));
 
     // Set intake default command - always running
     intake.setDefaultCommand(intake.run(intake::runIntake));
