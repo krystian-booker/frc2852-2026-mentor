@@ -15,6 +15,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.CalibrationConstants;
 import frc.robot.Constants.FlywheelConstants;
 import frc.robot.Constants.HoodConstants;
+import frc.robot.subsystems.Conveyor;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
 import frc.robot.util.TurretAimingCalculator;
@@ -28,6 +29,7 @@ public class TurretCalibrationCommand extends Command {
 
     private final Hood hood;
     private final Flywheel flywheel;
+    private final Conveyor conveyor;
     private final Supplier<Pose2d> poseSupplier;
     private final TurretAimingCalculator aimingCalculator;
 
@@ -59,13 +61,15 @@ public class TurretCalibrationCommand extends Command {
      *
      * @param hood              The hood subsystem
      * @param flywheel          The flywheel subsystem
+     * @param conveyor          The conveyor subsystem
      * @param poseSupplier      Supplier for the robot's current pose
      * @param aimingCalculator  The turret aiming calculator for distance calculation
      */
-    public TurretCalibrationCommand(Hood hood, Flywheel flywheel,
+    public TurretCalibrationCommand(Hood hood, Flywheel flywheel, Conveyor conveyor,
             Supplier<Pose2d> poseSupplier, TurretAimingCalculator aimingCalculator) {
         this.hood = hood;
         this.flywheel = flywheel;
+        this.conveyor = conveyor;
         this.poseSupplier = poseSupplier;
         this.aimingCalculator = aimingCalculator;
 
@@ -108,7 +112,7 @@ public class TurretCalibrationCommand extends Command {
         table.getIntegerTopic("Grid/Rows").publish().set(CalibrationConstants.GRID_ROWS);
         table.getIntegerTopic("Grid/Cols").publish().set(CalibrationConstants.GRID_COLS);
 
-        addRequirements(hood, flywheel);
+        addRequirements(hood, flywheel, conveyor);
     }
 
     @Override
@@ -147,6 +151,7 @@ public class TurretCalibrationCommand extends Command {
         double inputFlywheelRPM = inputFlywheelRPMSub.get();
         hood.setPosition(inputHoodAngle);
         flywheel.setVelocity(inputFlywheelRPM);
+        conveyor.runFeed();
 
         // Publish robot state to webapp
         positionXPub.set(robotX);
@@ -170,6 +175,7 @@ public class TurretCalibrationCommand extends Command {
         enabledPub.set(false);
         flywheel.setVelocity(0);
         hood.setNeutral();
+        conveyor.stop();
 
         if (interrupted) {
             statusPub.set("Calibration Interrupted");

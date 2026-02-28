@@ -287,7 +287,7 @@ public class RobotContainer {
     // Right bumper toggles calibration mode - reads NetworkTables inputs
     // applies to hood/flywheel in real-time
     TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
-        hood, flywheel, () -> drivetrain.getState().Pose, turretAimingCalculator);
+        hood, flywheel, conveyor, () -> drivetrain.getState().Pose, turretAimingCalculator);
 
     // Only allow toggling calibration mode while in test mode
     RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
