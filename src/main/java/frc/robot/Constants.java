@@ -122,8 +122,8 @@ public final class Constants {
     public static final double MOTION_MAGIC_JERK = 20.0; // Rotations per second^3
 
     // Current Limits
-    public static final double SUPPLY_CURRENT_LIMIT = 40.0; // Amps - main limit
-    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 30.0; // Amps - reduced limit after time
+    public static final double SUPPLY_CURRENT_LIMIT = 80.0; // Amps - main limit
+    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 60.0; // Amps - reduced limit after time
     public static final double SUPPLY_CURRENT_LOWER_TIME = 1.0; // Seconds - time before reducing
     public static final double STATOR_CURRENT_LIMIT = 80.0; // Amps
 

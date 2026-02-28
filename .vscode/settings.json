@@ -1,4 +1,9 @@
 {
+  "editor.formatOnSave": true,
+  "[java]": {
+    "editor.defaultFormatter": "redhat.java"
+  },
+  "java.format.settings.url": ".vscode/java-formatter.xml",
   "java.configuration.updateBuildConfiguration": "automatic",
   "java.server.launchMode": "Standard",
   "files.exclude": {
@@ -59,7 +64,5 @@
     "edu.wpi.first.math.**.proto.*",
     "edu.wpi.first.math.**.struct.*",
   ],
-  "java.dependency.enableDependencyCheckup": false,
-  "java.format.settings.url": ".vscode/java-formatter.xml",
-  "java.format.settings.profile": "Custom"
+  "java.dependency.enableDependencyCheckup": false
 }

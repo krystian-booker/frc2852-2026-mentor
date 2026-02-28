@@ -74,11 +74,11 @@ public class RobotContainer {
   public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
   // Vision
-  private final Vision vision;
-  private final QuestNavSubsystem questNav;
+  private final Vision vision = null;
+  private final QuestNavSubsystem questNav = null;
 
   // Turret aiming calculator
-  private final TurretAimingCalculator turretAimingCalculator;
+  private final TurretAimingCalculator turretAimingCalculator = null;
 
   // QuestNav seeding state
   private boolean isQuestNavSeeded = false;
@@ -92,35 +92,35 @@ public class RobotContainer {
 
   public RobotContainer() {
     // Initialize vision subsystems (after drivetrain)
-    vision = new Vision(drivetrain::addVisionMeasurement);
-    questNav = new QuestNavSubsystem(drivetrain, vision);
+    // vision = new Vision(drivetrain::addVisionMeasurement);
+    // questNav = new QuestNavSubsystem(drivetrain, vision);
 
     // Initialize turret aiming calculator with pose supplier from drivetrain
-    turretAimingCalculator = new TurretAimingCalculator(() -> drivetrain.getState().Pose);
+    // turretAimingCalculator = new TurretAimingCalculator(() -> drivetrain.getState().Pose);
 
     // Set turret default command - auto-aim with operator stick override
-    turret.setDefaultCommand(turret.run(() -> {
-      double stickX = operatorController.getLeftX();
-      double stickY = operatorController.getLeftY();
-      double magnitude = Math.hypot(stickX, stickY);
+    // turret.setDefaultCommand(turret.run(() -> {
+    // double stickX = operatorController.getLeftX();
+    // double stickY = operatorController.getLeftY();
+    // double magnitude = Math.hypot(stickX, stickY);
 
-      if (magnitude > 0.15) {
-        // Manual field-oriented override
-        double fieldAngleRad = Math.atan2(-stickX, -stickY);
-        double robotHeadingRad = drivetrain.getState().Pose.getRotation().getRadians();
-        double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) % 360.0;
-        if (turretAngleDeg < 0)
-          turretAngleDeg += 360.0;
-        turret.setPosition(turretAngleDeg);
-      } else {
-        // Auto-aim at target
-        var result = turretAimingCalculator.calculate();
-        turret.setPosition(result.turretAngleDegrees());
-      }
-    }).withName("TurretAimWithOverride"));
+    // if (magnitude > 0.15) {
+    // // Manual field-oriented override
+    // double fieldAngleRad = Math.atan2(-stickX, -stickY);
+    // double robotHeadingRad = drivetrain.getState().Pose.getRotation().getRadians();
+    // double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) % 360.0;
+    // if (turretAngleDeg < 0)
+    // turretAngleDeg += 360.0;
+    // turret.setPosition(turretAngleDeg);
+    // } else {
+    // // Auto-aim at target
+    // var result = turretAimingCalculator.calculate();
+    // turret.setPosition(result.turretAngleDegrees());
+    // }
+    // }).withName("TurretAimWithOverride"));
 
     // Set intake default command - always running
-    intake.setDefaultCommand(intake.run(intake::runIntake));
+    // intake.setDefaultCommand(intake.run(intake::runIntake));
 
     // Warmup PathPlanner to avoid Java pauses
     CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand());
@@ -129,14 +129,14 @@ public class RobotContainer {
     SmartDashboard.putData("Auto Mode", autoChooser);
 
     // Configure normal bindings (always available)
-    configureBindings();
+    // configureBindings();
     configureSwerveBindings();
 
     // Configure test mode bindings (activated when entering test mode)
     configureTestBindings();
 
     // Configure disabled mode QuestNav seeding
-    configureDisabledBindings();
+    // configureDisabledBindings();
 
     // Telemetry setup
     drivetrain.registerTelemetry(logger::telemeterize);
@@ -177,59 +177,59 @@ public class RobotContainer {
 
     // A BUTTON - Brake Mode
     // Locks all 4 swerve modules into an X-pattern to prevent robot movement
-    driverController.a().whileTrue(drivetrain.applyRequest(() -> brake));
+    // driverController.a().whileTrue(drivetrain.applyRequest(() -> brake));
 
     // B BUTTON - Point Wheels
     // Points all wheels in the direction of the left stick without driving
     // Useful for aligning wheels before moving in a specific direction
-    driverController.b().whileTrue(drivetrain
-        .applyRequest(() -> point
-            .withModuleDirection(new Rotation2d(-driverController.getLeftY(), -driverController.getLeftX()))));
+    // driverController.b().whileTrue(drivetrain
+    // .applyRequest(() -> point
+    // .withModuleDirection(new Rotation2d(-driverController.getLeftY(), -driverController.getLeftX()))));
 
     // D-PAD UP - Robot-Centric Forward
     // Drives straight forward at 0.5 m/s relative to robot's current heading
-    driverController.povUp()
-        .whileTrue(drivetrain.applyRequest(() -> forwardStraight.withVelocityX(0.5).withVelocityY(0)));
+    // driverController.povUp()
+    // .whileTrue(drivetrain.applyRequest(() -> forwardStraight.withVelocityX(0.5).withVelocityY(0)));
 
     // D-PAD DOWN - Robot-Centric Backward
     // Drives straight backward at 0.5 m/s relative to robot's current heading
-    driverController.povDown()
-        .whileTrue(drivetrain.applyRequest(() -> forwardStraight.withVelocityX(-0.5).withVelocityY(0)));
+    // driverController.povDown()
+    // .whileTrue(drivetrain.applyRequest(() -> forwardStraight.withVelocityX(-0.5).withVelocityY(0)));
 
     // LEFT BUMPER - Reset Field-Centric Heading
     // Resets the gyro's "forward" direction to the robot's current facing direction
     // Use this when the gyro drifts or after manually repositioning the robot
-    driverController.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
+    // driverController.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
 
     // BACK BUTTON - Enter Reseed Mode
     // Enters manual reseed mode and sets LEDs to RED
-    driverController.back().onTrue(Commands.runOnce(() -> {
-      reseedModeActive = true;
-      led.setPattern(LED.Pattern.RED);
-    }));
+    // driverController.back().onTrue(Commands.runOnce(() -> {
+    // reseedModeActive = true;
+    // led.setPattern(LED.Pattern.RED);
+    // }));
 
     // START BUTTON - Execute Reseed (if conditions met)
     // Only seeds if reseed mode is active AND 2+ tags are visible
-    driverController.start().onTrue(Commands.either(
-        // If reseed mode active and 2+ tags visible: seed and double-flash
-        Commands.sequence(
-            Commands.runOnce(() -> {
-              questNav.seedPoseFromVision();
-              reseedModeActive = false;
-            }),
-            led.doubleFlashAndOffCommand(LED.Pattern.GREEN)),
-        // Otherwise do nothing
-        Commands.none(),
-        () -> reseedModeActive && vision.getVisibleTagCount() >= 2));
+    // driverController.start().onTrue(Commands.either(
+    // // If reseed mode active and 2+ tags visible: seed and double-flash
+    // Commands.sequence(
+    // Commands.runOnce(() -> {
+    // questNav.seedPoseFromVision();
+    // reseedModeActive = false;
+    // }),
+    // led.doubleFlashAndOffCommand(LED.Pattern.GREEN)),
+    // // Otherwise do nothing
+    // Commands.none(),
+    // () -> reseedModeActive && vision.getVisibleTagCount() >= 2));
 
     // Tag count monitoring for reseed mode
     // When reseed mode is active and 2+ tags become visible, set LEDs GREEN
-    new Trigger(() -> reseedModeActive && vision.getVisibleTagCount() >= 2)
-        .onTrue(led.setPatternCommand(LED.Pattern.GREEN));
+    // new Trigger(() -> reseedModeActive && vision.getVisibleTagCount() >= 2)
+    // .onTrue(led.setPatternCommand(LED.Pattern.GREEN));
 
     // When reseed mode is active and tags drop below 2, set LEDs back to RED
-    new Trigger(() -> reseedModeActive && vision.getVisibleTagCount() < 2)
-        .onTrue(led.setPatternCommand(LED.Pattern.RED));
+    // new Trigger(() -> reseedModeActive && vision.getVisibleTagCount() < 2)
+    // .onTrue(led.setPatternCommand(LED.Pattern.RED));
   }
 
   /**
@@ -327,6 +327,60 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
     // RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.sysIdDynamic(SysIdRoutine.Direction.kForward));
     // RobotModeTriggers.test().and(driverController.y()).whileTrue(intakeActuator.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+
+    // ===== MANUAL SUBSYSTEM TEST BINDINGS =====
+    // --- Conveyor ---
+    // A: Feed | B: Reverse | X: Floor only | Y: Takeup only | LB: Stop all
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(conveyor.run(conveyor::runFeed));
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(conveyor.run(conveyor::runReverse));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(conveyor.run(conveyor::runFloor));
+    // RobotModeTriggers.test().and(driverController.y()).whileTrue(conveyor.run(conveyor::runTakeup));
+    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(conveyor::stop, conveyor));
+
+    // --- Flywheel ---
+    // A: 2000 RPM | B: 3500 RPM | X: 5000 RPM | Y: Stop
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(flywheel.run(() -> flywheel.setVelocity(2000)));
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(flywheel.run(() -> flywheel.setVelocity(3500)));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.run(() -> flywheel.setVelocity(5000)));
+    // RobotModeTriggers.test().and(driverController.y()).onTrue(Commands.runOnce(() -> flywheel.setVelocity(0),
+    // flywheel));
+
+    // --- Turret ---
+    // A: 0 deg | B: 90 deg | X: 180 deg | Y: 270 deg | LB: Stop
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(turret.run(() -> turret.setPosition(0)));
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(turret.run(() -> turret.setPosition(90)));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(turret.run(() -> turret.setPosition(180)));
+    // RobotModeTriggers.test().and(driverController.y()).whileTrue(turret.run(() -> turret.setPosition(270)));
+    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
+
+    // --- Hood ---
+    // A: 0 deg | B: 15 deg | X: 30 deg | Y: 45 deg | LB: Neutral
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(hood.run(() -> hood.setPosition(0)));
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(hood.run(() -> hood.setPosition(15)));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(hood.run(() -> hood.setPosition(30)));
+    // RobotModeTriggers.test().and(driverController.y()).whileTrue(hood.run(() -> hood.setPosition(45)));
+    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(hood::setNeutral, hood));
+
+    // --- Intake ---
+    // A: Run intake | B: Run outtake | X: Stop
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intake.run(intake::runIntake));
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intake.run(intake::runOuttake));
+    // RobotModeTriggers.test().and(driverController.x()).onTrue(Commands.runOnce(intake::stop, intake));
+
+    // --- Intake Actuator ---
+    // A: Extend | B: Retract | X: Agitate | Y: Stop
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
+    // RobotModeTriggers.test().and(driverController.y()).onTrue(Commands.runOnce(intakeActuator::stop,
+    // intakeActuator));
+
+    // --- Vision ---
+    // A: Toggle vision feeding on | B: Toggle vision feeding off
+    // RobotModeTriggers.test().and(driverController.a()).onTrue(Commands.runOnce(() ->
+    // vision.setFeedingEnabled(true)));
+    // RobotModeTriggers.test().and(driverController.b()).onTrue(Commands.runOnce(() ->
+    // vision.setFeedingEnabled(false)));
   }
 
   public Command getAutonomousCommand() {
