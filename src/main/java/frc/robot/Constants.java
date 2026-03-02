@@ -166,30 +166,34 @@ public final class Constants {
   }
 
   public static class IntakeActuatorConstants {
-    // Mechanical
-    public static final double GEAR_RATIO = 1.0; // Motor rotations per mechanism rotation - UPDATE THIS
-    public static final double MIN_POSITION_DEGREES = 0.0;
-    public static final double MAX_POSITION_DEGREES = 90.0; // UPDATE: Set actual max position
+    // String potentiometer (10-turn 3590S-2-103L on RoboRIO analog input)
+    public static final int POTENTIOMETER_CHANNEL = 0; // RoboRIO analog input channel
+    public static final double POT_FULL_RANGE = 25.0; // Distance units over full pot voltage range - CALIBRATE ON ROBOT
+    public static final double POT_OFFSET = 0.0; // Distance reading at 0V - CALIBRATE ON ROBOT
 
-    // PID Gains
+    // Position limits (distance units matching pot calibration)
+    public static final double MIN_POSITION_DISTANCE = 0.0;
+    public static final double MAX_POSITION_DISTANCE = 25.0;
+
+    // PID Gains (runs on RoboRIO, output is duty cycle -1 to 1)
     public static final double P = 0.1; // Proportional
     public static final double I = 0.0; // Integral
     public static final double D = 0.0; // Derivative
 
     // Current Limits
-    public static final int SMART_CURRENT_LIMIT = 40; // Amps
+    public static final int SMART_CURRENT_LIMIT = 60; // Amps
     public static final int SECONDARY_CURRENT_LIMIT = 60; // Amps
 
     // Position Control
-    public static final double POSITION_TOLERANCE_DEGREES = 2.0; // Degrees tolerance for atPosition()
+    public static final double POSITION_TOLERANCE_DISTANCE = 2.0; // Distance tolerance for atPosition()
 
     // Current Spike Safety Retraction
     public static final double CURRENT_SPIKE_THRESHOLD_AMPS = 35.0; // Threshold to trigger safety retraction
-    public static final double EXTENDED_POSITION_THRESHOLD_DEGREES = 85.0; // Consider "extended" above this
+    public static final double EXTENDED_POSITION_THRESHOLD_DISTANCE = 10.0; // Consider "extended" above this
 
-    // Agitate command positions
-    public static final double AGITATE_MIN_DEGREES = 60.0;
-    public static final double AGITATE_MAX_DEGREES = 90.0;
+    // Agitate command positions (distance units)
+    public static final double AGITATE_MIN_DISTANCE = 0.0;
+    public static final double AGITATE_MAX_DISTANCE = 5.0;
   }
 
   public static class IntakeConstants {

@@ -2,15 +2,15 @@ package frc.robot.subsystems;
 
 import com.revrobotics.PersistMode;
 import com.revrobotics.REVLibError;
-import com.revrobotics.RelativeEncoder;
 import com.revrobotics.ResetMode;
-import com.revrobotics.spark.SparkBase.ControlType;
-import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkFlexConfig;
 
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.wpilibj.AnalogPotentiometer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -26,28 +26,40 @@ public class IntakeActuator extends SubsystemBase {
 
     // Hardware
     private final SparkFlex motor;
-    private final SparkClosedLoopController closedLoopController;
-    private final RelativeEncoder encoder;
+    private final AnalogPotentiometer potentiometer;
+
+    // PID controller (runs on RoboRIO since feedback comes from external potentiometer)
+    private final PIDController pidController;
 
     // SysId routine for characterization
     private final SysIdRoutine sysIdRoutine;
 
     // State
-    private double targetPositionDegrees = 0.0;
+    private double targetPositionDistance = 0.0;
+    private boolean pidEnabled = false;
 
     public IntakeActuator() {
         // Initialize hardware
         motor = new SparkFlex(CANIds.INTAKE_ACTUATOR_MOTOR, MotorType.kBrushless);
-        closedLoopController = motor.getClosedLoopController();
-        encoder = motor.getEncoder();
+
+        // Initialize string potentiometer on RoboRIO analog input
+        // AnalogPotentiometer maps normalized voltage (0-1) to: (fullRange * voltage/vRef) + offset
+        potentiometer = new AnalogPotentiometer(
+                IntakeActuatorConstants.POTENTIOMETER_CHANNEL,
+                IntakeActuatorConstants.POT_FULL_RANGE,
+                IntakeActuatorConstants.POT_OFFSET);
+
+        // Initialize PID controller (runs on RoboRIO each periodic cycle)
+        pidController = new PIDController(
+                IntakeActuatorConstants.P,
+                IntakeActuatorConstants.I,
+                IntakeActuatorConstants.D);
+        pidController.setTolerance(IntakeActuatorConstants.POSITION_TOLERANCE_DISTANCE);
 
         // Configure motor
         configureMotor();
 
-        // Zero encoder on startup
-        zeroEncoder();
-
-        // Configure SysId routine for characterization
+        // Configure SysId routine for characterization (linear units for linear rail)
         sysIdRoutine = new SysIdRoutine(
                 new SysIdRoutine.Config(
                         null, // Use default ramp rate (1 V/s)
@@ -57,10 +69,10 @@ public class IntakeActuator extends SubsystemBase {
                 new SysIdRoutine.Mechanism(
                         (voltage) -> motor.setVoltage(voltage.in(Volts)),
                         log -> {
-                            log.motor("intake-acuator-state")
+                            log.motor("intake-actuator")
                                     .voltage(Volts.of(motor.getAppliedOutput() * motor.getBusVoltage()))
-                                    .angularPosition(Rotations.of(encoder.getPosition()))
-                                    .angularVelocity(RotationsPerSecond.of(encoder.getVelocity()));
+                                    .linearPosition(Meters.of(getCurrentPosition()))
+                                    .linearVelocity(MetersPerSecond.of(0));
                         },
                         this));
     }
@@ -69,28 +81,12 @@ public class IntakeActuator extends SubsystemBase {
         SparkFlexConfig config = new SparkFlexConfig();
 
         // Motor output
-        config.idleMode(IdleMode.kBrake);
-        config.inverted(false);
+        config.idleMode(IdleMode.kCoast);
+        config.inverted(true);
 
         // Current limits
         config.smartCurrentLimit(IntakeActuatorConstants.SMART_CURRENT_LIMIT);
         config.secondaryCurrentLimit(IntakeActuatorConstants.SECONDARY_CURRENT_LIMIT);
-
-        // Encoder configuration - convert to mechanism rotations
-        config.encoder.positionConversionFactor(1.0 / IntakeActuatorConstants.GEAR_RATIO);
-        config.encoder.velocityConversionFactor(1.0 / IntakeActuatorConstants.GEAR_RATIO / 60.0);
-
-        // Closed-loop PID configuration
-        config.closedLoop.p(IntakeActuatorConstants.P);
-        config.closedLoop.i(IntakeActuatorConstants.I);
-        config.closedLoop.d(IntakeActuatorConstants.D);
-        config.closedLoop.outputRange(-1.0, 1.0);
-
-        // Soft limits (in mechanism rotations)
-        config.softLimit.forwardSoftLimitEnabled(true);
-        config.softLimit.forwardSoftLimit((float) (IntakeActuatorConstants.MAX_POSITION_DEGREES / 360.0));
-        config.softLimit.reverseSoftLimitEnabled(true);
-        config.softLimit.reverseSoftLimit((float) (IntakeActuatorConstants.MIN_POSITION_DEGREES / 360.0));
 
         // Apply configuration with retry
         REVLibError error = REVLibError.kError;
@@ -105,37 +101,22 @@ public class IntakeActuator extends SubsystemBase {
         }
     }
 
-    private void zeroEncoder() {
-        REVLibError error = REVLibError.kError;
-        for (int i = 0; i < 5; i++) {
-            error = encoder.setPosition(0.0);
-            if (error == REVLibError.kOk) {
-                break;
-            }
-        }
-        if (error != REVLibError.kOk) {
-            System.err.println("Failed to zero IntakeActuator encoder: " + error);
-        }
-    }
-
-    public void setPosition(double degrees) {
-        targetPositionDegrees = clamp(degrees, IntakeActuatorConstants.MIN_POSITION_DEGREES,
-                IntakeActuatorConstants.MAX_POSITION_DEGREES);
-        double rotations = targetPositionDegrees / 360.0;
-        closedLoopController.setSetpoint(rotations, ControlType.kPosition);
+    public void setPosition(double distance) {
+        targetPositionDistance = distance;
+        pidController.setSetpoint(targetPositionDistance);
+        pidEnabled = true;
     }
 
     public boolean atPosition() {
-        return Math.abs(getCurrentPositionDegrees()
-                - targetPositionDegrees) < IntakeActuatorConstants.POSITION_TOLERANCE_DEGREES;
+        return pidController.atSetpoint();
     }
 
-    public double getCurrentPositionDegrees() {
-        return encoder.getPosition() * 360.0;
+    public double getCurrentPosition() {
+        return potentiometer.get();
     }
 
-    public double getTargetPositionDegrees() {
-        return targetPositionDegrees;
+    public double getTargetPositionDistance() {
+        return targetPositionDistance;
     }
 
     public double getOutputCurrent() {
@@ -143,36 +124,38 @@ public class IntakeActuator extends SubsystemBase {
     }
 
     public boolean isExtended() {
-        return getCurrentPositionDegrees() >= IntakeActuatorConstants.EXTENDED_POSITION_THRESHOLD_DEGREES;
+        return getCurrentPosition() >= IntakeActuatorConstants.EXTENDED_POSITION_THRESHOLD_DISTANCE;
     }
 
     public boolean isRetracted() {
-        return getCurrentPositionDegrees() <= IntakeActuatorConstants.POSITION_TOLERANCE_DEGREES;
+        return getCurrentPosition() <= IntakeActuatorConstants.POSITION_TOLERANCE_DISTANCE;
     }
 
     public void stop() {
         motor.setVoltage(0);
+        pidEnabled = false;
+        pidController.reset();
     }
 
     // Commands
 
     public Command retract() {
-        return run(() -> setPosition(IntakeActuatorConstants.MIN_POSITION_DEGREES))
+        return run(() -> setPosition(IntakeActuatorConstants.MIN_POSITION_DISTANCE))
                 .until(this::atPosition)
                 .withName("IntakeActuator.retract");
     }
 
     public Command extend() {
-        return run(() -> setPosition(IntakeActuatorConstants.MAX_POSITION_DEGREES))
+        return run(() -> setPosition(IntakeActuatorConstants.MAX_POSITION_DISTANCE))
                 .until(this::atPosition)
                 .withName("IntakeActuator.extend");
     }
 
     public Command agitate() {
         return Commands.repeatingSequence(
-                run(() -> setPosition(IntakeActuatorConstants.AGITATE_MAX_DEGREES))
+                run(() -> setPosition(IntakeActuatorConstants.AGITATE_MAX_DISTANCE))
                         .until(this::atPosition),
-                run(() -> setPosition(IntakeActuatorConstants.AGITATE_MIN_DEGREES))
+                run(() -> setPosition(IntakeActuatorConstants.AGITATE_MIN_DISTANCE))
                         .until(this::atPosition))
                 .withName("IntakeActuator.agitate");
     }
@@ -186,19 +169,21 @@ public class IntakeActuator extends SubsystemBase {
         return sysIdRoutine.dynamic(direction);
     }
 
-    // Helpers
-    private double clamp(double value, double min, double max) {
-        return Math.max(min, Math.min(max, value));
-    }
-
     @Override
     public void periodic() {
-        // SmartDashboard.putNumber("IntakeActuator/Position Degrees", getCurrentPositionDegrees());
-        // SmartDashboard.putNumber("IntakeActuator/Target Degrees", targetPositionDegrees);
-        // SmartDashboard.putNumber("IntakeActuator/Velocity", encoder.getVelocity());
-        // SmartDashboard.putBoolean("IntakeActuator/At Position", atPosition());
-        // SmartDashboard.putNumber("IntakeActuator/Applied Output", motor.getAppliedOutput());
-        // SmartDashboard.putNumber("IntakeActuator/Output Current", getOutputCurrent());
-        // SmartDashboard.putBoolean("IntakeActuator/Is Extended", isExtended());
+        // Run PID loop when enabled - calculate motor output from potentiometer feedback
+        if (pidEnabled) {
+            double output = pidController.calculate(getCurrentPosition());
+            output = MathUtil.clamp(output, -1.0, 1.0);
+            motor.setVoltage(output * 12.0);
+        }
+
+        SmartDashboard.putNumber("IntakeActuator/Position Distance", getCurrentPosition());
+        SmartDashboard.putNumber("IntakeActuator/Target Distance", targetPositionDistance);
+        SmartDashboard.putBoolean("IntakeActuator/At Position", atPosition());
+        SmartDashboard.putNumber("IntakeActuator/Applied Output", motor.getAppliedOutput());
+        SmartDashboard.putNumber("IntakeActuator/Output Current", getOutputCurrent());
+        SmartDashboard.putBoolean("IntakeActuator/Is Extended", isExtended());
+        SmartDashboard.putBoolean("IntakeActuator/PID Enabled", pidEnabled);
     }
 }

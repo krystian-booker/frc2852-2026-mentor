@@ -37,6 +37,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.QuestNavSubsystem;
 
@@ -66,8 +67,6 @@ public class RobotContainer {
       .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
   private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
   private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
-  private final SwerveRequest.RobotCentric forwardStraight = new SwerveRequest.RobotCentric()
-      .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
 
   // Swerve setup
   private final Telemetry logger = new Telemetry(MaxSpeed);
@@ -91,6 +90,9 @@ public class RobotContainer {
   private final SendableChooser<Command> autoChooser;
 
   public RobotContainer() {
+    autoChooser = AutoBuilder.buildAutoChooser("Tests");
+    SmartDashboard.putData("Auto Mode", autoChooser);
+
     // Initialize vision subsystems (after drivetrain)
     // vision = new Vision(drivetrain::addVisionMeasurement);
     // questNav = new QuestNavSubsystem(drivetrain, vision);
@@ -122,12 +124,6 @@ public class RobotContainer {
     // Set intake default command - always running
     // intake.setDefaultCommand(intake.run(intake::runIntake));
 
-    // Warmup PathPlanner to avoid Java pauses
-    CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand());
-
-    autoChooser = AutoBuilder.buildAutoChooser();
-    SmartDashboard.putData("Auto Mode", autoChooser);
-
     // Configure normal bindings (always available)
     // configureBindings();
     configureSwerveBindings();
@@ -138,6 +134,9 @@ public class RobotContainer {
     // Configure disabled mode QuestNav seeding
     // configureDisabledBindings();
 
+    // Warmup PathPlanner to avoid Java pauses
+    CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand());
+
     // Telemetry setup
     drivetrain.registerTelemetry(logger::telemeterize);
 
@@ -145,14 +144,14 @@ public class RobotContainer {
 
   private void configureBindings() {
     // Auto-extend intake actuator at the start of autonomous and teleop
-    RobotModeTriggers.autonomous().onTrue(intakeActuator.extend());
-    RobotModeTriggers.teleop().onTrue(intakeActuator.extend());
+    // RobotModeTriggers.autonomous().onTrue(intakeActuator.extend());
+    // RobotModeTriggers.teleop().onTrue(intakeActuator.extend());
 
     // RIGHT TRIGGER - Shoot (held)
     // Spins up flywheel and sets hood from LUT, then feeds when ready
-    driverController.rightTrigger(0.5).whileTrue(
-        new ShootCommand(flywheel, hood, conveyor, intake, intakeActuator, turret, turretAimingCalculator)
-            .withName("Shoot"));
+    // driverController.rightTrigger(0.5).whileTrue(
+    // new ShootCommand(flywheel, hood, conveyor, intake, intakeActuator, turret, turretAimingCalculator)
+    // .withName("Shoot"));
   }
 
   private void configureSwerveBindings() {
@@ -164,8 +163,8 @@ public class RobotContainer {
     // The negatives account for controller axis inversion
     drivetrain.setDefaultCommand(
         drivetrain
-            .applyRequest(() -> drive.withVelocityX(-driverController.getLeftY() * MaxSpeed)
-                .withVelocityY(-driverController.getLeftX() * MaxSpeed)
+            .applyRequest(() -> drive.withVelocityX(driverController.getLeftY() * MaxSpeed)
+                .withVelocityY(driverController.getLeftX() * MaxSpeed)
                 .withRotationalRate(-driverController.getRightX() * MaxAngularRate)));
 
     // DISABLED MODE - Idle Request
@@ -368,12 +367,11 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.x()).onTrue(Commands.runOnce(intake::stop, intake));
 
     // --- Intake Actuator ---
-    // A: Extend | B: Retract | X: Agitate | Y: Stop
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
-    // RobotModeTriggers.test().and(driverController.y()).onTrue(Commands.runOnce(intakeActuator::stop,
-    // intakeActuator));
+    // A: Go to SmartDashboard position | B: Retract | X: Agitate | Y: Stop
+    SmartDashboard.putNumber("IntakeActuatorSet Position", 0.0);
+    RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
+    RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
+    RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
 
     // --- Vision ---
     // A: Toggle vision feeding on | B: Toggle vision feeding off

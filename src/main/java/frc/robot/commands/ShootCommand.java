@@ -114,9 +114,9 @@ public class ShootCommand extends Command {
     private void oscillateIntakeActuator() {
         long cycleMs = System.currentTimeMillis() % 1000;
         if (cycleMs < 500) {
-            intakeActuator.setPosition(IntakeActuatorConstants.AGITATE_MIN_DEGREES);
+            intakeActuator.setPosition(IntakeActuatorConstants.AGITATE_MIN_DISTANCE);
         } else {
-            intakeActuator.setPosition(IntakeActuatorConstants.AGITATE_MAX_DEGREES);
+            intakeActuator.setPosition(IntakeActuatorConstants.AGITATE_MAX_DISTANCE);
         }
     }
 }
