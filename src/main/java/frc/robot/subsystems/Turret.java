@@ -143,9 +143,9 @@ public class Turret extends SubsystemBase {
 
         // Software limits to prevent over-rotation (wire wrap protection)
         config.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
-        config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = TurretConstants.MAX_POSITION_DEGREES / 360.0;
+        config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = (TurretConstants.MAX_POSITION_DEGREES + TurretConstants.SOFT_LIMIT_BUFFER_DEGREES) / 360.0;
         config.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
-        config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = TurretConstants.MIN_POSITION_DEGREES / 360.0;
+        config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = (TurretConstants.MIN_POSITION_DEGREES - TurretConstants.SOFT_LIMIT_BUFFER_DEGREES) / 360.0;
 
         // Current limits
         config.CurrentLimits.StatorCurrentLimitEnable = true;
@@ -236,9 +236,12 @@ public class Turret extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // SmartDashboard.putNumber("Turret/Position Degrees", getPositionDegrees());
-        // SmartDashboard.putNumber("Turret/Target Degrees", targetPositionDegrees);
-        // SmartDashboard.putNumber("Turret/CANCoder Degrees", getCANCoderPositionDegrees());
-        // SmartDashboard.putBoolean("Turret/At Position", isAtPosition());
+        double position = getPositionDegrees();
+        SmartDashboard.putNumber("Turret/Position Degrees", position);
+        SmartDashboard.putNumber("Turret/Target Degrees", targetPositionDegrees);
+        SmartDashboard.putNumber("Turret/CANCoder Degrees", getCANCoderPositionDegrees());
+        SmartDashboard.putBoolean("Turret/At Position", isAtPosition());
+        SmartDashboard.putBoolean("Turret/In Overshoot Zone", Math.abs(position) > 180.0);
+        SmartDashboard.putNumber("Turret/Distance From Limit", 180.0 - Math.abs(position));
     }
 }
