@@ -5,18 +5,14 @@ import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
-import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicTorqueCurrentFOC;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.VoltageOut;
-import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.FeedbackSensorSourceValue;
 import com.ctre.phoenix6.signals.GravityTypeValue;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-import com.ctre.phoenix6.signals.SensorDirectionValue;
 
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -34,7 +30,6 @@ public class Hood extends SubsystemBase {
 
     // Hardware
     private final TalonFX motor;
-    private final CANcoder cancoder;
 
     // Control requests
     private final MotionMagicTorqueCurrentFOC positionRequest;
@@ -43,7 +38,6 @@ public class Hood extends SubsystemBase {
 
     // Status signals
     private final StatusSignal<Angle> motorPosition;
-    private final StatusSignal<Angle> cancoderPosition;
 
     // SysId routine for characterization
     private final SysIdRoutine sysIdRoutine;
@@ -55,7 +49,6 @@ public class Hood extends SubsystemBase {
         // Initialize hardware
         CANBus canBus = new CANBus(CANIds.CANIVORE);
         motor = new TalonFX(CANIds.HOOD_MOTOR, canBus);
-        cancoder = new CANcoder(CANIds.HOOD_CANCODER, canBus);
 
         // Initialize control requests
         positionRequest = new MotionMagicTorqueCurrentFOC(0).withSlot(0);
@@ -63,23 +56,20 @@ public class Hood extends SubsystemBase {
         voltageRequest = new VoltageOut(0);
 
         // Configure hardware
-        configureCANCoder();
         configureMotor();
+        motor.setPosition(0.0);
 
         // Cache status signals
         motorPosition = motor.getPosition();
-        cancoderPosition = cancoder.getAbsolutePosition();
 
         BaseStatusSignal.setUpdateFrequencyForAll(
                 Constants.SIGNAL_UPDATE_FREQUENCY_HZ,
                 motorPosition,
-                cancoderPosition,
                 motor.getVelocity(),
                 motor.getMotorVoltage());
 
         // Optimize CAN bus utilization
         motor.optimizeBusUtilization();
-        cancoder.optimizeBusUtilization();
 
         // Configure SysId routine for characterization
         sysIdRoutine = new SysIdRoutine(
@@ -94,26 +84,6 @@ public class Hood extends SubsystemBase {
                         this));
     }
 
-    private void configureCANCoder() {
-        CANcoderConfiguration config = new CANcoderConfiguration();
-
-        config.MagnetSensor.AbsoluteSensorDiscontinuityPoint = 0.5;
-        config.MagnetSensor.SensorDirection = SensorDirectionValue.CounterClockwise_Positive;
-        config.MagnetSensor.MagnetOffset = HoodConstants.CANCODER_OFFSET;
-
-        // Apply with retry
-        StatusCode status = StatusCode.StatusCodeNotInitialized;
-        for (int i = 0; i < 5; i++) {
-            status = cancoder.getConfigurator().apply(config);
-            if (status.isOK()) {
-                break;
-            }
-        }
-        if (!status.isOK()) {
-            System.err.println("Failed to configure hood CANCoder: " + status);
-        }
-    }
-
     private void configureMotor() {
         TalonFXConfiguration config = new TalonFXConfiguration();
 
@@ -121,11 +91,8 @@ public class Hood extends SubsystemBase {
         config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
 
-        // Feedback - use FusedCANcoder for absolute positioning
-        config.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.FusedCANcoder;
-        config.Feedback.FeedbackRemoteSensorID = CANIds.HOOD_CANCODER;
-        config.Feedback.RotorToSensorRatio = HoodConstants.GEAR_RATIO;
-        config.Feedback.SensorToMechanismRatio = 1.0;
+        // Feedback - use rotor sensor, seeded to 0 on startup
+        config.Feedback.SensorToMechanismRatio = HoodConstants.GEAR_RATIO;
 
         // PID Gains (Slot 0)
         config.Slot0.kS = HoodConstants.S;
@@ -189,13 +156,32 @@ public class Hood extends SubsystemBase {
         return motorPosition.getValue().in(Rotations) * 360.0;
     }
 
-    public double getCANCoderPositionDegrees() {
-        BaseStatusSignal.refreshAll(cancoderPosition);
-        return cancoderPosition.getValue().in(Rotations) * 360.0;
-    }
-
     public void setNeutral() {
         motor.setControl(neutralRequest);
+    }
+
+    /**
+     * Applies a small positive voltage to test motor direction.
+     * Watch the dashboard: if position INCREASES, direction is correct.
+     * If position DECREASES, flip motor inversion.
+     */
+    public void testDirectionPositive() {
+        motor.setControl(voltageRequest.withOutput(1.0));
+    }
+
+    /**
+     * Applies a small negative voltage to test motor direction.
+     */
+    public void testDirectionNegative() {
+        motor.setControl(voltageRequest.withOutput(-1.0));
+    }
+
+    /**
+     * Commands a small movement relative to current position for safe testing.
+     */
+    public void nudge(double deltaDegrees) {
+        double current = getCurrentPositionDegrees();
+        setPosition(current + deltaDegrees);
     }
 
     public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
@@ -212,9 +198,12 @@ public class Hood extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // SmartDashboard.putNumber("Hood/Position Degrees", getCurrentPositionDegrees());
-        // SmartDashboard.putNumber("Hood/Target Degrees", targetPositionDegrees);
-        // SmartDashboard.putNumber("Hood/CANCoder Degrees", getCANCoderPositionDegrees());
-        // SmartDashboard.putBoolean("Hood/At Position", atPosition());
+        double position = getCurrentPositionDegrees();
+        SmartDashboard.putNumber("Hood/Position Degrees", position);
+        SmartDashboard.putNumber("Hood/Target Degrees", targetPositionDegrees);
+        SmartDashboard.putNumber("Hood/Motor Raw Rotations", motorPosition.refresh().getValue().in(Rotations));
+        SmartDashboard.putNumber("Hood/Motor Stator Current", motor.getStatorCurrent().refresh().getValue().in(Amps));
+        SmartDashboard.putNumber("Hood/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
+        SmartDashboard.putBoolean("Hood/At Position", atPosition());
     }
 }

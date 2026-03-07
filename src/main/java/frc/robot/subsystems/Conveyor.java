@@ -34,7 +34,7 @@ public class Conveyor extends SubsystemBase {
 
         // Configure motors
         configureMotor(floorMotor, "Floor", false);
-        configureMotor(takeupMotor, "Takeup", false);
+        configureMotor(takeupMotor, "Takeup", true);
     }
 
     private void configureMotor(SparkFlex motor, String name, boolean inverted) {

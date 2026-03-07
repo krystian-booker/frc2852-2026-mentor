@@ -67,6 +67,10 @@ public class Turret extends SubsystemBase {
         configureCANCoder();
         configureMotor();
 
+        // Seed motor position from CANcoder so they agree on startup
+        // (avoids 360° wrapping mismatch between absolute position and fused position)
+        motor.setPosition(canCoder.getAbsolutePosition().waitForUpdate(0.1).getValue().in(Rotations));
+
         // Cache status signals
         motorPosition = motor.getPosition();
         canCoderPosition = canCoder.getAbsolutePosition();
@@ -119,7 +123,7 @@ public class Turret extends SubsystemBase {
         TalonFXConfiguration config = new TalonFXConfiguration();
 
         config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+        config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
 
         // Use FusedCANcoder for absolute position feedback
         config.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.FusedCANcoder;
@@ -234,12 +238,41 @@ public class Turret extends SubsystemBase {
         return sysIdRoutine.dynamic(direction);
     }
 
+    /**
+     * Applies a small positive voltage to test motor direction.
+     * Watch the CANcoder: if position INCREASES, direction is correct.
+     * If position DECREASES, flip motor inversion or CANcoder direction.
+     */
+    public void testDirectionPositive() {
+        motor.setControl(voltageRequest.withOutput(1.0)); // Small positive voltage
+    }
+
+    /**
+     * Applies a small negative voltage to test motor direction.
+     */
+    public void testDirectionNegative() {
+        motor.setControl(voltageRequest.withOutput(-1.0)); // Small negative voltage
+    }
+
+    /**
+     * Commands a small movement relative to current position for safe testing.
+     */
+    public void nudge(double deltaDegrees) {
+        double current = getPositionDegrees();
+        setPosition(current + deltaDegrees);
+    }
+
     @Override
     public void periodic() {
         double position = getPositionDegrees();
+        double canCoderDeg = getCANCoderPositionDegrees();
         SmartDashboard.putNumber("Turret/Position Degrees", position);
         SmartDashboard.putNumber("Turret/Target Degrees", targetPositionDegrees);
-        SmartDashboard.putNumber("Turret/CANCoder Degrees", getCANCoderPositionDegrees());
+        SmartDashboard.putNumber("Turret/CANCoder Degrees", canCoderDeg);
+        SmartDashboard.putNumber("Turret/CANCoder Raw Rotations", canCoderPosition.refresh().getValue().in(Rotations));
+        SmartDashboard.putNumber("Turret/Motor Raw Rotations", motorPosition.refresh().getValue().in(Rotations));
+        SmartDashboard.putNumber("Turret/Motor Stator Current", motor.getStatorCurrent().refresh().getValue().in(Amps));
+        SmartDashboard.putNumber("Turret/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
         SmartDashboard.putBoolean("Turret/At Position", isAtPosition());
         SmartDashboard.putBoolean("Turret/In Overshoot Zone", Math.abs(position) > 180.0);
         SmartDashboard.putNumber("Turret/Distance From Limit", 180.0 - Math.abs(position));

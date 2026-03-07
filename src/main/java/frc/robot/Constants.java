@@ -40,7 +40,6 @@ public final class Constants {
     public static final int TURRET_MOTOR = 22;
     public static final int TURRET_CANCODER = 23;
     public static final int HOOD_MOTOR = 24;
-    public static final int HOOD_CANCODER = 25;
   }
 
   public static class FlywheelConstants {
@@ -71,7 +70,7 @@ public final class Constants {
 
   public static class HoodConstants {
     // Mechanical
-    public static final double GEAR_RATIO = 15.0; // Motor rotations per hood rotation
+    public static final double GEAR_RATIO = 258.0; // Motor rotations per hood rotation
     public static final double MIN_POSITION_DEGREES = 0.0;
     public static final double MAX_POSITION_DEGREES = 45.0;
 
@@ -79,60 +78,58 @@ public final class Constants {
     public static final double S = 0.0; // Static friction (Amps)
     public static final double V = 0.0; // Velocity feedforward (Amps per RPS)
     public static final double A = 0.0; // Acceleration feedforward (Amps per RPS/s)
-    public static final double P = 50.0; // Proportional (Amps per rotation error)
+    public static final double P = 10.0; // Proportional (Amps per rotation error) - reduced from 50 for safe testing
     public static final double I = 0.0; // Integral
     public static final double D = 0.5; // Derivative
 
-    // Motion Magic
-    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 200.0; // deg/s
-    public static final double MOTION_MAGIC_ACCELERATION = 400.0; // deg/s^2
-    public static final double MOTION_MAGIC_JERK = 4000.0; // deg/s^3
+    // Motion Magic - SLOW for safe testing
+    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 36.0; // deg/s (was 200)
+    public static final double MOTION_MAGIC_ACCELERATION = 72.0; // deg/s^2 (was 400)
+    public static final double MOTION_MAGIC_JERK = 720.0; // deg/s^3 (was 4000)
 
-    // Current Limits
-    public static final double SUPPLY_CURRENT_LIMIT = 40.0; // Amps - main limit
-    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 30.0; // Amps - reduced limit after time
-    public static final double SUPPLY_CURRENT_LOWER_TIME = 1.0; // Seconds - time before reducing
-    public static final double STATOR_CURRENT_LIMIT = 80.0; // Amps
+    // Current Limits - reduced for safe testing
+    public static final double SUPPLY_CURRENT_LIMIT = 20.0; // Amps - main limit (was 40)
+    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 15.0; // Amps - reduced limit after time (was 30)
+    public static final double SUPPLY_CURRENT_LOWER_TIME = 0.5; // Seconds - time before reducing
+    public static final double STATOR_CURRENT_LIMIT = 20.0; // Amps (was 80)
 
     // Position Control
     public static final double POSITION_TOLERANCE_DEGREES = 0.5; // Degrees tolerance for atPosition()
-
-    // CANCoder
-    public static final double CANCODER_OFFSET = 0.0; // Rotations - tune during setup
   }
 
   public static class TurretConstants {
     // Mechanical
-    public static final double GEAR_RATIO = 50.0; // Motor rotations per turret rotation - TODO: UPDATE THIS
+    public static final double GEAR_RATIO = 50.0; // Motor rotations per turret rotation
     public static final double MIN_POSITION_DEGREES = -180.0;
     public static final double MAX_POSITION_DEGREES = 180.0;
     public static final double SOFT_LIMIT_BUFFER_DEGREES = 5.0; // Extra degrees beyond app range for overshoot recovery
 
     // PID Gains (Slot 0)
-    public static final double S = 0.0; // Static friction (Amps)
+    public static final double S = 5.0; // Static friction (Amps) - overcomes mechanical friction before PID acts
     public static final double V = 0.0; // Velocity feedforward (Amps per RPS)
     public static final double A = 0.0; // Acceleration feedforward (Amps per RPS/s)
     public static final double G = 0.0; // Gravity feedforward (Amps) - may be needed if turret is off-axis
     public static final double P = 100.0; // Proportional (Amps per rotation error)
     public static final double I = 0.0; // Integral
-    public static final double D = 1.0; // Derivative
+    public static final double D = 0.5; // Derivative
 
-    // Motion Magic
-    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 1.0; // Rotations per second
-    public static final double MOTION_MAGIC_ACCELERATION = 2.0; // Rotations per second^2
-    public static final double MOTION_MAGIC_JERK = 20.0; // Rotations per second^3
+    // Motion Magic - SLOW for safe testing (was 1.0/2.0/20.0)
+    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 0.5; // Rotations per second (36 deg/s)
+    public static final double MOTION_MAGIC_ACCELERATION = 0.6; // Rotations per second^2
+    public static final double MOTION_MAGIC_JERK = 2.0; // Rotations per second^3
 
-    // Current Limits
-    public static final double SUPPLY_CURRENT_LIMIT = 80.0; // Amps - main limit
-    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 60.0; // Amps - reduced limit after time
-    public static final double SUPPLY_CURRENT_LOWER_TIME = 1.0; // Seconds - time before reducing
-    public static final double STATOR_CURRENT_LIMIT = 80.0; // Amps
+    // Current Limits - reduced for safe testing
+    public static final double SUPPLY_CURRENT_LIMIT = 80.0; // Amps - main limit (was 80)
+    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 60; // Amps - reduced limit after time (was 60)
+    public static final double SUPPLY_CURRENT_LOWER_TIME = 0.5; // Seconds - time before reducing
+    public static final double STATOR_CURRENT_LIMIT = 80.0; // Amps (was 80)
 
     // Position Control
     public static final double POSITION_TOLERANCE_DEGREES = 1.0; // Degrees tolerance for isAtPosition()
 
     // CANCoder
-    public static final double CANCODER_OFFSET = 0.0; // Rotations - tune during setup to align 0 degrees
+    public static final double CANCODER_OFFSET = -0.432373; // Rotations - negate the Absolute Position reading at
+                                                            // mechanical zero from Phoenix Tuner X
   }
 
   public static class TurretAimingConstants {
@@ -170,31 +167,34 @@ public final class Constants {
     // String potentiometer (10-turn 3590S-2-103L on RoboRIO analog input)
     public static final int POTENTIOMETER_CHANNEL = 0; // RoboRIO analog input channel
     public static final double POT_FULL_RANGE = 25.0; // Distance units over full pot voltage range - CALIBRATE ON ROBOT
-    public static final double POT_OFFSET = 0.0; // Distance reading at 0V - CALIBRATE ON ROBOT
+    public static final double POT_OFFSET = -14.562923469654109; // Distance reading at 0V - CALIBRATE ON ROBOT
 
     // Position limits (distance units matching pot calibration)
     public static final double MIN_POSITION_DISTANCE = 0.0;
-    public static final double MAX_POSITION_DISTANCE = 25.0;
+    public static final double MAX_POSITION_DISTANCE = 5.3;
 
     // PID Gains (runs on RoboRIO, output is duty cycle -1 to 1)
-    public static final double P = 0.1; // Proportional
-    public static final double I = 0.0; // Integral
+    public static final double P = 0.5; // Proportional
+    public static final double I = 0.0; // Integral - eliminates steady-state crawl
     public static final double D = 0.0; // Derivative
 
-    // Current Limits
-    public static final int SMART_CURRENT_LIMIT = 60; // Amps
-    public static final int SECONDARY_CURRENT_LIMIT = 60; // Amps
+    // Max output clamp (0.0 to 1.0) - limits motor duty cycle for safe testing
+    public static final double MAX_OUTPUT = 1.0; // 15% power - reduced for safe testing
+
+    // Current Limits - reduced for safe testing
+    public static final int SMART_CURRENT_LIMIT = 60; // Amps (was 60)
+    public static final int SECONDARY_CURRENT_LIMIT = 60; // Amps (was 60)
 
     // Position Control
-    public static final double POSITION_TOLERANCE_DISTANCE = 2.0; // Distance tolerance for atPosition()
+    public static final double POSITION_TOLERANCE_DISTANCE = 0.3; // Distance tolerance for atPosition()
 
     // Current Spike Safety Retraction
     public static final double CURRENT_SPIKE_THRESHOLD_AMPS = 35.0; // Threshold to trigger safety retraction
-    public static final double EXTENDED_POSITION_THRESHOLD_DISTANCE = 10.0; // Consider "extended" above this
+    public static final double EXTENDED_POSITION_THRESHOLD_DISTANCE = 2.0; // Consider "extended" above this
 
-    // Agitate command positions (distance units)
-    public static final double AGITATE_MIN_DISTANCE = 0.0;
-    public static final double AGITATE_MAX_DISTANCE = 5.0;
+    // Agitate command (time-based, alternates extend/retract regardless of position reached)
+    public static final double AGITATE_EXTEND_SECONDS = 0.2;
+    public static final double AGITATE_RETRACT_SECONDS = 0.2;
   }
 
   public static class IntakeConstants {
@@ -202,7 +202,7 @@ public final class Constants {
     public static final double GEAR_RATIO = 1.0; // Motor rotations per roller rotation - UPDATE THIS
 
     // Preset Speeds (duty cycle -1.0 to 1.0)
-    public static final double INTAKE_SPEED = 0.8; // Speed for intaking game pieces
+    public static final double INTAKE_SPEED = 1.0; // Speed for intaking game pieces
     public static final double OUTTAKE_SPEED = -0.6; // Speed for ejecting game pieces
 
     // Current Limits

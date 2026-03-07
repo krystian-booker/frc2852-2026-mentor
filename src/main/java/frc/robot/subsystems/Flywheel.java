@@ -92,7 +92,7 @@ public class Flywheel extends SubsystemBase {
         TalonFXConfiguration config = new TalonFXConfiguration();
 
         config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+        config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
         config.Feedback.SensorToMechanismRatio = FlywheelConstants.GEAR_RATIO;
 
         config.Slot0.kS = FlywheelConstants.S;

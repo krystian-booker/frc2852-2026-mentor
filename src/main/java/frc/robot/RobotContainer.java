@@ -152,7 +152,7 @@ public class RobotContainer {
     // RIGHT TRIGGER - Shoot (held)
     // Spins up flywheel and sets hood from LUT, then feeds when ready
     // driverController.rightTrigger(0.5).whileTrue(
-    // new ShootCommand(flywheel, hood, conveyor, intake, intakeActuator, turret, turretAimingCalculator)
+    // new ShootCommand(flywheel, hood, conveyor, intakeActuator, turret, turretAimingCalculator)
     // .withName("Shoot"));
   }
 
@@ -287,11 +287,11 @@ public class RobotContainer {
     // Turret Calibration Mode
     // Right bumper toggles calibration mode - reads NetworkTables inputs
     // applies to hood/flywheel in real-time
-    TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
-        hood, flywheel, conveyor, () -> drivetrain.getState().Pose, turretAimingCalculator);
+    // TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
+    // hood, flywheel, conveyor, () -> drivetrain.getState().Pose, turretAimingCalculator);
 
     // Only allow toggling calibration mode while in test mode
-    RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
+    // RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
 
     // Swerve
     // RobotModeTriggers.test().and(driverController.a()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kForward));
@@ -332,48 +332,48 @@ public class RobotContainer {
     // ===== MANUAL SUBSYSTEM TEST BINDINGS =====
     // --- Conveyor ---
     // A: Feed | B: Reverse | X: Floor only | Y: Takeup only | LB: Stop all
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(conveyor.run(conveyor::runFeed));
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(conveyor.run(conveyor::runReverse));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(conveyor.run(conveyor::runFloor));
-    // RobotModeTriggers.test().and(driverController.y()).whileTrue(conveyor.run(conveyor::runTakeup));
+    // RobotModeTriggers.test().and(driverController.rightBumper()).whileTrue(conveyor.run(conveyor::runFeed));
     // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(conveyor::stop, conveyor));
 
     // --- Flywheel ---
     // A: 2000 RPM | B: 3500 RPM | X: 5000 RPM | Y: Stop
     // RobotModeTriggers.test().and(driverController.a()).whileTrue(flywheel.run(() -> flywheel.setVelocity(2000)));
     // RobotModeTriggers.test().and(driverController.b()).whileTrue(flywheel.run(() -> flywheel.setVelocity(3500)));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.run(() -> flywheel.setVelocity(5000)));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.run(() -> flywheel.setVelocity(5500)));
     // RobotModeTriggers.test().and(driverController.y()).onTrue(Commands.runOnce(() -> flywheel.setVelocity(0),
     // flywheel));
 
-    // --- Turret ---
-    // A: 0 deg (forward) | B: 90 deg (right) | X: -90 deg (left) | Y: 170 deg (near back limit) | LB: Stop
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(turret.run(() -> turret.setPosition(0)));
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(turret.run(() -> turret.setPosition(90)));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(turret.run(() -> turret.setPosition(-90)));
-    // RobotModeTriggers.test().and(driverController.y()).whileTrue(turret.run(() -> turret.setPosition(170)));
-    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
+    // --- Turret (SAFE TESTING MODE) ---
+    // Step 1: Spin turret by hand, watch dashboard values (no buttons needed)
+    // Step 2: Test motor direction - hold A for +1V, hold B for -1V (releases = stop)
+    // Watch CANCoder: +voltage should INCREASE position. If not, flip motor inversion.
+    // Step 3: After direction is confirmed, use X to nudge +10deg, Y to nudge -10deg
+    // LB: Emergency stop
+    RobotModeTriggers.test().and(driverController.a())
+        .whileTrue(turret.run(turret::testDirectionPositive).finallyDo(() -> turret.stop()));
+    RobotModeTriggers.test().and(driverController.b())
+        .whileTrue(turret.run(turret::testDirectionNegative).finallyDo(() -> turret.stop()));
+    RobotModeTriggers.test().and(driverController.x())
+        .onTrue(Commands.runOnce(() -> turret.nudge(10)));
+    RobotModeTriggers.test().and(driverController.y())
+        .onTrue(Commands.runOnce(() -> turret.nudge(-10)));
+    RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
 
-    // --- Hood ---
-    // A: 0 deg | B: 15 deg | X: 30 deg | Y: 45 deg | LB: Neutral
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(hood.run(() -> hood.setPosition(0)));
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(hood.run(() -> hood.setPosition(15)));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(hood.run(() -> hood.setPosition(30)));
-    // RobotModeTriggers.test().and(driverController.y()).whileTrue(hood.run(() -> hood.setPosition(45)));
+    // --- Hood (SAFE TESTING MODE) ---
+    // Step 1: Move hood by hand, watch dashboard values (no buttons needed)
+    // Step 2: Test motor direction - hold A for +1V, hold B for -1V (releases = neutral)
+    // Watch dashboard: +voltage should INCREASE position. If not, flip motor inversion.
+    // Step 3: After direction is confirmed, use X to nudge +5deg, Y to nudge -5deg
+    // LB: Emergency stop
+    // RobotModeTriggers.test().and(driverController.a())
+    // .whileTrue(hood.run(hood::testDirectionPositive).finallyDo(() -> hood.setNeutral()));
+    // RobotModeTriggers.test().and(driverController.b())
+    // .whileTrue(hood.run(hood::testDirectionNegative).finallyDo(() -> hood.setNeutral()));
+    // RobotModeTriggers.test().and(driverController.x())
+    // .onTrue(hood.runOnce(() -> hood.nudge(5)));
+    // RobotModeTriggers.test().and(driverController.y())
+    // .onTrue(hood.runOnce(() -> hood.nudge(-5)));
     // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(hood::setNeutral, hood));
-
-    // --- Intake ---
-    // A: Run intake | B: Run outtake | X: Stop
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intake.run(intake::runIntake));
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intake.run(intake::runOuttake));
-    // RobotModeTriggers.test().and(driverController.x()).onTrue(Commands.runOnce(intake::stop, intake));
-
-    // --- Intake Actuator ---
-    // A: Go to SmartDashboard position | B: Retract | X: Agitate | Y: Stop
-    SmartDashboard.putNumber("IntakeActuatorSet Position", 0.0);
-    RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
-    RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
-    RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
 
     // --- Vision ---
     // A: Toggle vision feeding on | B: Toggle vision feeding off
@@ -381,6 +381,23 @@ public class RobotContainer {
     // vision.setFeedingEnabled(true)));
     // RobotModeTriggers.test().and(driverController.b()).onTrue(Commands.runOnce(() ->
     // vision.setFeedingEnabled(false)));
+
+    // -------------------------------------
+    // ---------------DONE------------------
+    // -------------------------------------
+
+    // --- Intake Actuator ---
+    // A: Go to SmartDashboard position | B: Retract | X: Agitate | Y: Stop
+    // SmartDashboard.putNumber("IntakeActuatorSet Position", 0.0);
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
+
+    // --- Intake ---
+    // A: Run intake | B: Run outtake | X: Stop
+    // RobotModeTriggers.test().and(driverController.leftBumper()).whileTrue(intake.run(intake::runIntake));
+    // RobotModeTriggers.test().and(driverController.x()).onTrue(Commands.runOnce(intake::stop, intake));
+
   }
 
   public Command getAutonomousCommand() {

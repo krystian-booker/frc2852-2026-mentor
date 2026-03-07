@@ -153,10 +153,11 @@ public class IntakeActuator extends SubsystemBase {
 
     public Command agitate() {
         return Commands.repeatingSequence(
-                run(() -> setPosition(IntakeActuatorConstants.AGITATE_MAX_DISTANCE))
-                        .until(this::atPosition),
-                run(() -> setPosition(IntakeActuatorConstants.AGITATE_MIN_DISTANCE))
-                        .until(this::atPosition))
+                run(() -> setPosition(IntakeActuatorConstants.MIN_POSITION_DISTANCE))
+                        .withTimeout(IntakeActuatorConstants.AGITATE_RETRACT_SECONDS),
+                run(() -> setPosition(IntakeActuatorConstants.MAX_POSITION_DISTANCE))
+                        .withTimeout(IntakeActuatorConstants.AGITATE_EXTEND_SECONDS))
+                .finallyDo(() -> setPosition(IntakeActuatorConstants.MAX_POSITION_DISTANCE))
                 .withName("IntakeActuator.agitate");
     }
 
@@ -174,7 +175,7 @@ public class IntakeActuator extends SubsystemBase {
         // Run PID loop when enabled - calculate motor output from potentiometer feedback
         if (pidEnabled) {
             double output = pidController.calculate(getCurrentPosition());
-            output = MathUtil.clamp(output, -1.0, 1.0);
+            output = MathUtil.clamp(output, -IntakeActuatorConstants.MAX_OUTPUT, IntakeActuatorConstants.MAX_OUTPUT);
             motor.setVoltage(output * 12.0);
         }
 
