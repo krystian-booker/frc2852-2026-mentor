@@ -20,7 +20,8 @@ public class TurretAimingCalculator {
     /**
      * Result of an aiming calculation.
      *
-     * @param turretAngleDegrees Robot-relative turret angle in degrees (0-360)
+     * @param turretAngleDegrees Robot-relative turret angle in degrees (-180 to
+     *                           +180)
      * @param distanceMeters     Distance to target in meters
      * @param isReachable        Whether the target is within valid shooting range
      */
@@ -76,9 +77,11 @@ public class TurretAimingCalculator {
         // Account for turret zero angle offset
         robotRelativeRadians -= Math.toRadians(TurretAimingConstants.TURRET_ZERO_ANGLE_DEGREES);
 
-        // Normalize to [0, 360) degrees
+        // Normalize to (-180, +180) degrees
         double turretAngleDegrees = Math.toDegrees(robotRelativeRadians) % 360.0;
-        if (turretAngleDegrees < 0) {
+        if (turretAngleDegrees > 180.0) {
+            turretAngleDegrees -= 360.0;
+        } else if (turretAngleDegrees <= -180.0) {
             turretAngleDegrees += 360.0;
         }
 
@@ -139,7 +142,7 @@ public class TurretAimingCalculator {
     /**
      * Linear interpolation from a lookup table.
      *
-     * @param input      The input value (e.g., distance)
+     * @param input       The input value (e.g., distance)
      * @param lookupTable 2D array where [i][0] is input and [i][1] is output
      * @return Interpolated output value
      */

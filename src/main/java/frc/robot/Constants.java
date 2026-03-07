@@ -104,8 +104,9 @@ public final class Constants {
   public static class TurretConstants {
     // Mechanical
     public static final double GEAR_RATIO = 50.0; // Motor rotations per turret rotation - TODO: UPDATE THIS
-    public static final double MIN_POSITION_DEGREES = 0.0;
-    public static final double MAX_POSITION_DEGREES = 360.0;
+    public static final double MIN_POSITION_DEGREES = -180.0;
+    public static final double MAX_POSITION_DEGREES = 180.0;
+    public static final double SOFT_LIMIT_BUFFER_DEGREES = 5.0; // Extra degrees beyond app range for overshoot recovery
 
     // PID Gains (Slot 0)
     public static final double S = 0.0; // Static friction (Amps)

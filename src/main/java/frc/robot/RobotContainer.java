@@ -111,7 +111,9 @@ public class RobotContainer {
     // double fieldAngleRad = Math.atan2(-stickX, -stickY);
     // double robotHeadingRad = drivetrain.getState().Pose.getRotation().getRadians();
     // double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) % 360.0;
-    // if (turretAngleDeg < 0)
+    // if (turretAngleDeg > 180.0)
+    // turretAngleDeg -= 360.0;
+    // else if (turretAngleDeg <= -180.0)
     // turretAngleDeg += 360.0;
     // turret.setPosition(turretAngleDeg);
     // } else {
@@ -345,11 +347,11 @@ public class RobotContainer {
     // flywheel));
 
     // --- Turret ---
-    // A: 0 deg | B: 90 deg | X: 180 deg | Y: 270 deg | LB: Stop
+    // A: 0 deg (forward) | B: 90 deg (right) | X: -90 deg (left) | Y: 170 deg (near back limit) | LB: Stop
     // RobotModeTriggers.test().and(driverController.a()).whileTrue(turret.run(() -> turret.setPosition(0)));
     // RobotModeTriggers.test().and(driverController.b()).whileTrue(turret.run(() -> turret.setPosition(90)));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(turret.run(() -> turret.setPosition(180)));
-    // RobotModeTriggers.test().and(driverController.y()).whileTrue(turret.run(() -> turret.setPosition(270)));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(turret.run(() -> turret.setPosition(-90)));
+    // RobotModeTriggers.test().and(driverController.y()).whileTrue(turret.run(() -> turret.setPosition(170)));
     // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
 
     // --- Hood ---
