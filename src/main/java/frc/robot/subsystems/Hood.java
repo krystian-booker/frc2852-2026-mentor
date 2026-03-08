@@ -71,7 +71,7 @@ public class Hood extends SubsystemBase {
 
         // Motor output
         config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+        config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
 
         // Feedback - use rotor sensor, seeded to 0 on startup
         config.Feedback.SensorToMechanismRatio = HoodConstants.GEAR_RATIO;
@@ -139,9 +139,8 @@ public class Hood extends SubsystemBase {
     }
 
     /**
-     * Applies a small positive voltage to test motor direction.
-     * Watch the dashboard: if position INCREASES, direction is correct.
-     * If position DECREASES, flip motor inversion.
+     * Applies a small positive voltage to test motor direction. Watch the dashboard: if position INCREASES, direction
+     * is correct. If position DECREASES, flip motor inversion.
      */
     public void testDirectionPositive() {
         motor.setControl(voltageRequest.withOutput(1.0));

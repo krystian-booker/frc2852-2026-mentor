@@ -73,7 +73,7 @@ public final class Constants {
     // Mechanical
     public static final double GEAR_RATIO = 258.0; // Motor rotations per hood rotation
     public static final double MIN_POSITION_DEGREES = 0.0;
-    public static final double MAX_POSITION_DEGREES = 45.0;
+    public static final double MAX_POSITION_DEGREES = 25.0;
 
     // PID Gains (Slot 0)
     public static final double S = 0.0; // Static friction (Volts)

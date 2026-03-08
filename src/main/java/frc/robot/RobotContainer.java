@@ -41,7 +41,7 @@ public class RobotContainer {
   // Subsystems
   // private final Conveyor conveyor = new Conveyor();
   private final Flywheel flywheel = new Flywheel();
-  // private final Hood hood = new Hood();
+  private final Hood hood = new Hood();
   // private final Intake intake = new Intake();
   // private final IntakeActuator intakeActuator = new IntakeActuator();
   private final Turret turret = new Turret();
@@ -324,15 +324,15 @@ public class RobotContainer {
     // Watch dashboard: +voltage should INCREASE position. If not, flip motor inversion.
     // Step 3: After direction is confirmed, use X to nudge +5deg, Y to nudge -5deg
     // LB: Emergency stop
-    // RobotModeTriggers.test().and(driverController.a())
-    // .whileTrue(hood.run(hood::testDirectionPositive).finallyDo(() -> hood.setNeutral()));
-    // RobotModeTriggers.test().and(driverController.b())
-    // .whileTrue(hood.run(hood::testDirectionNegative).finallyDo(() -> hood.setNeutral()));
-    // RobotModeTriggers.test().and(driverController.x())
-    // .onTrue(hood.runOnce(() -> hood.nudge(5)));
-    // RobotModeTriggers.test().and(driverController.y())
-    // .onTrue(hood.runOnce(() -> hood.nudge(-5)));
-    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(hood::setNeutral, hood));
+    RobotModeTriggers.test().and(driverController.a())
+        .whileTrue(hood.run(hood::testDirectionPositive).finallyDo(() -> hood.setNeutral()));
+    RobotModeTriggers.test().and(driverController.b())
+        .whileTrue(hood.run(hood::testDirectionNegative).finallyDo(() -> hood.setNeutral()));
+    RobotModeTriggers.test().and(driverController.x())
+        .onTrue(hood.runOnce(() -> hood.nudge(5)));
+    RobotModeTriggers.test().and(driverController.y())
+        .onTrue(hood.runOnce(() -> hood.nudge(-5)));
+    RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(hood::setNeutral, hood));
 
     // --- Vision ---
     // A: Toggle vision feeding on | B: Toggle vision feeding off
