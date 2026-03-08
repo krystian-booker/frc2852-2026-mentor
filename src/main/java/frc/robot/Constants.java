@@ -40,6 +40,7 @@ public final class Constants {
     public static final int TURRET_MOTOR = 22;
     public static final int TURRET_CANCODER = 23;
     public static final int HOOD_MOTOR = 24;
+    public static final int CLIMB_MOTOR = 26;
   }
 
   public static class FlywheelConstants {
@@ -75,10 +76,10 @@ public final class Constants {
     public static final double MAX_POSITION_DEGREES = 45.0;
 
     // PID Gains (Slot 0)
-    public static final double S = 0.0; // Static friction (Amps)
-    public static final double V = 0.0; // Velocity feedforward (Amps per RPS)
-    public static final double A = 0.0; // Acceleration feedforward (Amps per RPS/s)
-    public static final double P = 10.0; // Proportional (Amps per rotation error) - reduced from 50 for safe testing
+    public static final double S = 0.0; // Static friction (Volts)
+    public static final double V = 0.0; // Velocity feedforward (Volts per RPS)
+    public static final double A = 0.0; // Acceleration feedforward (Volts per RPS/s)
+    public static final double P = 10.0; // Proportional (Volts per rotation error) - reduced from 50 for safe testing
     public static final double I = 0.0; // Integral
     public static final double D = 0.5; // Derivative
 
@@ -95,6 +96,44 @@ public final class Constants {
 
     // Position Control
     public static final double POSITION_TOLERANCE_DEGREES = 0.5; // Degrees tolerance for atPosition()
+  }
+
+  public static class ClimbConstants {
+    // Mechanical
+    public static final double GEAR_RATIO = 75.0; // Motor rotations per mechanism rotation - PLACEHOLDER, needs
+                                                  // measuring
+
+    // Position setpoints (mechanism rotations)
+    public static final double FULLY_DOWN = 0.0;
+    public static final double FULL_EXTENSION_POSITION = 10;
+    public static final double CLIMB_LIFT_POSITION = 3.0;
+
+    // Soft limits (mechanism rotations)
+    public static final double MIN_POSITION = 0.0;
+    public static final double MAX_POSITION = 10.0;
+
+    // PID Gains (Slot 0) - voltage-based
+    public static final double S = 0.0; // Static friction (Volts)
+    public static final double V = 2.0; // Velocity feedforward (Volts per RPS) - needs tuning
+    public static final double A = 0.0; // Acceleration feedforward (Volts per RPS/s)
+    public static final double G = 0.0; // Gravity feedforward (Volts)
+    public static final double P = 80.0; // Proportional (Volts per rotation error)
+    public static final double I = 0.0; // Integral
+    public static final double D = 0.5; // Derivative
+
+    // Motion Magic - slow for safety
+    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 5.0; // rot/s
+    public static final double MOTION_MAGIC_ACCELERATION = 10.0; // rot/s^2
+    public static final double MOTION_MAGIC_JERK = 100.0; // rot/s^3
+
+    // Current Limits - high for lifting robot weight
+    public static final double SUPPLY_CURRENT_LIMIT = 60.0; // Amps - main limit
+    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 40.0; // Amps - reduced limit after time
+    public static final double SUPPLY_CURRENT_LOWER_TIME = 1.0; // Seconds - time before reducing
+    public static final double STATOR_CURRENT_LIMIT = 120.0; // Amps
+
+    // Position Control
+    public static final double POSITION_TOLERANCE = 0.25; // Rotations tolerance for atPosition()
   }
 
   public static class TurretConstants {

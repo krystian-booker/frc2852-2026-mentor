@@ -2,22 +2,16 @@ package frc.robot;
 
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
-import frc.robot.commands.ShootCommand;
-import frc.robot.commands.TurretAutoTuneCommand;
-import frc.robot.commands.TurretCalibrationCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Conveyor;
-import frc.robot.subsystems.Flywheel;
-import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
+import frc.robot.subsystems.Climb;
 import frc.robot.subsystems.LED;
 import frc.robot.subsystems.Vision;
 import frc.robot.util.Telemetry;
 import frc.robot.util.TurretAimingCalculator;
-
-import com.ctre.phoenix6.SignalLogger;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -33,12 +27,9 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.commands.FollowPathCommand;
 
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
-import edu.wpi.first.wpilibj2.command.button.Trigger;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.QuestNavSubsystem;
 
@@ -51,6 +42,7 @@ public class RobotContainer {
   private final Intake intake = new Intake();
   private final IntakeActuator intakeActuator = new IntakeActuator();
   private final Turret turret = new Turret();
+  private final Climb climb = new Climb();
   private final LED led = new LED();
 
   // Controllers
@@ -134,6 +126,7 @@ public class RobotContainer {
     // Configure normal bindings (always available)
     // configureBindings();
     configureSwerveBindings();
+    configureClimbBindings();
 
     // Configure test mode bindings (activated when entering test mode)
     configureTestBindings();
@@ -278,6 +271,24 @@ public class RobotContainer {
     RobotModeTriggers.teleop().onTrue(led.setPatternCommand(LED.Pattern.BLACK));
   }
 
+  private void configureClimbBindings() {
+    // Operator D-pad controls for climb positions (teleop)
+    // operatorController.povUp()
+    // .onTrue(Commands.runOnce(() -> climb.setPosition(ClimbConstants.FULL_EXTENSION_POSITION), climb));
+    // operatorController.povDown()
+    // .onTrue(Commands.runOnce(() -> climb.setPosition(ClimbConstants.FULLY_DOWN), climb));
+    // operatorController.povLeft()
+    // .onTrue(Commands.runOnce(() -> climb.setPosition(ClimbConstants.CLIMB_LIFT_POSITION), climb));
+
+    // Manual jog controls for finding setpoints
+    // Hold right bumper to move up, hold left bumper to move down
+    // Read position from SmartDashboard "Climb/Position Rotations"
+    // operatorController.rightBumper()
+    // .whileTrue(climb.run(() -> climb.manualMove(12.0)).finallyDo(() -> climb.stop()));
+    // operatorController.leftBumper()
+    // .whileTrue(climb.run(() -> climb.manualMove(-12.0)).finallyDo(() -> climb.stop()));
+  }
+
   /**
    * Configure test mode bindings using RobotModeTriggers. These bindings are only active when the robot is in test
    * mode.
@@ -302,41 +313,7 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.x()).whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
     // RobotModeTriggers.test().and(driverController.y()).whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
 
-    // Flywheel
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(flywheel.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kForward));
-    // RobotModeTriggers.test().and(driverController.y()).whileTrue(flywheel.sysIdDynamic(SysIdRoutine.Direction.kReverse));
-
-    // Hood
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(hood.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kForward));
-    // RobotModeTriggers.test().and(driverController.y()).whileTrue(hood.sysIdDynamic(SysIdRoutine.Direction.kReverse));
-
-    // Turret
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(turret.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(turret.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(turret.sysIdDynamic(SysIdRoutine.Direction.kForward));
-    // RobotModeTriggers.test().and(driverController.y()).whileTrue(turret.sysIdDynamic(SysIdRoutine.Direction.kReverse));
-
-    // Intake
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intake.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intake.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(intake.sysIdDynamic(SysIdRoutine.Direction.kForward));
-    // RobotModeTriggers.test().and(driverController.y()).whileTrue(intake.sysIdDynamic(SysIdRoutine.Direction.kReverse));
-
-    // Intake Actuator
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.sysIdDynamic(SysIdRoutine.Direction.kForward));
-    // RobotModeTriggers.test().and(driverController.y()).whileTrue(intakeActuator.sysIdDynamic(SysIdRoutine.Direction.kReverse));
-
     // ===== MANUAL SUBSYSTEM TEST BINDINGS =====
-    // --- Conveyor ---
-    // A: Feed | B: Reverse | X: Floor only | Y: Takeup only | LB: Stop all
-    // RobotModeTriggers.test().and(driverController.rightBumper()).whileTrue(conveyor.run(conveyor::runFeed));
-    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(conveyor::stop, conveyor));
 
     // --- Flywheel ---
     // A: 2000 RPM | B: 3500 RPM | X: 5000 RPM | Y: Stop
@@ -346,31 +323,12 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.y()).onTrue(Commands.runOnce(() -> flywheel.setVelocity(0),
     // flywheel));
 
-    // --- Turret Manual Test ---
-    // A: Hold for +1V forward | B: Hold for -1V reverse
-    // X: Nudge +90° | Y: Nudge -90°
-    RobotModeTriggers.test().and(driverController.a())
-        .whileTrue(turret.run(turret::testDirectionPositive).finallyDo(() -> turret.stop()));
-    RobotModeTriggers.test().and(driverController.b())
-        .whileTrue(turret.run(turret::testDirectionNegative).finallyDo(() -> turret.stop()));
-    RobotModeTriggers.test().and(driverController.x())
-        .onTrue(Commands.runOnce(() -> turret.nudge(120)));
-    RobotModeTriggers.test().and(driverController.y())
-        .onTrue(Commands.runOnce(() -> turret.nudge(-120)));
-    RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
+    // --- Flywheel Auto-Tune ---
+    // BACK: Toggle flywheel auto-tune command
+    // RobotModeTriggers.test().and(driverController.back())
+    // .toggleOnTrue(new FlywheelAutoTuneCommand(flywheel));
 
-    // --- Turret Field Hold ---
-    // RB: Hold turret at a fixed field-relative heading while robot spins
-    RobotModeTriggers.test().and(driverController.rightBumper())
-        .whileTrue(turret.fieldHoldCommand(() -> drivetrain.getState().Pose.getRotation().getDegrees()));
-    RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
-
-    // --- Turret Auto-Tune ---
-    // START: Toggle auto-tune command (press again to cancel and restore original gains)
-    RobotModeTriggers.test().and(driverController.start())
-        .toggleOnTrue(new TurretAutoTuneCommand(turret));
-
-    // --- Hood (SAFE TESTING MODE) ---
+    // --- Hood ---
     // Step 1: Move hood by hand, watch dashboard values (no buttons needed)
     // Step 2: Test motor direction - hold A for +1V, hold B for -1V (releases = neutral)
     // Watch dashboard: +voltage should INCREASE position. If not, flip motor inversion.
@@ -397,6 +355,11 @@ public class RobotContainer {
     // ---------------DONE------------------
     // -------------------------------------
 
+    // --- Conveyor ---
+    // A: Feed | B: Reverse | X: Floor only | Y: Takeup only | LB: Stop all
+    // RobotModeTriggers.test().and(driverController.rightBumper()).whileTrue(conveyor.run(conveyor::runFeed));
+    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(conveyor::stop, conveyor));
+
     // --- Intake Actuator ---
     // A: Go to SmartDashboard position | B: Retract | X: Agitate | Y: Stop
     // SmartDashboard.putNumber("IntakeActuatorSet Position", 0.0);
@@ -409,6 +372,39 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.leftBumper()).whileTrue(intake.run(intake::runIntake));
     // RobotModeTriggers.test().and(driverController.x()).onTrue(Commands.runOnce(intake::stop, intake));
 
+    // --- Climb (operator controller in test mode) ---
+    // A: Hold for +1V forward | B: Hold for -1V reverse
+    // X: Nudge +1 rotation | Y: Nudge -1 rotation
+    // LB: Emergency stop
+    // RobotModeTriggers.test().and(operatorController.a())
+    // .whileTrue(climb.run(climb::testDirectionPositive).finallyDo(() -> climb.stop()));
+    // RobotModeTriggers.test().and(operatorController.b())
+    // .whileTrue(climb.run(climb::testDirectionNegative).finallyDo(() -> climb.stop()));
+    // RobotModeTriggers.test().and(operatorController.x())
+    // .onTrue(Commands.runOnce(() -> climb.nudge(1.0), climb));
+    // RobotModeTriggers.test().and(operatorController.y())
+    // .onTrue(Commands.runOnce(() -> climb.nudge(-1.0), climb));
+    // RobotModeTriggers.test().and(operatorController.leftBumper())
+    // .onTrue(Commands.runOnce(climb::stop, climb));
+
+    // --- Turret Manual Test ---
+    // A: Hold for +1V forward | B: Hold for -1V reverse
+    // X: Nudge +90° | Y: Nudge -90°
+    RobotModeTriggers.test().and(driverController.a())
+        .whileTrue(turret.run(turret::testDirectionPositive).finallyDo(() -> turret.stop()));
+    RobotModeTriggers.test().and(driverController.b())
+        .whileTrue(turret.run(turret::testDirectionNegative).finallyDo(() -> turret.stop()));
+    RobotModeTriggers.test().and(driverController.x())
+        .onTrue(Commands.runOnce(() -> turret.nudge(120)));
+    RobotModeTriggers.test().and(driverController.y())
+        .onTrue(Commands.runOnce(() -> turret.nudge(-120)));
+    RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
+
+    // --- Turret Field Hold ---
+    // RB: Hold turret at a fixed field-relative heading while robot spins
+    // RobotModeTriggers.test().and(driverController.rightBumper())
+    // .whileTrue(turret.fieldHoldCommand(() -> drivetrain.getState().Pose.getRotation().getDegrees()));
+    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
   }
 
   public Command getAutonomousCommand() {

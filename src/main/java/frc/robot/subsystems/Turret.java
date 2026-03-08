@@ -2,7 +2,6 @@ package frc.robot.subsystems;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
-import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
@@ -21,7 +20,6 @@ import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
@@ -268,8 +266,8 @@ public class Turret extends SubsystemBase {
      * Hot-reload gains using refresh+apply to preserve soft limits and current limits.
      */
     public void applyTuningConfig(double kS, double kV, double kA, double kG,
-                                   double kP, double kI, double kD,
-                                   double cruiseVelocity, double acceleration, double jerk) {
+            double kP, double kI, double kD,
+            double cruiseVelocity, double acceleration, double jerk) {
         var configurator = motor.getConfigurator();
         TalonFXConfiguration config = new TalonFXConfiguration();
         configurator.refresh(config);
@@ -306,19 +304,19 @@ public class Turret extends SubsystemBase {
 
     @Override
     public void periodic() {
-        double position = getPositionDegrees();
-        double canCoderDeg = getCANCoderPositionDegrees();
-        SmartDashboard.putNumber("Turret/Position Degrees", position);
-        SmartDashboard.putNumber("Turret/Target Degrees", targetPositionDegrees);
-        SmartDashboard.putNumber("Turret/CANCoder Degrees", canCoderDeg);
-        SmartDashboard.putNumber("Turret/CANCoder Raw Rotations",
-                canCoderPosition.refresh().getValue().in(Rotations));
-        SmartDashboard.putNumber("Turret/Motor Raw Rotations", motorPosition.refresh().getValue().in(Rotations));
-        SmartDashboard.putNumber("Turret/Motor Stator Current",
-                motor.getStatorCurrent().refresh().getValue().in(Amps));
-        SmartDashboard.putNumber("Turret/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
-        SmartDashboard.putBoolean("Turret/At Position", isAtPosition());
-        SmartDashboard.putBoolean("Turret/In Overshoot Zone", Math.abs(position) > 180.0);
-        SmartDashboard.putNumber("Turret/Distance From Limit", 180.0 - Math.abs(position));
+        // double position = getPositionDegrees();
+        // double canCoderDeg = getCANCoderPositionDegrees();
+        // SmartDashboard.putNumber("Turret/Position Degrees", position);
+        // SmartDashboard.putNumber("Turret/Target Degrees", targetPositionDegrees);
+        // SmartDashboard.putNumber("Turret/CANCoder Degrees", canCoderDeg);
+        // SmartDashboard.putNumber("Turret/CANCoder Raw Rotations",
+        // canCoderPosition.refresh().getValue().in(Rotations));
+        // SmartDashboard.putNumber("Turret/Motor Raw Rotations", motorPosition.refresh().getValue().in(Rotations));
+        // SmartDashboard.putNumber("Turret/Motor Stator Current",
+        // motor.getStatorCurrent().refresh().getValue().in(Amps));
+        // SmartDashboard.putNumber("Turret/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
+        // SmartDashboard.putBoolean("Turret/At Position", isAtPosition());
+        // SmartDashboard.putBoolean("Turret/In Overshoot Zone", Math.abs(position) > 180.0);
+        // SmartDashboard.putNumber("Turret/Distance From Limit", 180.0 - Math.abs(position));
     }
 }

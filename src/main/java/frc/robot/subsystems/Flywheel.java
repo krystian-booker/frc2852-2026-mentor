@@ -1,12 +1,12 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.BaseStatusSignal;
-import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.NeutralOut;
+import com.ctre.phoenix6.controls.TorqueCurrentFOC;
 import com.ctre.phoenix6.controls.VelocityTorqueCurrentFOC;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.CANBus;
@@ -16,6 +16,7 @@ import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -35,14 +36,12 @@ public class Flywheel extends SubsystemBase {
 
     // Control requests
     private final VelocityTorqueCurrentFOC velocityRequest;
+    private final TorqueCurrentFOC torqueCurrentRequest;
     private final NeutralOut neutralRequest;
-    private final VoltageOut voltageRequest;
 
     // Status signals
     private final StatusSignal<AngularVelocity> leaderVelocity;
-
-    // SysId routine for characterization
-    private final SysIdRoutine sysIdRoutine;
+    private final StatusSignal<Current> statorCurrent;
 
     // State
     private double targetVelocityRPM = 0.0;
@@ -55,8 +54,8 @@ public class Flywheel extends SubsystemBase {
 
         // Initialize control requests
         velocityRequest = new VelocityTorqueCurrentFOC(0).withSlot(0);
+        torqueCurrentRequest = new TorqueCurrentFOC(0);
         neutralRequest = new NeutralOut();
-        voltageRequest = new VoltageOut(0);
 
         // Configure motors
         configureLeaderMotor();
@@ -64,28 +63,18 @@ public class Flywheel extends SubsystemBase {
 
         // Cache status signals
         leaderVelocity = leaderMotor.getVelocity();
+        statorCurrent = leaderMotor.getStatorCurrent();
 
         BaseStatusSignal.setUpdateFrequencyForAll(
                 Constants.SIGNAL_UPDATE_FREQUENCY_HZ,
                 leaderVelocity,
+                statorCurrent,
                 leaderMotor.getPosition(),
                 leaderMotor.getMotorVoltage());
 
         // Optimize CAN bus utilization
         leaderMotor.optimizeBusUtilization();
         followerMotor.optimizeBusUtilization();
-
-        // Configure SysId routine for characterization
-        sysIdRoutine = new SysIdRoutine(
-                new SysIdRoutine.Config(
-                        null, // Use default ramp rate (1 V/s)
-                        Volts.of(7), // Start with 4V
-                        null, // Use default timeout (10 s)
-                        (state) -> SignalLogger.writeString("flywheel-state", state.toString())),
-                new SysIdRoutine.Mechanism(
-                        (voltage) -> leaderMotor.setControl(voltageRequest.withOutput(voltage.in(Volts))),
-                        null,
-                        this));
     }
 
     private void configureLeaderMotor() {
@@ -168,17 +157,58 @@ public class Flywheel extends SubsystemBase {
         return Math.abs(currentRPM - targetVelocityRPM) < FlywheelConstants.VELOCITY_TOLERANCE_RPM;
     }
 
-    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
-        return sysIdRoutine.quasistatic(direction);
-    }
-
-    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-        return sysIdRoutine.dynamic(direction);
-    }
-
     public double getCurrentVelocityRPM() {
         BaseStatusSignal.refreshAll(leaderVelocity);
         return leaderVelocity.getValue().in(RotationsPerSecond) * 60.0;
+    }
+
+    /** Get mechanism velocity in rotations per second. */
+    public double getVelocityRPS() {
+        BaseStatusSignal.refreshAll(leaderVelocity);
+        return leaderVelocity.getValue().in(RotationsPerSecond);
+    }
+
+    /** Get leader motor stator current in Amps. */
+    public double getStatorCurrent() {
+        BaseStatusSignal.refreshAll(statorCurrent);
+        return statorCurrent.getValue().in(Amps);
+    }
+
+    /** Apply raw torque current output for feedforward characterization. */
+    public void applyCurrent(double amps) {
+        leaderMotor.setControl(torqueCurrentRequest.withOutput(amps));
+    }
+
+    /** Stop the flywheel and clear target RPM. */
+    public void stop() {
+        targetVelocityRPM = 0.0;
+        leaderMotor.setControl(neutralRequest);
+    }
+
+    /**
+     * Hot-reload Slot0 gains using refresh+apply to preserve current limits.
+     */
+    public void applyTuningConfig(double kS, double kV, double kA, double kP, double kI, double kD) {
+        var configurator = leaderMotor.getConfigurator();
+        TalonFXConfiguration config = new TalonFXConfiguration();
+        configurator.refresh(config);
+
+        config.Slot0.kS = kS;
+        config.Slot0.kV = kV;
+        config.Slot0.kA = kA;
+        config.Slot0.kP = kP;
+        config.Slot0.kI = kI;
+        config.Slot0.kD = kD;
+
+        StatusCode status = configurator.apply(config);
+        if (!status.isOK()) {
+            System.err.println("Failed to apply flywheel tuning config: " + status);
+        }
+    }
+
+    /** Restore original Constants.java values by re-running configureLeaderMotor(). */
+    public void restoreDefaultConfig() {
+        configureLeaderMotor();
     }
 
     @Override

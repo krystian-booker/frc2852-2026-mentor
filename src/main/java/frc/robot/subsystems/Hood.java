@@ -2,11 +2,10 @@ package frc.robot.subsystems;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
-import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.MotionMagicTorqueCurrentFOC;
+import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -16,9 +15,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
@@ -32,15 +29,12 @@ public class Hood extends SubsystemBase {
     private final TalonFX motor;
 
     // Control requests
-    private final MotionMagicTorqueCurrentFOC positionRequest;
+    private final MotionMagicVoltage positionRequest;
     private final NeutralOut neutralRequest;
     private final VoltageOut voltageRequest;
 
     // Status signals
     private final StatusSignal<Angle> motorPosition;
-
-    // SysId routine for characterization
-    private final SysIdRoutine sysIdRoutine;
 
     // State
     private double targetPositionDegrees = 0.0;
@@ -51,7 +45,7 @@ public class Hood extends SubsystemBase {
         motor = new TalonFX(CANIds.HOOD_MOTOR, canBus);
 
         // Initialize control requests
-        positionRequest = new MotionMagicTorqueCurrentFOC(0).withSlot(0);
+        positionRequest = new MotionMagicVoltage(0).withSlot(0);
         neutralRequest = new NeutralOut();
         voltageRequest = new VoltageOut(0);
 
@@ -70,18 +64,6 @@ public class Hood extends SubsystemBase {
 
         // Optimize CAN bus utilization
         motor.optimizeBusUtilization();
-
-        // Configure SysId routine for characterization
-        sysIdRoutine = new SysIdRoutine(
-                new SysIdRoutine.Config(
-                        null, // Use default ramp rate (1 V/s)
-                        Volts.of(4), // Use 4V for position mechanism
-                        null, // Use default timeout (10 s)
-                        (state) -> SignalLogger.writeString("hood-state", state.toString())),
-                new SysIdRoutine.Mechanism(
-                        (voltage) -> motor.setControl(voltageRequest.withOutput(voltage.in(Volts))),
-                        null,
-                        this));
     }
 
     private void configureMotor() {
@@ -122,10 +104,6 @@ public class Hood extends SubsystemBase {
         config.CurrentLimits.SupplyCurrentLimit = HoodConstants.SUPPLY_CURRENT_LIMIT;
         config.CurrentLimits.SupplyCurrentLowerLimit = HoodConstants.SUPPLY_CURRENT_LOWER_LIMIT;
         config.CurrentLimits.SupplyCurrentLowerTime = HoodConstants.SUPPLY_CURRENT_LOWER_TIME;
-
-        // Torque current limits
-        config.TorqueCurrent.PeakForwardTorqueCurrent = HoodConstants.STATOR_CURRENT_LIMIT;
-        config.TorqueCurrent.PeakReverseTorqueCurrent = -HoodConstants.STATOR_CURRENT_LIMIT;
 
         // Apply with retry
         StatusCode status = StatusCode.StatusCodeNotInitialized;
@@ -182,14 +160,6 @@ public class Hood extends SubsystemBase {
     public void nudge(double deltaDegrees) {
         double current = getCurrentPositionDegrees();
         setPosition(current + deltaDegrees);
-    }
-
-    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
-        return sysIdRoutine.quasistatic(direction);
-    }
-
-    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-        return sysIdRoutine.dynamic(direction);
     }
 
     private double clamp(double value, double min, double max) {
