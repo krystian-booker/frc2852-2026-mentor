@@ -345,15 +345,18 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.y()).onTrue(Commands.runOnce(() -> flywheel.setVelocity(0),
     // flywheel));
 
-    // --- Turret SysId ---
-    // Position turret to ~-90° before Forward tests, ~+90° before Reverse tests
-    // A: Quasistatic Forward (slow ramp) | B: Quasistatic Reverse
-    // X: Dynamic Forward (step voltage) | Y: Dynamic Reverse
-    // LB: Emergency stop
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(turret.sysIdQuasistatic(Direction.kForward));
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(turret.sysIdQuasistatic(Direction.kReverse));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(turret.sysIdDynamic(Direction.kForward));
-    // RobotModeTriggers.test().and(driverController.y()).whileTrue(turret.sysIdDynamic(Direction.kReverse));
+    // --- Turret Manual Test ---
+    // A: Hold for +1V forward | B: Hold for -1V reverse
+    // X: Nudge +90° | Y: Nudge -90°
+    RobotModeTriggers.test().and(driverController.a())
+        .whileTrue(turret.run(turret::testDirectionPositive).finallyDo(() -> turret.stop()));
+    RobotModeTriggers.test().and(driverController.b())
+        .whileTrue(turret.run(turret::testDirectionNegative).finallyDo(() -> turret.stop()));
+    RobotModeTriggers.test().and(driverController.x())
+        .onTrue(Commands.runOnce(() -> turret.nudge(120)));
+    RobotModeTriggers.test().and(driverController.y())
+        .onTrue(Commands.runOnce(() -> turret.nudge(-120)));
+    RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
 
     // --- Turret Field Hold ---
     // RB: Hold turret at a fixed field-relative heading while robot spins

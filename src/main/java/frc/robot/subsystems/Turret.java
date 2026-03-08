@@ -46,9 +46,6 @@ public class Turret extends SubsystemBase {
     private final StatusSignal<Angle> motorPosition;
     private final StatusSignal<Angle> canCoderPosition;
 
-    // SysId routine for characterization
-    private final SysIdRoutine sysIdRoutine;
-
     // State
     private double targetPositionDegrees = 0.0;
 
@@ -85,20 +82,6 @@ public class Turret extends SubsystemBase {
         // Optimize CAN bus utilization
         motor.optimizeBusUtilization();
         canCoder.optimizeBusUtilization();
-
-        // Configure SysId routine for characterization
-        // CTRE's SignalLogger automatically captures motor signals (position, velocity, voltage)
-        // so we pass null for the log consumer — the .hoot file has everything SysId needs
-        sysIdRoutine = new SysIdRoutine(
-                new SysIdRoutine.Config(
-                        null, // Use default ramp rate (1 V/s)
-                        Volts.of(2), // Step voltage - reduced for limited rotation range
-                        Seconds.of(5), // Timeout - shorter to stay within rotation limits
-                        (state) -> SignalLogger.writeString("turret-state", state.toString())),
-                new SysIdRoutine.Mechanism(
-                        (voltage) -> motor.setControl(voltageRequest.withOutput(voltage.in(Volts))),
-                        null,
-                        this));
     }
 
     private void configureCANCoder() {
@@ -251,14 +234,6 @@ public class Turret extends SubsystemBase {
         })).withName("TurretFieldHold");
     }
 
-    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
-        return sysIdRoutine.quasistatic(direction);
-    }
-
-    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-        return sysIdRoutine.dynamic(direction);
-    }
-
     /**
      * Applies a small positive voltage to test motor direction. Watch the CANcoder: if position INCREASES, direction is
      * correct. If position DECREASES, flip motor inversion or CANcoder direction.
@@ -289,9 +264,11 @@ public class Turret extends SubsystemBase {
         SmartDashboard.putNumber("Turret/Position Degrees", position);
         SmartDashboard.putNumber("Turret/Target Degrees", targetPositionDegrees);
         SmartDashboard.putNumber("Turret/CANCoder Degrees", canCoderDeg);
-        SmartDashboard.putNumber("Turret/CANCoder Raw Rotations", canCoderPosition.refresh().getValue().in(Rotations));
+        SmartDashboard.putNumber("Turret/CANCoder Raw Rotations",
+                canCoderPosition.refresh().getValue().in(Rotations));
         SmartDashboard.putNumber("Turret/Motor Raw Rotations", motorPosition.refresh().getValue().in(Rotations));
-        SmartDashboard.putNumber("Turret/Motor Stator Current", motor.getStatorCurrent().refresh().getValue().in(Amps));
+        SmartDashboard.putNumber("Turret/Motor Stator Current",
+                motor.getStatorCurrent().refresh().getValue().in(Amps));
         SmartDashboard.putNumber("Turret/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
         SmartDashboard.putBoolean("Turret/At Position", isAtPosition());
         SmartDashboard.putBoolean("Turret/In Overshoot Zone", Math.abs(position) > 180.0);
