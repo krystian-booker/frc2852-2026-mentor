@@ -126,6 +126,10 @@ public class RobotContainer {
     // Set intake default command - always running
     // intake.setDefaultCommand(intake.run(intake::runIntake));
 
+    // Start CTRE SignalLogger once so all SysId tests go to a single file
+    // SignalLogger.setPath("/home/lvuser/logs/");
+    // SignalLogger.start();
+
     // Configure normal bindings (always available)
     // configureBindings();
     configureSwerveBindings();
@@ -281,8 +285,6 @@ public class RobotContainer {
    * Bumper - Toggle Turret Calibration Mode
    */
   private void configureTestBindings() {
-    // Start CTRE SignalLogger when entering test mode
-    RobotModeTriggers.test().onTrue(Commands.runOnce(() -> SignalLogger.start()));
 
     // Turret Calibration Mode
     // Right bumper toggles calibration mode - reads NetworkTables inputs
@@ -343,20 +345,20 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.y()).onTrue(Commands.runOnce(() -> flywheel.setVelocity(0),
     // flywheel));
 
-    // --- Turret (SAFE TESTING MODE) ---
-    // Step 1: Spin turret by hand, watch dashboard values (no buttons needed)
-    // Step 2: Test motor direction - hold A for +1V, hold B for -1V (releases = stop)
-    // Watch CANCoder: +voltage should INCREASE position. If not, flip motor inversion.
-    // Step 3: After direction is confirmed, use X to nudge +10deg, Y to nudge -10deg
+    // --- Turret SysId ---
+    // Position turret to ~-90° before Forward tests, ~+90° before Reverse tests
+    // A: Quasistatic Forward (slow ramp) | B: Quasistatic Reverse
+    // X: Dynamic Forward (step voltage) | Y: Dynamic Reverse
     // LB: Emergency stop
-    RobotModeTriggers.test().and(driverController.a())
-        .whileTrue(turret.run(turret::testDirectionPositive).finallyDo(() -> turret.stop()));
-    RobotModeTriggers.test().and(driverController.b())
-        .whileTrue(turret.run(turret::testDirectionNegative).finallyDo(() -> turret.stop()));
-    RobotModeTriggers.test().and(driverController.x())
-        .onTrue(Commands.runOnce(() -> turret.nudge(10)));
-    RobotModeTriggers.test().and(driverController.y())
-        .onTrue(Commands.runOnce(() -> turret.nudge(-10)));
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(turret.sysIdQuasistatic(Direction.kForward));
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(turret.sysIdQuasistatic(Direction.kReverse));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(turret.sysIdDynamic(Direction.kForward));
+    // RobotModeTriggers.test().and(driverController.y()).whileTrue(turret.sysIdDynamic(Direction.kReverse));
+
+    // --- Turret Field Hold ---
+    // RB: Hold turret at a fixed field-relative heading while robot spins
+    RobotModeTriggers.test().and(driverController.rightBumper())
+        .whileTrue(turret.fieldHoldCommand(() -> drivetrain.getState().Pose.getRotation().getDegrees()));
     RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
 
     // --- Hood (SAFE TESTING MODE) ---

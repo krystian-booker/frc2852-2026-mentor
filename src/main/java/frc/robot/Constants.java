@@ -104,19 +104,19 @@ public final class Constants {
     public static final double MAX_POSITION_DEGREES = 180.0;
     public static final double SOFT_LIMIT_BUFFER_DEGREES = 5.0; // Extra degrees beyond app range for overshoot recovery
 
-    // PID Gains (Slot 0)
-    public static final double S = 5.0; // Static friction (Amps) - overcomes mechanical friction before PID acts
-    public static final double V = 0.0; // Velocity feedforward (Amps per RPS)
-    public static final double A = 0.0; // Acceleration feedforward (Amps per RPS/s)
-    public static final double G = 0.0; // Gravity feedforward (Amps) - may be needed if turret is off-axis
-    public static final double P = 100.0; // Proportional (Amps per rotation error)
+    // PID Gains (Slot 0) - voltage-based, mechanism rotations (50:1 gear ratio)
+    public static final double S = 1.0; // Static friction (Volts)
+    public static final double V = 2; // Velocity feedforward (Volts per mechanism RPS)
+    public static final double A = 0.0; // Acceleration feedforward (Volts per RPS/s)
+    public static final double G = 0.0; // Gravity feedforward (Volts)
+    public static final double P = 60.0; // Proportional (Volts per rotation error)
     public static final double I = 0.0; // Integral
-    public static final double D = 0.5; // Derivative
+    public static final double D = 3.0; // Derivative - backed off to avoid motor noise
 
-    // Motion Magic - SLOW for safe testing (was 1.0/2.0/20.0)
-    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 0.5; // Rotations per second (36 deg/s)
-    public static final double MOTION_MAGIC_ACCELERATION = 0.6; // Rotations per second^2
-    public static final double MOTION_MAGIC_JERK = 2.0; // Rotations per second^3
+    // Motion Magic
+    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 2.5; // Rotations per second (900 deg/s)
+    public static final double MOTION_MAGIC_ACCELERATION = 10.0; // Rotations per second^2 - higher = decelerates harder
+    public static final double MOTION_MAGIC_JERK = 200.0; // Rotations per second^3 - snaps to decel quickly
 
     // Current Limits - reduced for safe testing
     public static final double SUPPLY_CURRENT_LIMIT = 80.0; // Amps - main limit (was 80)
@@ -128,8 +128,7 @@ public final class Constants {
     public static final double POSITION_TOLERANCE_DEGREES = 1.0; // Degrees tolerance for isAtPosition()
 
     // CANCoder
-    public static final double CANCODER_OFFSET = -0.432373; // Rotations - negate the Absolute Position reading at
-                                                            // mechanical zero from Phoenix Tuner X
+    public static final double CANCODER_OFFSET = -0.432373;
   }
 
   public static class TurretAimingConstants {

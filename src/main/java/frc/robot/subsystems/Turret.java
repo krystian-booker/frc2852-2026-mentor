@@ -7,7 +7,7 @@ import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.MotionMagicTorqueCurrentFOC;
+import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.CANcoder;
@@ -38,7 +38,7 @@ public class Turret extends SubsystemBase {
     private final CANcoder canCoder;
 
     // Control requests
-    private final MotionMagicTorqueCurrentFOC positionRequest;
+    private final MotionMagicVoltage positionRequest;
     private final NeutralOut neutralRequest;
     private final VoltageOut voltageRequest;
 
@@ -59,7 +59,7 @@ public class Turret extends SubsystemBase {
         canCoder = new CANcoder(CANIds.TURRET_CANCODER, canBus);
 
         // Initialize control requests
-        positionRequest = new MotionMagicTorqueCurrentFOC(0).withSlot(0);
+        positionRequest = new MotionMagicVoltage(0).withSlot(0);
         neutralRequest = new NeutralOut();
         voltageRequest = new VoltageOut(0);
 
@@ -87,11 +87,13 @@ public class Turret extends SubsystemBase {
         canCoder.optimizeBusUtilization();
 
         // Configure SysId routine for characterization
+        // CTRE's SignalLogger automatically captures motor signals (position, velocity, voltage)
+        // so we pass null for the log consumer — the .hoot file has everything SysId needs
         sysIdRoutine = new SysIdRoutine(
                 new SysIdRoutine.Config(
                         null, // Use default ramp rate (1 V/s)
-                        Volts.of(4), // Step voltage
-                        null, // Use default timeout (10 s)
+                        Volts.of(2), // Step voltage - reduced for limited rotation range
+                        Seconds.of(5), // Timeout - shorter to stay within rotation limits
                         (state) -> SignalLogger.writeString("turret-state", state.toString())),
                 new SysIdRoutine.Mechanism(
                         (voltage) -> motor.setControl(voltageRequest.withOutput(voltage.in(Volts))),
@@ -147,9 +149,11 @@ public class Turret extends SubsystemBase {
 
         // Software limits to prevent over-rotation (wire wrap protection)
         config.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
-        config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = (TurretConstants.MAX_POSITION_DEGREES + TurretConstants.SOFT_LIMIT_BUFFER_DEGREES) / 360.0;
+        config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = (TurretConstants.MAX_POSITION_DEGREES
+                + TurretConstants.SOFT_LIMIT_BUFFER_DEGREES) / 360.0;
         config.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
-        config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = (TurretConstants.MIN_POSITION_DEGREES - TurretConstants.SOFT_LIMIT_BUFFER_DEGREES) / 360.0;
+        config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = (TurretConstants.MIN_POSITION_DEGREES
+                - TurretConstants.SOFT_LIMIT_BUFFER_DEGREES) / 360.0;
 
         // Current limits
         config.CurrentLimits.StatorCurrentLimitEnable = true;
@@ -158,9 +162,6 @@ public class Turret extends SubsystemBase {
         config.CurrentLimits.SupplyCurrentLimit = TurretConstants.SUPPLY_CURRENT_LIMIT;
         config.CurrentLimits.SupplyCurrentLowerLimit = TurretConstants.SUPPLY_CURRENT_LOWER_LIMIT;
         config.CurrentLimits.SupplyCurrentLowerTime = TurretConstants.SUPPLY_CURRENT_LOWER_TIME;
-
-        config.TorqueCurrent.PeakForwardTorqueCurrent = TurretConstants.STATOR_CURRENT_LIMIT;
-        config.TorqueCurrent.PeakReverseTorqueCurrent = -TurretConstants.STATOR_CURRENT_LIMIT;
 
         // Apply with retry
         StatusCode status = StatusCode.StatusCodeNotInitialized;
@@ -215,8 +216,8 @@ public class Turret extends SubsystemBase {
     }
 
     /**
-     * Creates a command that continuously aims the turret at the target.
-     * The turret will track the target position as the robot moves.
+     * Creates a command that continuously aims the turret at the target. The turret will track the target position as
+     * the robot moves.
      *
      * @param calculator The TurretAimingCalculator to use for calculations
      * @return A command that continuously updates the turret position
@@ -230,6 +231,26 @@ public class Turret extends SubsystemBase {
         }).withName("TurretAimAtTarget");
     }
 
+    /**
+     * Creates a command that holds the turret pointing at a fixed field-relative heading. As the robot rotates, the
+     * turret counter-rotates to maintain the same field direction. Captures the current field heading on
+     * initialization.
+     *
+     * @param robotHeadingSupplier supplies the robot's field-relative heading in degrees
+     */
+    public Command fieldHoldCommand(java.util.function.DoubleSupplier robotHeadingSupplier) {
+        double[] fieldTarget = new double[1]; // captured on init
+        return runOnce(() -> {
+            // Capture the field-relative direction the turret is currently pointing
+            fieldTarget[0] = getPositionDegrees() + robotHeadingSupplier.getAsDouble();
+        }).andThen(run(() -> {
+            double turretAngle = fieldTarget[0] - robotHeadingSupplier.getAsDouble();
+            // Normalize to [-180, 180]
+            turretAngle = ((turretAngle % 360.0) + 540.0) % 360.0 - 180.0;
+            setPosition(turretAngle);
+        })).withName("TurretFieldHold");
+    }
+
     public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
         return sysIdRoutine.quasistatic(direction);
     }
@@ -239,9 +260,8 @@ public class Turret extends SubsystemBase {
     }
 
     /**
-     * Applies a small positive voltage to test motor direction.
-     * Watch the CANcoder: if position INCREASES, direction is correct.
-     * If position DECREASES, flip motor inversion or CANcoder direction.
+     * Applies a small positive voltage to test motor direction. Watch the CANcoder: if position INCREASES, direction is
+     * correct. If position DECREASES, flip motor inversion or CANcoder direction.
      */
     public void testDirectionPositive() {
         motor.setControl(voltageRequest.withOutput(1.0)); // Small positive voltage
