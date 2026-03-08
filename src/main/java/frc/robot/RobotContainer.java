@@ -3,6 +3,7 @@ package frc.robot;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
 import frc.robot.commands.FlywheelAutoTuneCommand;
+import frc.robot.commands.HoodAutoTuneCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Conveyor;
 import frc.robot.subsystems.Flywheel;
@@ -45,14 +46,14 @@ public class RobotContainer {
   // private final Intake intake = new Intake();
   // private final IntakeActuator intakeActuator = new IntakeActuator();
   private final Turret turret = new Turret();
-  // private final Climb climb = new Climb();
+  private final Climb climb = new Climb();
   // private final LED led = new LED();
 
   // Controllers
   private final CommandXboxController driverController = new CommandXboxController(
       OperatorConstants.DRIVER_CONTROLLER_PORT);
-  // private final CommandXboxController operatorController = new CommandXboxController(
-  // OperatorConstants.OPERATOR_CONTROLLER_PORT);
+  private final CommandXboxController operatorController = new CommandXboxController(
+      OperatorConstants.OPERATOR_CONTROLLER_PORT);
 
   // Swerve constants
   private double MaxSpeed = 1.0 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
@@ -395,6 +396,9 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.rightBumper())
     // .whileTrue(turret.fieldHoldCommand(() -> drivetrain.getState().Pose.getRotation().getDegrees()));
     // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
+
+    // --- Hood Auto-Tune ---
+    RobotModeTriggers.test().and(driverController.start()).toggleOnTrue(new HoodAutoTuneCommand(hood));
 
     // --- Flywheel Auto-Tune ---
     // BACK: Toggle flywheel auto-tune command

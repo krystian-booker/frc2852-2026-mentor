@@ -4,6 +4,8 @@ import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
+import com.ctre.phoenix6.configs.MotionMagicConfigs;
+import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
@@ -84,7 +86,7 @@ public class Hood extends SubsystemBase {
         config.Slot0.kI = HoodConstants.I;
         config.Slot0.kD = HoodConstants.D;
         config.Slot0.GravityType = GravityTypeValue.Arm_Cosine;
-        config.Slot0.kG = 0.0; // Tune based on hood weight
+        config.Slot0.kG = HoodConstants.G;
 
         // Motion Magic - convert deg/s to rot/s
         config.MotionMagic.MotionMagicCruiseVelocity = HoodConstants.MOTION_MAGIC_CRUISE_VELOCITY / 360.0;
@@ -159,6 +161,61 @@ public class Hood extends SubsystemBase {
     public void nudge(double deltaDegrees) {
         double current = getCurrentPositionDegrees();
         setPosition(current + deltaDegrees);
+    }
+
+    /** Apply raw voltage output for characterization. */
+    public void applyVoltage(double volts) {
+        motor.setControl(voltageRequest.withOutput(volts));
+    }
+
+    /** Get mechanism velocity in rotations per second. */
+    public double getVelocityRPS() {
+        return motor.getVelocity().refresh().getValue().in(RotationsPerSecond);
+    }
+
+    /** Get motor stator current in Amps. */
+    public double getStatorCurrent() {
+        return motor.getStatorCurrent().refresh().getValue().in(Amps);
+    }
+
+    /**
+     * Hot-reload only Slot0 and MotionMagic gains. Uses per-group config objects
+     * so gear ratio, soft limits, and current limits are never touched.
+     * Motion Magic params are in deg/s (matching HoodConstants convention), divided by 360 internally.
+     */
+    public void applyTuningConfig(double kS, double kV, double kA, double kG,
+            double kP, double kI, double kD,
+            double cruiseVelDegS, double accelDegS2, double jerkDegS3) {
+        var configurator = motor.getConfigurator();
+
+        Slot0Configs slot0 = new Slot0Configs();
+        slot0.kS = kS;
+        slot0.kV = kV;
+        slot0.kA = kA;
+        slot0.kG = kG;
+        slot0.GravityType = GravityTypeValue.Arm_Cosine;
+        slot0.kP = kP;
+        slot0.kI = kI;
+        slot0.kD = kD;
+
+        MotionMagicConfigs mm = new MotionMagicConfigs();
+        mm.MotionMagicCruiseVelocity = cruiseVelDegS / 360.0;
+        mm.MotionMagicAcceleration = accelDegS2 / 360.0;
+        mm.MotionMagicJerk = jerkDegS3 / 360.0;
+
+        StatusCode status = configurator.apply(slot0);
+        if (!status.isOK()) {
+            System.err.println("Failed to apply hood Slot0 config: " + status);
+        }
+        status = configurator.apply(mm);
+        if (!status.isOK()) {
+            System.err.println("Failed to apply hood MotionMagic config: " + status);
+        }
+    }
+
+    /** Restore original Constants.java values by re-running configureMotor(). */
+    public void restoreDefaultConfig() {
+        configureMotor();
     }
 
     private double clamp(double value, double min, double max) {

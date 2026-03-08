@@ -76,17 +76,18 @@ public final class Constants {
     public static final double MAX_POSITION_DEGREES = 25.0;
 
     // PID Gains (Slot 0)
-    public static final double S = 0.0; // Static friction (Volts)
-    public static final double V = 0.0; // Velocity feedforward (Volts per RPS)
-    public static final double A = 0.0; // Acceleration feedforward (Volts per RPS/s)
+    public static final double S = 0.4338;
+    public static final double V = 19.0191;
+    public static final double A = 0.0;
+    public static final double G = 0.0352;
     public static final double P = 10.0; // Proportional (Volts per rotation error) - reduced from 50 for safe testing
     public static final double I = 0.0; // Integral
     public static final double D = 0.5; // Derivative
 
-    // Motion Magic - SLOW for safe testing
-    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 36.0; // deg/s (was 200)
-    public static final double MOTION_MAGIC_ACCELERATION = 72.0; // deg/s^2 (was 400)
-    public static final double MOTION_MAGIC_JERK = 720.0; // deg/s^3 (was 4000)
+    // Motion Magic - max speed (beyond physical limit, motor-limited)
+    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 36000.0; // deg/s
+    public static final double MOTION_MAGIC_ACCELERATION = 360000.0; // deg/s^2
+    public static final double MOTION_MAGIC_JERK = 3600000.0; // deg/s^3
 
     // Current Limits - reduced for safe testing
     public static final double SUPPLY_CURRENT_LIMIT = 20.0; // Amps - main limit (was 40)
