@@ -10,7 +10,6 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -42,24 +41,20 @@ public class QuestNavSubsystem extends SubsystemBase {
 
         // Build transform from constants
         this.robotToQuest = new Transform3d(
-            new Translation3d(
-                QuestNavConstants.QUEST_OFFSET_X_METERS,
-                QuestNavConstants.QUEST_OFFSET_Y_METERS,
-                QuestNavConstants.QUEST_OFFSET_Z_METERS
-            ),
-            new Rotation3d(
-                Math.toRadians(QuestNavConstants.QUEST_ROLL_OFFSET_DEGREES),
-                Math.toRadians(QuestNavConstants.QUEST_PITCH_OFFSET_DEGREES),
-                Math.toRadians(QuestNavConstants.QUEST_YAW_OFFSET_DEGREES)
-            )
-        );
+                new Translation3d(
+                        QuestNavConstants.QUEST_OFFSET_X_METERS,
+                        QuestNavConstants.QUEST_OFFSET_Y_METERS,
+                        QuestNavConstants.QUEST_OFFSET_Z_METERS),
+                new Rotation3d(
+                        Math.toRadians(QuestNavConstants.QUEST_ROLL_OFFSET_DEGREES),
+                        Math.toRadians(QuestNavConstants.QUEST_PITCH_OFFSET_DEGREES),
+                        Math.toRadians(QuestNavConstants.QUEST_YAW_OFFSET_DEGREES)));
 
         // Build standard deviation matrix
         this.visionStdDevs = VecBuilder.fill(
-            QuestNavConstants.STD_DEV_X,
-            QuestNavConstants.STD_DEV_Y,
-            QuestNavConstants.STD_DEV_THETA
-        );
+                QuestNavConstants.STD_DEV_X,
+                QuestNavConstants.STD_DEV_Y,
+                QuestNavConstants.STD_DEV_THETA);
     }
 
     @Override
@@ -83,10 +78,9 @@ public class QuestNavSubsystem extends SubsystemBase {
 
                 // Feed to drivetrain's Kalman filter
                 drivetrain.addVisionMeasurement(
-                    robotPose,
-                    frame.dataTimestamp(),
-                    visionStdDevs
-                );
+                        robotPose,
+                        frame.dataTimestamp(),
+                        visionStdDevs);
             } else {
                 isConnected = false;
             }
@@ -100,8 +94,8 @@ public class QuestNavSubsystem extends SubsystemBase {
     }
 
     /**
-     * Reset the QuestNav pose to match a known robot position.
-     * Call this when resetting odometry (e.g., at start of auto).
+     * Reset the QuestNav pose to match a known robot position. Call this when resetting odometry (e.g., at start of
+     * auto).
      */
     public void resetPose(Pose2d robotPose) {
         Pose3d robotPose3d = new Pose3d(robotPose);
@@ -120,8 +114,8 @@ public class QuestNavSubsystem extends SubsystemBase {
     }
 
     /**
-     * Attempts to immediately seed QuestNav pose from vision.
-     * Requires at least 2 visible tags for accurate seeding.
+     * Attempts to immediately seed QuestNav pose from vision. Requires at least 2 visible tags for accurate seeding.
+     * 
      * @return true if seeding was successful (valid vision pose with 2+ tags)
      */
     public boolean seedPoseFromVision() {
@@ -137,25 +131,26 @@ public class QuestNavSubsystem extends SubsystemBase {
 
     /**
      * Creates a command that waits for a valid vision pose and then seeds QuestNav.
+     * 
      * @param timeout Maximum time to wait for a valid pose in seconds
      * @return Command that seeds QuestNav when vision pose is available
      */
     public Command seedFromVisionCommand(double timeout) {
         Timer timer = new Timer();
         return Commands.sequence(
-            Commands.runOnce(timer::restart),
-            Commands.waitUntil(() -> vision.hasRecentValidPose(0.5) || timer.hasElapsed(timeout)),
-            Commands.runOnce(() -> {
-                if (vision.hasRecentValidPose(0.5)) {
-                    seedPoseFromVision();
-                }
-            })
-        );
+                Commands.runOnce(timer::restart),
+                Commands.waitUntil(() -> vision.hasRecentValidPose(0.5) || timer.hasElapsed(timeout)),
+                Commands.runOnce(() -> {
+                    if (vision.hasRecentValidPose(0.5)) {
+                        seedPoseFromVision();
+                    }
+                }));
     }
 
     /**
-     * Creates an instant command that attempts to seed QuestNav from vision.
-     * Does nothing if no valid vision pose is available.
+     * Creates an instant command that attempts to seed QuestNav from vision. Does nothing if no valid vision pose is
+     * available.
+     * 
      * @return Command that attempts immediate vision seeding
      */
     public Command trySeedFromVision() {

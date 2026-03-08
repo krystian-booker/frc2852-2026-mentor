@@ -8,7 +8,6 @@ import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.TorqueCurrentFOC;
 import com.ctre.phoenix6.controls.VelocityTorqueCurrentFOC;
-import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -18,9 +17,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
@@ -213,8 +210,8 @@ public class Flywheel extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // SmartDashboard.putNumber("Flywheel/Velocity RPM", getCurrentVelocityRPM());
-        // SmartDashboard.putNumber("Flywheel/Target RPM", targetVelocityRPM);
-        // SmartDashboard.putBoolean("Flywheel/At Setpoint", atSetpoint());
+        SmartDashboard.putNumber("Flywheel/Velocity RPM", getCurrentVelocityRPM());
+        SmartDashboard.putNumber("Flywheel/Target RPM", targetVelocityRPM);
+        SmartDashboard.putBoolean("Flywheel/At Setpoint", atSetpoint());
     }
 }

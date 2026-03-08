@@ -2,8 +2,11 @@ package frc.robot;
 
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
+import frc.robot.commands.FlywheelAutoTuneCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Conveyor;
+import frc.robot.subsystems.Flywheel;
+import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
@@ -36,20 +39,20 @@ import frc.robot.subsystems.QuestNavSubsystem;
 public class RobotContainer {
 
   // Subsystems
-  private final Conveyor conveyor = new Conveyor();
-  // private final Flywheel flywheel = new Flywheel();
+  // private final Conveyor conveyor = new Conveyor();
+  private final Flywheel flywheel = new Flywheel();
   // private final Hood hood = new Hood();
-  private final Intake intake = new Intake();
-  private final IntakeActuator intakeActuator = new IntakeActuator();
-  private final Turret turret = new Turret();
-  private final Climb climb = new Climb();
-  private final LED led = new LED();
+  // private final Intake intake = new Intake();
+  // private final IntakeActuator intakeActuator = new IntakeActuator();
+  // private final Turret turret = new Turret();
+  // private final Climb climb = new Climb();
+  // private final LED led = new LED();
 
   // Controllers
   private final CommandXboxController driverController = new CommandXboxController(
       OperatorConstants.DRIVER_CONTROLLER_PORT);
-  private final CommandXboxController operatorController = new CommandXboxController(
-      OperatorConstants.OPERATOR_CONTROLLER_PORT);
+  // private final CommandXboxController operatorController = new CommandXboxController(
+  // OperatorConstants.OPERATOR_CONTROLLER_PORT);
 
   // Swerve constants
   private double MaxSpeed = 1.0 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
@@ -248,7 +251,7 @@ public class RobotContainer {
               // Robot was moved, reset seeding state
               isQuestNavSeeded = false;
               seededPose = null;
-              led.setPattern(LED.Pattern.RED);
+              // led.setPattern(LED.Pattern.RED);
               vision.setFeedingEnabled(true);
             }
           }
@@ -258,7 +261,7 @@ public class RobotContainer {
             if (questNav.seedPoseFromVision()) {
               isQuestNavSeeded = true;
               seededPose = questNav.getLatestPose();
-              led.setPattern(LED.Pattern.GREEN);
+              // led.setPattern(LED.Pattern.GREEN);
               vision.setFeedingEnabled(false);
             }
           }
@@ -267,8 +270,8 @@ public class RobotContainer {
     RobotModeTriggers.disabled().whileTrue(seedingCommand);
 
     // Turn off LEDs when auto or teleop starts
-    RobotModeTriggers.autonomous().onTrue(led.setPatternCommand(LED.Pattern.BLACK));
-    RobotModeTriggers.teleop().onTrue(led.setPatternCommand(LED.Pattern.BLACK));
+    // RobotModeTriggers.autonomous().onTrue(led.setPatternCommand(LED.Pattern.BLACK));
+    // RobotModeTriggers.teleop().onTrue(led.setPatternCommand(LED.Pattern.BLACK));
   }
 
   private void configureClimbBindings() {
@@ -314,19 +317,6 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.y()).whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
 
     // ===== MANUAL SUBSYSTEM TEST BINDINGS =====
-
-    // --- Flywheel ---
-    // A: 2000 RPM | B: 3500 RPM | X: 5000 RPM | Y: Stop
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(flywheel.run(() -> flywheel.setVelocity(2000)));
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(flywheel.run(() -> flywheel.setVelocity(3500)));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.run(() -> flywheel.setVelocity(5500)));
-    // RobotModeTriggers.test().and(driverController.y()).onTrue(Commands.runOnce(() -> flywheel.setVelocity(0),
-    // flywheel));
-
-    // --- Flywheel Auto-Tune ---
-    // BACK: Toggle flywheel auto-tune command
-    // RobotModeTriggers.test().and(driverController.back())
-    // .toggleOnTrue(new FlywheelAutoTuneCommand(flywheel));
 
     // --- Hood ---
     // Step 1: Move hood by hand, watch dashboard values (no buttons needed)
@@ -390,21 +380,34 @@ public class RobotContainer {
     // --- Turret Manual Test ---
     // A: Hold for +1V forward | B: Hold for -1V reverse
     // X: Nudge +90° | Y: Nudge -90°
-    RobotModeTriggers.test().and(driverController.a())
-        .whileTrue(turret.run(turret::testDirectionPositive).finallyDo(() -> turret.stop()));
-    RobotModeTriggers.test().and(driverController.b())
-        .whileTrue(turret.run(turret::testDirectionNegative).finallyDo(() -> turret.stop()));
-    RobotModeTriggers.test().and(driverController.x())
-        .onTrue(Commands.runOnce(() -> turret.nudge(120)));
-    RobotModeTriggers.test().and(driverController.y())
-        .onTrue(Commands.runOnce(() -> turret.nudge(-120)));
-    RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
+    // RobotModeTriggers.test().and(driverController.a())
+    // .whileTrue(turret.run(turret::testDirectionPositive).finallyDo(() -> turret.stop()));
+    // RobotModeTriggers.test().and(driverController.b())
+    // .whileTrue(turret.run(turret::testDirectionNegative).finallyDo(() -> turret.stop()));
+    // RobotModeTriggers.test().and(driverController.x())
+    // .onTrue(Commands.runOnce(() -> turret.nudge(120)));
+    // RobotModeTriggers.test().and(driverController.y())
+    // .onTrue(Commands.runOnce(() -> turret.nudge(-120)));
+    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
 
     // --- Turret Field Hold ---
     // RB: Hold turret at a fixed field-relative heading while robot spins
     // RobotModeTriggers.test().and(driverController.rightBumper())
     // .whileTrue(turret.fieldHoldCommand(() -> drivetrain.getState().Pose.getRotation().getDegrees()));
     // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
+
+    // --- Flywheel Auto-Tune ---
+    // BACK: Toggle flywheel auto-tune command
+    RobotModeTriggers.test().and(driverController.back()).toggleOnTrue(new FlywheelAutoTuneCommand(flywheel));
+
+    // --- Flywheel ---
+    // A: 2000 RPM | B: 3500 RPM | X: 5000 RPM | Y: Stop
+    RobotModeTriggers.test().and(driverController.a()).whileTrue(flywheel.run(() -> flywheel.setVelocity(2000)));
+    RobotModeTriggers.test().and(driverController.b()).whileTrue(flywheel.run(() -> flywheel.setVelocity(3500)));
+    RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.run(() -> flywheel.setVelocity(5500)));
+    RobotModeTriggers.test().and(driverController.y())
+        .onTrue(Commands.runOnce(() -> flywheel.setVelocity(0), flywheel));
+
   }
 
   public Command getAutonomousCommand() {

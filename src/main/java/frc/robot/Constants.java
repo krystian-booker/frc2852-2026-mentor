@@ -45,19 +45,19 @@ public final class Constants {
 
   public static class FlywheelConstants {
     // Mechanical
-    public static final double GEAR_RATIO = 2.0; // Motor rotations per flywheel rotation
+    public static final double GEAR_RATIO = 1.2; // Motor rotations per flywheel rotation
 
     // RPM Limits
     public static final double MIN_RPM = 1000.0; // Minimum flywheel RPM for calibration/validation
     public static final double MAX_RPM = 6000.0; // Maximum flywheel RPM for calibration/validation
 
     // PID/Feedforward Gains
-    public static final double S = 0.0; // Static friction (Amps)
-    public static final double V = 0.12; // Velocity feedforward (Amps per RPS)
-    public static final double A = 0.01; // Acceleration feedforward (Amps per RPS/s)
-    public static final double P = 0.5; // Proportional (Amps per RPS error)
-    public static final double I = 0.0; // Integral
-    public static final double D = 0.0; // Derivative
+    public static final double S = 3.9000;
+    public static final double V = 0.3387;
+    public static final double A = 0.9791;
+    public static final double P = 62.5000;
+    public static final double I = 0.0320;
+    public static final double D = 0.0000;
 
     // Current Limits
     public static final double SUPPLY_CURRENT_LIMIT = 60.0; // Amps - main limit

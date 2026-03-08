@@ -6,13 +6,12 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.TurretAimingConstants;
 import frc.robot.generated.TurretLookupTables;
 
 /**
- * Utility class that calculates the turret angle needed to point at a specific
- * field target based on the robot's current pose and alliance color.
+ * Utility class that calculates the turret angle needed to point at a specific field target based on the robot's
+ * current pose and alliance color.
  */
 public class TurretAimingCalculator {
     private final Supplier<Pose2d> poseSupplier;
@@ -20,10 +19,9 @@ public class TurretAimingCalculator {
     /**
      * Result of an aiming calculation.
      *
-     * @param turretAngleDegrees Robot-relative turret angle in degrees (-180 to
-     *                           +180)
-     * @param distanceMeters     Distance to target in meters
-     * @param isReachable        Whether the target is within valid shooting range
+     * @param turretAngleDegrees Robot-relative turret angle in degrees (-180 to +180)
+     * @param distanceMeters Distance to target in meters
+     * @param isReachable Whether the target is within valid shooting range
      */
     public record AimingResult(
             double turretAngleDegrees,
@@ -34,8 +32,7 @@ public class TurretAimingCalculator {
     /**
      * Creates a new TurretAimingCalculator.
      *
-     * @param poseSupplier Supplier for the robot's current pose (e.g.,
-     *                     drivetrain.getState()::Pose)
+     * @param poseSupplier Supplier for the robot's current pose (e.g., drivetrain.getState()::Pose)
      */
     public TurretAimingCalculator(Supplier<Pose2d> poseSupplier) {
         this.poseSupplier = poseSupplier;
@@ -61,7 +58,7 @@ public class TurretAimingCalculator {
                 .plus(new Translation2d(
                         TurretAimingConstants.TURRET_OFFSET_X_METERS,
                         TurretAimingConstants.TURRET_OFFSET_Y_METERS)
-                        .rotateBy(robotPose.getRotation()));
+                                .rotateBy(robotPose.getRotation()));
 
         // Calculate distance to target
         double distanceMeters = turretPosition.getDistance(targetPosition);
@@ -110,9 +107,8 @@ public class TurretAimingCalculator {
     }
 
     /**
-     * Gets the recommended hood angle based on distance to target.
-     * Uses interpolation from generated lookup table if available,
-     * falls back to default constants if no calibration data exists.
+     * Gets the recommended hood angle based on distance to target. Uses interpolation from generated lookup table if
+     * available, falls back to default constants if no calibration data exists.
      *
      * @return Hood angle in degrees
      */
@@ -125,9 +121,8 @@ public class TurretAimingCalculator {
     }
 
     /**
-     * Gets the recommended flywheel RPM based on distance to target.
-     * Uses interpolation from generated lookup table if available,
-     * falls back to default constants if no calibration data exists.
+     * Gets the recommended flywheel RPM based on distance to target. Uses interpolation from generated lookup table if
+     * available, falls back to default constants if no calibration data exists.
      *
      * @return Flywheel speed in RPM
      */
@@ -142,7 +137,7 @@ public class TurretAimingCalculator {
     /**
      * Linear interpolation from a lookup table.
      *
-     * @param input       The input value (e.g., distance)
+     * @param input The input value (e.g., distance)
      * @param lookupTable 2D array where [i][0] is input and [i][1] is output
      * @return Interpolated output value
      */

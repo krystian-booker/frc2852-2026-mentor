@@ -12,7 +12,6 @@ import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -46,10 +45,13 @@ public class Vision extends SubsystemBase {
         final String name;
         final PhotonCamera camera;
         final PhotonPoseEstimator poseEstimator;
+        @SuppressWarnings("unused")
         final Transform3d robotToCam;
 
         Matrix<N3, N1> currentStdDevs = kSingleTagStdDevs;
+        @SuppressWarnings("unused")
         Pose2d latestEstimate = new Pose2d();
+        @SuppressWarnings("unused")
         double latestTimestamp = 0.0;
         final Set<Integer> visibleTagIds = new HashSet<>();
 
@@ -80,7 +82,8 @@ public class Vision extends SubsystemBase {
     private VisionSystemSim visionSim;
 
     /**
-     * @param estConsumer Lambda that will accept a pose estimate and pass it to your desired {@link edu.wpi.first.math.estimator.SwerveDrivePoseEstimator}
+     * @param estConsumer Lambda that will accept a pose estimate and pass it to your desired
+     * {@link edu.wpi.first.math.estimator.SwerveDrivePoseEstimator}
      */
     public Vision(EstimateConsumer estConsumer) {
         this.estConsumer = estConsumer;
@@ -153,8 +156,8 @@ public class Vision extends SubsystemBase {
 
                     // Calculate confidence score (sum of std devs - lower is better)
                     double stdDevSum = cam.currentStdDevs.get(0, 0) +
-                                       cam.currentStdDevs.get(1, 0) +
-                                       cam.currentStdDevs.get(2, 0);
+                            cam.currentStdDevs.get(1, 0) +
+                            cam.currentStdDevs.get(2, 0);
 
                     // Check if this is the best estimate so far
                     if (stdDevSum < bestStdDevSum) {
@@ -203,7 +206,8 @@ public class Vision extends SubsystemBase {
     /**
      * Calculates standard deviations for a specific camera's pose estimate.
      */
-    private void updateCameraEstimationStdDevs(CameraInstance cam, Optional<EstimatedRobotPose> estimatedPose, List<PhotonTrackedTarget> targets) {
+    private void updateCameraEstimationStdDevs(CameraInstance cam, Optional<EstimatedRobotPose> estimatedPose,
+            List<PhotonTrackedTarget> targets) {
         if (estimatedPose.isEmpty()) {
             cam.currentStdDevs = kSingleTagStdDevs;
             return;
@@ -219,7 +223,7 @@ public class Vision extends SubsystemBase {
                 continue;
             numTags++;
             avgDist += tagPose.get().toPose2d().getTranslation().getDistance(
-                estimatedPose.get().estimatedPose.toPose2d().getTranslation());
+                    estimatedPose.get().estimatedPose.toPose2d().getTranslation());
         }
 
         if (numTags == 0) {
@@ -238,6 +242,7 @@ public class Vision extends SubsystemBase {
 
     /**
      * Returns the latest estimated pose from vision (best estimate across all cameras).
+     * 
      * @return Optional containing the pose if available, empty if no pose has been estimated
      */
     public Optional<Pose2d> getLatestPose2d() {
@@ -249,6 +254,7 @@ public class Vision extends SubsystemBase {
 
     /**
      * Checks if there is a recent valid pose estimate.
+     * 
      * @param maxAgeSeconds Maximum age in seconds for the pose to be considered valid
      * @return true if a valid pose exists within the specified age
      */
@@ -262,6 +268,7 @@ public class Vision extends SubsystemBase {
 
     /**
      * Returns the timestamp of the latest pose estimate.
+     * 
      * @return Timestamp in seconds, or 0 if no estimate exists
      */
     public double getLatestEstimateTimestamp() {
@@ -270,6 +277,7 @@ public class Vision extends SubsystemBase {
 
     /**
      * Returns the set of currently visible AprilTag IDs across all cameras.
+     * 
      * @return Set of visible tag IDs
      */
     public Set<Integer> getVisibleTagIds() {
@@ -278,6 +286,7 @@ public class Vision extends SubsystemBase {
 
     /**
      * Checks if a specific AprilTag is currently visible by any camera.
+     * 
      * @param tagId The tag ID to check
      * @return true if the tag is currently visible
      */
@@ -287,6 +296,7 @@ public class Vision extends SubsystemBase {
 
     /**
      * Returns the count of currently visible AprilTags across all cameras.
+     * 
      * @return Number of visible tags (union of all cameras)
      */
     public int getVisibleTagCount() {
@@ -295,6 +305,7 @@ public class Vision extends SubsystemBase {
 
     /**
      * Returns the count of visible AprilTags for a specific camera.
+     * 
      * @param cameraName The name of the camera
      * @return Number of visible tags for that camera, or 0 if camera not found
      */
@@ -309,6 +320,7 @@ public class Vision extends SubsystemBase {
 
     /**
      * Returns the names of cameras that currently have visible tags.
+     * 
      * @return List of camera names with visible tags
      */
     public List<String> getCamerasWithVisibleTags() {
@@ -323,6 +335,7 @@ public class Vision extends SubsystemBase {
 
     /**
      * Sets whether vision should feed pose estimates to the drivetrain.
+     * 
      * @param enabled true to enable feeding, false to disable
      */
     public void setFeedingEnabled(boolean enabled) {
@@ -331,6 +344,7 @@ public class Vision extends SubsystemBase {
 
     /**
      * Returns whether vision is currently feeding pose estimates to the drivetrain.
+     * 
      * @return true if feeding is enabled
      */
     public boolean isFeedingEnabled() {
@@ -339,6 +353,7 @@ public class Vision extends SubsystemBase {
 
     /**
      * Returns the first visible configured AprilTagTarget, if any.
+     * 
      * @return Optional containing a visible target, or empty if none visible
      */
     public Optional<AprilTagTarget> getVisibleTarget() {
@@ -353,6 +368,7 @@ public class Vision extends SubsystemBase {
 
     /**
      * Creates a command to pathfind to an AprilTag target position using PathPlanner.
+     * 
      * @param drivetrain The swerve drivetrain
      * @param tagId The AprilTag ID to drive to
      * @return Command that pathfinds to the target, or does nothing if tag not configured
@@ -364,10 +380,10 @@ public class Vision extends SubsystemBase {
         }
 
         PathConstraints constraints = new PathConstraints(
-            3.0, // max velocity m/s
-            3.0, // max acceleration m/s^2
-            2 * Math.PI, // max angular velocity rad/s
-            4 * Math.PI  // max angular acceleration rad/s^2
+                3.0, // max velocity m/s
+                3.0, // max acceleration m/s^2
+                2 * Math.PI, // max angular velocity rad/s
+                4 * Math.PI // max angular acceleration rad/s^2
         );
 
         return AutoBuilder.pathfindToPose(target.getTargetPose(), constraints);
@@ -375,6 +391,7 @@ public class Vision extends SubsystemBase {
 
     /**
      * Creates a command to pathfind to any currently visible configured target.
+     * 
      * @param drivetrain The swerve drivetrain
      * @return Command that pathfinds to a visible target, or does nothing if none visible
      */
@@ -389,8 +406,9 @@ public class Vision extends SubsystemBase {
     }
 
     /**
-     * Creates a command to drive directly to an AprilTag target using simple PID control.
-     * Use this for direct line driving when obstacles are not a concern.
+     * Creates a command to drive directly to an AprilTag target using simple PID control. Use this for direct line
+     * driving when obstacles are not a concern.
+     * 
      * @param drivetrain The swerve drivetrain
      * @param tagId The AprilTag ID to drive to
      * @return Command that drives to the target
@@ -401,41 +419,45 @@ public class Vision extends SubsystemBase {
             return Commands.none();
         }
 
-        PIDController xController = new PIDController(DRIVE_P, DRIVE_I, DRIVE_D);
-        PIDController yController = new PIDController(DRIVE_P, DRIVE_I, DRIVE_D);
-        PIDController rotController = new PIDController(ROTATION_P, ROTATION_I, ROTATION_D);
-        rotController.enableContinuousInput(-Math.PI, Math.PI);
+        try (PIDController xController = new PIDController(DRIVE_P, DRIVE_I, DRIVE_D)) {
+            try (PIDController yController = new PIDController(DRIVE_P, DRIVE_I, DRIVE_D)) {
+                try (PIDController rotController = new PIDController(ROTATION_P, ROTATION_I, ROTATION_D)) {
+                    rotController.enableContinuousInput(-Math.PI, Math.PI);
 
-        xController.setTolerance(POSITION_TOLERANCE_METERS);
-        yController.setTolerance(POSITION_TOLERANCE_METERS);
-        rotController.setTolerance(ROTATION_TOLERANCE_RADIANS);
+                    xController.setTolerance(POSITION_TOLERANCE_METERS);
+                    yController.setTolerance(POSITION_TOLERANCE_METERS);
+                    rotController.setTolerance(ROTATION_TOLERANCE_RADIANS);
 
-        Pose2d targetPose = target.getTargetPose();
+                    Pose2d targetPose = target.getTargetPose();
 
-        SwerveRequest.FieldCentric driveRequest = new SwerveRequest.FieldCentric();
+                    SwerveRequest.FieldCentric driveRequest = new SwerveRequest.FieldCentric();
 
-        return Commands.run(() -> {
-            Pose2d currentPose = drivetrain.getState().Pose;
+                    return Commands.run(() -> {
+                        Pose2d currentPose = drivetrain.getState().Pose;
 
-            double xSpeed = xController.calculate(currentPose.getX(), targetPose.getX());
-            double ySpeed = yController.calculate(currentPose.getY(), targetPose.getY());
-            double rotSpeed = rotController.calculate(
-                currentPose.getRotation().getRadians(),
-                targetPose.getRotation().getRadians()
-            );
+                        double xSpeed = xController.calculate(currentPose.getX(), targetPose.getX());
+                        double ySpeed = yController.calculate(currentPose.getY(), targetPose.getY());
+                        double rotSpeed = rotController.calculate(
+                                currentPose.getRotation().getRadians(),
+                                targetPose.getRotation().getRadians());
 
-            drivetrain.setControl(driveRequest
-                .withVelocityX(xSpeed)
-                .withVelocityY(ySpeed)
-                .withRotationalRate(rotSpeed));
-        }, drivetrain)
-        .until(() -> xController.atSetpoint() && yController.atSetpoint() && rotController.atSetpoint())
-        .finallyDo(() -> drivetrain.setControl(new SwerveRequest.SwerveDriveBrake()));
+                        drivetrain.setControl(driveRequest
+                                .withVelocityX(xSpeed)
+                                .withVelocityY(ySpeed)
+                                .withRotationalRate(rotSpeed));
+                    }, drivetrain)
+                            .until(() -> xController.atSetpoint() && yController.atSetpoint()
+                                    && rotController.atSetpoint())
+                            .finallyDo(() -> drivetrain.setControl(new SwerveRequest.SwerveDriveBrake()));
+                }
+            }
+        }
     }
 
     /**
-     * Returns the latest standard deviations of the estimated pose, for use with {@link edu.wpi.first.math.estimator.SwerveDrivePoseEstimator
-     * SwerveDrivePoseEstimator}. This should only be used when there are targets visible.
+     * Returns the latest standard deviations of the estimated pose, for use with
+     * {@link edu.wpi.first.math.estimator.SwerveDrivePoseEstimator SwerveDrivePoseEstimator}. This should only be used
+     * when there are targets visible.
      */
     public Matrix<N3, N1> getEstimationStdDevs() {
         return curStdDevs;

@@ -45,6 +45,10 @@ public class FlywheelAutoTuneCommand extends Command {
     private static final int MAX_DISTURBANCE_RETUNE_ITERATIONS = 3;
     private static final double DISTURBANCE_MULTI_INTERVAL_S = 0.5;
 
+    // Coast/spin-up timeouts
+    private static final double COAST_DOWN_TIMEOUT_SECONDS = 15.0; // Max wait for flywheel to stop
+    private static final double SPINUP_TIMEOUT_SECONDS = 10.0; // Max wait for flywheel to reach setpoint
+
     private static final String PREFIX = "FlywheelAutoTune/";
 
     private final Flywheel flywheel;
@@ -204,7 +208,10 @@ public class FlywheelAutoTuneCommand extends Command {
         switch (subStep) {
         case 0: // Settle at neutral
             flywheel.stop();
-            if (cycleCount > 100) { // 2 seconds at 50Hz
+            if (cycleCount > 100 && (flywheel.atSetpoint() || cycleCount > (int)(COAST_DOWN_TIMEOUT_SECONDS * 50))) {
+                if (!flywheel.atSetpoint()) {
+                    publishStatus("Phase 1: Coast-down timeout - proceeding at " + fmt(flywheel.getVelocityRPS() * 60) + " RPM");
+                }
                 subStep = 1;
                 ksRampCurrent = 0;
                 ksConsecutiveCount = 0;
@@ -291,7 +298,10 @@ public class FlywheelAutoTuneCommand extends Command {
 
         case 3: // Settle before kA test
             flywheel.stop();
-            if (cycleCount > 100) { // 2s settle
+            if (cycleCount > 100 && (flywheel.atSetpoint() || cycleCount > (int)(COAST_DOWN_TIMEOUT_SECONDS * 50))) {
+                if (!flywheel.atSetpoint()) {
+                    publishStatus("Phase 1: Coast-down timeout before kA - proceeding at " + fmt(flywheel.getVelocityRPS() * 60) + " RPM");
+                }
                 subStep = 4;
                 cycleCount = 0;
                 kaPrevVelocity = 0;
@@ -374,7 +384,11 @@ public class FlywheelAutoTuneCommand extends Command {
         switch (subStep) {
         case 0: // Settle at neutral before kP step test
             flywheel.stop();
-            if (cycleCount > (int)(SETTLE_SECONDS * 50)) {
+            if (cycleCount > (int)(SETTLE_SECONDS * 50)
+                    && (flywheel.atSetpoint() || cycleCount > (int)(COAST_DOWN_TIMEOUT_SECONDS * 50))) {
+                if (!flywheel.atSetpoint()) {
+                    publishStatus("Phase 2: Coast-down timeout - proceeding at " + fmt(flywheel.getVelocityRPS() * 60) + " RPM");
+                }
                 subStep = 1;
                 cycleCount = 0;
                 startVelocityStepTest(0, TEST_RPM / 60.0); // 0 → 3000 RPM
@@ -433,7 +447,8 @@ public class FlywheelAutoTuneCommand extends Command {
 
         case 2: // Settle before next kP test
             flywheel.stop();
-            if (cycleCount > (int)(SETTLE_SECONDS * 50)) {
+            if (cycleCount > (int)(SETTLE_SECONDS * 50)
+                    && (flywheel.atSetpoint() || cycleCount > (int)(COAST_DOWN_TIMEOUT_SECONDS * 50))) {
                 subStep = 1;
                 cycleCount = 0;
                 startVelocityStepTest(0, TEST_RPM / 60.0);
@@ -472,7 +487,8 @@ public class FlywheelAutoTuneCommand extends Command {
 
         case 4: // Settle before next kD test
             flywheel.stop();
-            if (cycleCount > (int)(SETTLE_SECONDS * 50)) {
+            if (cycleCount > (int)(SETTLE_SECONDS * 50)
+                    && (flywheel.atSetpoint() || cycleCount > (int)(COAST_DOWN_TIMEOUT_SECONDS * 50))) {
                 subStep = 3;
                 cycleCount = 0;
                 startVelocityStepTest(0, TEST_RPM / 60.0);
@@ -520,7 +536,8 @@ public class FlywheelAutoTuneCommand extends Command {
 
         case 6: // Settle before next kI test
             flywheel.stop();
-            if (cycleCount > (int)(SETTLE_SECONDS * 50)) {
+            if (cycleCount > (int)(SETTLE_SECONDS * 50)
+                    && (flywheel.atSetpoint() || cycleCount > (int)(COAST_DOWN_TIMEOUT_SECONDS * 50))) {
                 subStep = 5;
                 cycleCount = 0;
                 startVelocityStepTest(0, TEST_RPM / 60.0);
@@ -580,7 +597,11 @@ public class FlywheelAutoTuneCommand extends Command {
         switch (subStep) {
         case 0: // Spin up to test RPM
             flywheel.setVelocity(TEST_RPM);
-            if (cycleCount > (int)(SETTLE_SECONDS * 50) && flywheel.atSetpoint()) {
+            if (cycleCount > (int)(SETTLE_SECONDS * 50)
+                    && (flywheel.atSetpoint() || cycleCount > (int)(SPINUP_TIMEOUT_SECONDS * 50))) {
+                if (!flywheel.atSetpoint()) {
+                    publishStatus("Phase 3: Spin-up timeout - proceeding at " + fmt(flywheel.getVelocityRPS() * 60) + " RPM (target " + (int) TEST_RPM + ")");
+                }
                 subStep = 1;
                 cycleCount = 0;
                 disturbancePulseActive = false;
@@ -626,8 +647,9 @@ public class FlywheelAutoTuneCommand extends Command {
             break;
 
         case 2: // Evaluate & adjust
-            if (lastRecoveryTimeMs > RECOVERY_TARGET_MS && lastRecoveryTimeMs > 0
-                    && disturbanceRetuneIteration < MAX_DISTURBANCE_RETUNE_ITERATIONS) {
+            // lastRecoveryTimeMs is -1000 if never recovered (getRecoveryTime returns -1)
+            boolean needsRetune = lastRecoveryTimeMs < 0 || lastRecoveryTimeMs > RECOVERY_TARGET_MS;
+            if (needsRetune && disturbanceRetuneIteration < MAX_DISTURBANCE_RETUNE_ITERATIONS) {
                 // Bump kP by 25%
                 tunedKp *= 1.25;
                 // Add small kI if not already present
@@ -664,7 +686,12 @@ public class FlywheelAutoTuneCommand extends Command {
                 break;
             }
             flywheel.setVelocity(multiVelocityRPMs[multiVelocityIndex]);
-            if (cycleCount > (int)(SETTLE_SECONDS * 50) && flywheel.atSetpoint()) {
+            if (cycleCount > (int)(SETTLE_SECONDS * 50)
+                    && (flywheel.atSetpoint() || cycleCount > (int)(SPINUP_TIMEOUT_SECONDS * 50))) {
+                if (!flywheel.atSetpoint()) {
+                    publishStatus("Phase 3: Spin-up timeout at " + fmt(flywheel.getVelocityRPS() * 60)
+                            + " RPM (target " + (int) multiVelocityRPMs[multiVelocityIndex] + ")");
+                }
                 subStep = 4;
                 cycleCount = 0;
                 multiPulseCount = 0;
