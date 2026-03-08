@@ -105,18 +105,16 @@ public final class Constants {
     public static final double SOFT_LIMIT_BUFFER_DEGREES = 5.0; // Extra degrees beyond app range for overshoot recovery
 
     // PID Gains (Slot 0) - voltage-based, mechanism rotations (50:1 gear ratio)
-    public static final double S = 0.5; // Static friction (Volts)
-    public static final double V = 5.22; // Velocity feedforward (Volts per mechanism RPS)
-    public static final double A = 0.01; // Acceleration feedforward (Volts per RPS/s)
-    public static final double G = 0.0; // Gravity feedforward (Volts)
-    public static final double P = 60; // Proportional (Volts per rotation error)
-    public static final double I = 0.0; // Integral
-    public static final double D = 0.0; // Derivative - backed off to avoid motor noise
-
-    // Motion Magic
-    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 2.5; // Rotations per second (900 deg/s)
-    public static final double MOTION_MAGIC_ACCELERATION = 10.0; // Rotations per second^2 - higher = decelerates harder
-    public static final double MOTION_MAGIC_JERK = 200.0; // Rotations per second^3 - snaps to decel quickly
+    public static final double S = 0.4800;
+    public static final double V = 4.8862;
+    public static final double A = 0.1000;
+    public static final double G = 0.0;
+    public static final double P = 80.0000;
+    public static final double I = 0.0;
+    public static final double D = 0.0000;
+    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 5.0000;
+    public static final double MOTION_MAGIC_ACCELERATION = 25.0000;
+    public static final double MOTION_MAGIC_JERK = 200.0000;
 
     // Current Limits - reduced for safe testing
     public static final double SUPPLY_CURRENT_LIMIT = 80.0; // Amps - main limit (was 80)

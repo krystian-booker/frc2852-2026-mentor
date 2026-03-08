@@ -17,14 +17,14 @@
 
 All under the `Turret/` prefix in SmartDashboard/Shuffleboard:
 
-- **Position Degrees** — fused motor position in degrees
-- **CANCoder Degrees** — absolute CANCoder position in degrees
-- **CANCoder Raw Rotations** — raw CANCoder value (useful for debugging offset)
-- **Motor Raw Rotations** — raw motor position value
-- **Motor Stator Current** — current draw in Amps (should stay under 20A)
-- **Motor Voltage** — voltage being applied to motor
-- **Target Degrees** — where the turret is trying to go
-- **At Position** — true when turret is within 1 degree of target
+- **Position Degrees** - fused motor position in degrees
+- **CANCoder Degrees** - absolute CANCoder position in degrees
+- **CANCoder Raw Rotations** - raw CANCoder value (useful for debugging offset)
+- **Motor Raw Rotations** - raw motor position value
+- **Motor Stator Current** - current draw in Amps (should stay under 20A)
+- **Motor Voltage** - voltage being applied to motor
+- **Target Degrees** - where the turret is trying to go
+- **At Position** - true when turret is within 1 degree of target
 
 ---
 
@@ -46,12 +46,12 @@ All under the `Turret/` prefix in SmartDashboard/Shuffleboard:
 
 **This is the critical safety check. Have e-stop ready.**
 
-1. **Hold A button** — motor gets +1V
+1. **Hold A button** - motor gets +1V
    - [ ] Note which direction the turret physically spins: Clock-wise
-   - [ ] Release A — motor stops
+   - [ ] Release A - motor stops
 2. **Compare to Step 1:** Did the motor spin in the SAME direction that makes CANCoder INCREASE?
-   - [ ] **YES** — Direction is correct. Proceed to Step 3.
-   - [ ] **NO** — **This is the bug.** The motor fights itself. STOP HERE and fix:
+   - [ ] **YES** - Direction is correct. Proceed to Step 3.
+   - [ ] **NO** - **This is the bug.** The motor fights itself. STOP HERE and fix:
      - In `Turret.java` line 122, flip `InvertedValue.CounterClockwise_Positive` to `InvertedValue.Clockwise_Positive` (or vice versa)
      - Redeploy and repeat Step 2
 3. **Hold B button** to confirm the opposite direction works correctly
@@ -62,12 +62,12 @@ All under the `Turret/` prefix in SmartDashboard/Shuffleboard:
 **Only proceed if Step 2 confirmed correct direction.**
 
 1. Have someone on e-stop
-2. Press **X** once — turret should slowly move +10 degrees and hold
+2. Press **X** once - turret should slowly move +10 degrees and hold
    - [ ] Turret moved in the correct direction
    - [ ] Movement was slow and controlled
    - [ ] `Motor Stator Current` stayed well under 20A
    - [ ] `Position Degrees` is approximately 10 degrees more than before
-3. Press **Y** once — turret should slowly move -10 degrees back
+3. Press **Y** once - turret should slowly move -10 degrees back
    - [ ] Turret returned toward original position
    - [ ] Movement was slow and controlled
 4. Try pressing X and Y a few more times

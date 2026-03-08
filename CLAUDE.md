@@ -23,15 +23,15 @@ Java 17 is required. Gradle wrapper is included (`gradlew`/`gradlew.bat`).
 **Command-based robot** using WPILib's SubsystemBase/Command pattern. Entry point flows: `Main.java` → `Robot.java` (TimedRobot lifecycle) → `RobotContainer.java` (subsystem initialization and controller bindings).
 
 ### Key subsystems (`subsystems/`)
-- **CommandSwerveDrivetrain** — CTRE TalonFX swerve drive, auto-generated from Phoenix Tuner. Uses CANivore bus.
-- **Flywheel, Hood, Turret** — Shooter aiming system. Turret auto-aims using vision and lookup tables.
-- **Conveyor, Intake, IntakeActuator** — Game piece handling chain.
-- **Vision** — Dual-camera AprilTag detection via photonlib.
-- **QuestNavSubsystem** — Meta Quest 3 headset for visual odometry.
+- **CommandSwerveDrivetrain** - CTRE TalonFX swerve drive, auto-generated from Phoenix Tuner. Uses CANivore bus.
+- **Flywheel, Hood, Turret** - Shooter aiming system. Turret auto-aims using vision and lookup tables.
+- **Conveyor, Intake, IntakeActuator** - Game piece handling chain.
+- **Vision** - Dual-camera AprilTag detection via photonlib.
+- **QuestNavSubsystem** - Meta Quest 3 headset for visual odometry.
 
 ### Commands (`commands/`)
-- **ShootCommand** — Coordinates flywheel spin-up, hood angle, and conveyor feeding.
-- **TurretCalibrationCommand** — Interactive calibration in test mode; records distance/angle data.
+- **ShootCommand** - Coordinates flywheel spin-up, hood angle, and conveyor feeding.
+- **TurretCalibrationCommand** - Interactive calibration in test mode; records distance/angle data.
 
 ### Turret calibration pipeline
 CSV calibration data → `GenerateLookupTables.java` (build-time task) → `generated/TurretLookupTables.java`. The `compileJava` task depends on `generateTurretLookupTables`, so lookup tables are always current. See `docs/turret-calibration-guide.md` for the operator workflow.

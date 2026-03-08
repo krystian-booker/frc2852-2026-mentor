@@ -14,14 +14,17 @@ import frc.robot.util.TurretAimingCalculator;
 /**
  * Shooting command that coordinates flywheel, hood, conveyor, and intake actuator.
  *
- * <p>Phase 1 (Spin-up): Sets flywheel RPM and hood angle from the lookup table based on robot
- * position. Continuously updates as the robot moves. Waits for flywheel to reach setpoint.
+ * <p>
+ * Phase 1 (Spin-up): Sets flywheel RPM and hood angle from the lookup table based on robot position. Continuously
+ * updates as the robot moves. Waits for flywheel to reach setpoint.
  *
- * <p>Phase 2 (Feeding): Once the flywheel is at speed, hood is at position, and turret is aimed,
- * runs the conveyor and agitates the intake actuator to feed game pieces.
+ * <p>
+ * Phase 2 (Feeding): Once the flywheel is at speed, hood is at position, and turret is aimed, runs the conveyor and
+ * agitates the intake actuator to feed game pieces.
  *
- * <p>This command never finishes on its own - it runs until interrupted (button released).
- * The turret is NOT required by this command; its default aim command continues independently.
+ * <p>
+ * This command never finishes on its own - it runs until interrupted (button released). The turret is NOT required by
+ * this command; its default aim command continues independently.
  */
 public class ShootCommand extends Command {
 
@@ -78,7 +81,7 @@ public class ShootCommand extends Command {
             isFeeding = true;
             conveyor.runFeed();
 
-            // Agitate intake actuator — alternate retract/extend on a timer
+            // Agitate intake actuator - alternate retract/extend on a timer
             double timeout = agitateRetract
                     ? IntakeActuatorConstants.AGITATE_RETRACT_SECONDS
                     : IntakeActuatorConstants.AGITATE_EXTEND_SECONDS;

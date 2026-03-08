@@ -249,6 +249,53 @@ public class Turret extends SubsystemBase {
         motor.setControl(voltageRequest.withOutput(-1.0)); // Small negative voltage
     }
 
+    /** Apply raw voltage output for characterization. */
+    public void applyVoltage(double volts) {
+        motor.setControl(voltageRequest.withOutput(volts));
+    }
+
+    /** Get mechanism velocity in rotations per second (signal already at 250Hz). */
+    public double getVelocityRPS() {
+        return motor.getVelocity().refresh().getValue().in(RotationsPerSecond);
+    }
+
+    /** Read applied motor voltage for telemetry. */
+    public double getMotorVoltage() {
+        return motor.getMotorVoltage().refresh().getValue().in(Volts);
+    }
+
+    /**
+     * Hot-reload gains using refresh+apply to preserve soft limits and current limits.
+     */
+    public void applyTuningConfig(double kS, double kV, double kA, double kG,
+                                   double kP, double kI, double kD,
+                                   double cruiseVelocity, double acceleration, double jerk) {
+        var configurator = motor.getConfigurator();
+        TalonFXConfiguration config = new TalonFXConfiguration();
+        configurator.refresh(config);
+
+        config.Slot0.kS = kS;
+        config.Slot0.kV = kV;
+        config.Slot0.kA = kA;
+        config.Slot0.kG = kG;
+        config.Slot0.kP = kP;
+        config.Slot0.kI = kI;
+        config.Slot0.kD = kD;
+        config.MotionMagic.MotionMagicCruiseVelocity = cruiseVelocity;
+        config.MotionMagic.MotionMagicAcceleration = acceleration;
+        config.MotionMagic.MotionMagicJerk = jerk;
+
+        StatusCode status = configurator.apply(config);
+        if (!status.isOK()) {
+            System.err.println("Failed to apply tuning config: " + status);
+        }
+    }
+
+    /** Restore original Constants.java values by re-running configureMotor(). */
+    public void restoreDefaultConfig() {
+        configureMotor();
+    }
+
     /**
      * Commands a small movement relative to current position for safe testing.
      */

@@ -3,6 +3,7 @@ package frc.robot;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
 import frc.robot.commands.ShootCommand;
+import frc.robot.commands.TurretAutoTuneCommand;
 import frc.robot.commands.TurretCalibrationCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Conveyor;
@@ -45,8 +46,8 @@ public class RobotContainer {
 
   // Subsystems
   private final Conveyor conveyor = new Conveyor();
-  private final Flywheel flywheel = new Flywheel();
-  private final Hood hood = new Hood();
+  // private final Flywheel flywheel = new Flywheel();
+  // private final Hood hood = new Hood();
   private final Intake intake = new Intake();
   private final IntakeActuator intakeActuator = new IntakeActuator();
   private final Turret turret = new Turret();
@@ -363,6 +364,11 @@ public class RobotContainer {
     RobotModeTriggers.test().and(driverController.rightBumper())
         .whileTrue(turret.fieldHoldCommand(() -> drivetrain.getState().Pose.getRotation().getDegrees()));
     RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
+
+    // --- Turret Auto-Tune ---
+    // START: Toggle auto-tune command (press again to cancel and restore original gains)
+    RobotModeTriggers.test().and(driverController.start())
+        .toggleOnTrue(new TurretAutoTuneCommand(turret));
 
     // --- Hood (SAFE TESTING MODE) ---
     // Step 1: Move hood by hand, watch dashboard values (no buttons needed)
