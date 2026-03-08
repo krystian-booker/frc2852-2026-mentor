@@ -90,6 +90,8 @@ public class FlywheelAutoTuneCommand extends Command {
     private double kpTest;
     private int binarySearchIteration;
     private boolean kpSearchDone;
+    private double previousKpOvershoot;
+    private double bestKpOvershoot;
     private double[] kdCandidates;
     private int kdTestIndex;
     private double bestKdOvershoot;
@@ -358,6 +360,8 @@ public class FlywheelAutoTuneCommand extends Command {
         kpHigh = 0;
         binarySearchIteration = 0;
         kpSearchDone = false;
+        previousKpOvershoot = Double.MAX_VALUE;
+        bestKpOvershoot = Double.MAX_VALUE;
         tunedKp = 0.5;
         tunedKd = 0;
         tunedKi = 0;
@@ -395,7 +399,7 @@ public class FlywheelAutoTuneCommand extends Command {
             }
             break;
 
-        case 1: // kP doubling / binary search: run step test
+        case 1: // kP search: doubling sweep then binary search refinement
             if (runVelocityStepTest()) {
                 double overshoot = analyzer.getOvershootPercent();
                 SmartDashboard.putNumber(PREFIX + "StepResponse/Overshoot", overshoot);
@@ -403,20 +407,31 @@ public class FlywheelAutoTuneCommand extends Command {
                 SmartDashboard.putNumber(PREFIX + "StepResponse/SettlingTime", analyzer.getSettlingTime());
                 publishStatus("Phase 2: kP=" + fmt(kpTest) + " overshoot=" + String.format("%.1f", overshoot) + "%");
 
+                // Track best kP seen across all tests
+                if (overshoot < bestKpOvershoot) {
+                    bestKpOvershoot = overshoot;
+                    tunedKp = kpTest;
+                }
+
                 if (!kpSearchDone) {
-                    if (overshoot > 5.0) {
-                        // Too much overshoot - start binary search
+                    if (previousKpOvershoot < Double.MAX_VALUE && overshoot > previousKpOvershoot) {
+                        // Overshoot worsened vs previous → passed the sweet spot
+                        // Binary search between previous kP and current kP
+                        kpLow = kpTest / 2.0;
                         kpHigh = kpTest;
-                        kpLow = kpTest / 2.0; // previous value didn't overshoot
                         kpSearchDone = true;
                         binarySearchIteration = 0;
+                    } else if (overshoot <= 5.0) {
+                        // Good enough overshoot - use this kP
+                        finishKpSearch();
+                        break;
+                    } else if (kpTest >= 32.0) {
+                        // Hit cap - use best seen
+                        finishKpSearch();
+                        break;
                     } else {
-                        // Not enough overshoot, keep doubling
-                        if (kpTest >= 32.0) {
-                            tunedKp = kpTest;
-                            finishKpSearch();
-                            break;
-                        }
+                        // Keep doubling
+                        previousKpOvershoot = overshoot;
                         kpTest *= 2;
                     }
                 }
@@ -429,7 +444,7 @@ public class FlywheelAutoTuneCommand extends Command {
                     }
 
                     if (binarySearchIteration >= 6) {
-                        tunedKp = kpLow;
+                        // tunedKp already holds the best kP from tracking above
                         finishKpSearch();
                         break;
                     }

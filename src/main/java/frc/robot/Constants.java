@@ -52,12 +52,12 @@ public final class Constants {
     public static final double MAX_RPM = 6000.0; // Maximum flywheel RPM for calibration/validation
 
     // PID/Feedforward Gains
-    public static final double S = 3.9000;
-    public static final double V = 0.3387;
-    public static final double A = 0.9791;
-    public static final double P = 62.5000;
-    public static final double I = 0.0320;
-    public static final double D = 0.0000;
+    public static final double S = 2.1000;
+    public static final double V = 0.2203;
+    public static final double A = 0.6749;
+    public static final double P = 8.0000;
+    public static final double I = 0.0000;
+    public static final double D = 0.1600;
 
     // Current Limits
     public static final double SUPPLY_CURRENT_LIMIT = 60.0; // Amps - main limit
@@ -139,8 +139,18 @@ public final class Constants {
   public static class TurretConstants {
     // Mechanical
     public static final double GEAR_RATIO = 50.0; // Motor rotations per turret rotation
-    public static final double MIN_POSITION_DEGREES = -180.0;
-    public static final double MAX_POSITION_DEGREES = 180.0;
+
+    // Forward offset: encoder reading (degrees) when turret points robot-forward.
+    public static final double FORWARD_ENCODER_POSITION_DEGREES = 55.0;
+
+    // Physical encoder limits (used for firmware soft limits — do not change without re-verifying travel)
+    public static final double ENCODER_MIN_DEGREES = -180.0;
+    public static final double ENCODER_MAX_DEGREES = 180.0;
+
+    // Aiming-relative limits (0 = forward): encoder limits shifted by forward offset
+    public static final double MIN_POSITION_DEGREES = ENCODER_MIN_DEGREES - FORWARD_ENCODER_POSITION_DEGREES; // -225
+    public static final double MAX_POSITION_DEGREES = ENCODER_MAX_DEGREES - FORWARD_ENCODER_POSITION_DEGREES; // +135
+
     public static final double SOFT_LIMIT_BUFFER_DEGREES = 5.0; // Extra degrees beyond app range for overshoot recovery
 
     // PID Gains (Slot 0) - voltage-based, mechanism rotations (50:1 gear ratio)

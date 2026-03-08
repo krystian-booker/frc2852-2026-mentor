@@ -44,7 +44,7 @@ public class RobotContainer {
   // private final Hood hood = new Hood();
   // private final Intake intake = new Intake();
   // private final IntakeActuator intakeActuator = new IntakeActuator();
-  // private final Turret turret = new Turret();
+  private final Turret turret = new Turret();
   // private final Climb climb = new Climb();
   // private final LED led = new LED();
 
@@ -385,7 +385,7 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.b())
     // .whileTrue(turret.run(turret::testDirectionNegative).finallyDo(() -> turret.stop()));
     // RobotModeTriggers.test().and(driverController.x())
-    // .onTrue(Commands.runOnce(() -> turret.nudge(120)));
+    // .onTrue(Commands.runOnce(() -> turret.setPosition(0)));
     // RobotModeTriggers.test().and(driverController.y())
     // .onTrue(Commands.runOnce(() -> turret.nudge(-120)));
     // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop, turret));
@@ -398,15 +398,15 @@ public class RobotContainer {
 
     // --- Flywheel Auto-Tune ---
     // BACK: Toggle flywheel auto-tune command
-    RobotModeTriggers.test().and(driverController.back()).toggleOnTrue(new FlywheelAutoTuneCommand(flywheel));
+    // RobotModeTriggers.test().and(driverController.back()).toggleOnTrue(new FlywheelAutoTuneCommand(flywheel));
 
     // --- Flywheel ---
     // A: 2000 RPM | B: 3500 RPM | X: 5000 RPM | Y: Stop
-    RobotModeTriggers.test().and(driverController.a()).whileTrue(flywheel.run(() -> flywheel.setVelocity(2000)));
-    RobotModeTriggers.test().and(driverController.b()).whileTrue(flywheel.run(() -> flywheel.setVelocity(3500)));
-    RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.run(() -> flywheel.setVelocity(5500)));
-    RobotModeTriggers.test().and(driverController.y())
-        .onTrue(Commands.runOnce(() -> flywheel.setVelocity(0), flywheel));
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(flywheel.run(() -> flywheel.setVelocity(2000)));
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(flywheel.run(() -> flywheel.setVelocity(3500)));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.run(() -> flywheel.setVelocity(4500)));
+    // RobotModeTriggers.test().and(driverController.y())
+    // .onTrue(Commands.runOnce(() -> flywheel.setVelocity(0), flywheel));
 
   }
 

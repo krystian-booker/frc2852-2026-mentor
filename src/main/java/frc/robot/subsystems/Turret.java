@@ -17,6 +17,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
 
 import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -128,11 +129,12 @@ public class Turret extends SubsystemBase {
         config.MotionMagic.MotionMagicJerk = TurretConstants.MOTION_MAGIC_JERK;
 
         // Software limits to prevent over-rotation (wire wrap protection)
+        // Use encoder-space limits so soft limits stay at the same physical positions
         config.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
-        config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = (TurretConstants.MAX_POSITION_DEGREES
+        config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = (TurretConstants.ENCODER_MAX_DEGREES
                 + TurretConstants.SOFT_LIMIT_BUFFER_DEGREES) / 360.0;
         config.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
-        config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = (TurretConstants.MIN_POSITION_DEGREES
+        config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = (TurretConstants.ENCODER_MIN_DEGREES
                 - TurretConstants.SOFT_LIMIT_BUFFER_DEGREES) / 360.0;
 
         // Current limits
@@ -156,13 +158,14 @@ public class Turret extends SubsystemBase {
         }
     }
 
-    public void setPosition(double degrees) {
-        // Clamp to valid range
+    public void setPosition(double aimDegrees) {
+        // Clamp to aiming-relative range (0 = forward)
         targetPositionDegrees = Math.max(TurretConstants.MIN_POSITION_DEGREES,
-                Math.min(TurretConstants.MAX_POSITION_DEGREES, degrees));
+                Math.min(TurretConstants.MAX_POSITION_DEGREES, aimDegrees));
 
-        // Convert degrees to rotations and command motion magic
-        double rotations = targetPositionDegrees / 360.0;
+        // Convert aiming degrees to encoder degrees, then to rotations
+        double encoderDegrees = targetPositionDegrees + TurretConstants.FORWARD_ENCODER_POSITION_DEGREES;
+        double rotations = encoderDegrees / 360.0;
         motor.setControl(positionRequest.withPosition(rotations));
     }
 
@@ -183,7 +186,8 @@ public class Turret extends SubsystemBase {
 
     public double getPositionDegrees() {
         BaseStatusSignal.refreshAll(motorPosition);
-        return motorPosition.getValue().in(Rotations) * 360.0;
+        double encoderDegrees = motorPosition.getValue().in(Rotations) * 360.0;
+        return encoderDegrees - TurretConstants.FORWARD_ENCODER_POSITION_DEGREES;
     }
 
     public double getCANCoderPositionDegrees() {
@@ -301,11 +305,19 @@ public class Turret extends SubsystemBase {
         setPosition(current + deltaDegrees);
     }
 
+    /** Get the current encoder-space position in degrees (for debugging). */
+    public double getEncoderDegrees() {
+        BaseStatusSignal.refreshAll(motorPosition);
+        return motorPosition.getValue().in(Rotations) * 360.0;
+    }
+
     @Override
     public void periodic() {
         // double position = getPositionDegrees();
+        // double encoderDeg = getEncoderDegrees();
         // double canCoderDeg = getCANCoderPositionDegrees();
         // SmartDashboard.putNumber("Turret/Position Degrees", position);
+        // SmartDashboard.putNumber("Turret/Encoder Degrees", encoderDeg);
         // SmartDashboard.putNumber("Turret/Target Degrees", targetPositionDegrees);
         // SmartDashboard.putNumber("Turret/CANCoder Degrees", canCoderDeg);
         // SmartDashboard.putNumber("Turret/CANCoder Raw Rotations",
@@ -315,7 +327,10 @@ public class Turret extends SubsystemBase {
         // motor.getStatorCurrent().refresh().getValue().in(Amps));
         // SmartDashboard.putNumber("Turret/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
         // SmartDashboard.putBoolean("Turret/At Position", isAtPosition());
-        // SmartDashboard.putBoolean("Turret/In Overshoot Zone", Math.abs(position) > 180.0);
-        // SmartDashboard.putNumber("Turret/Distance From Limit", 180.0 - Math.abs(position));
+        // SmartDashboard.putBoolean("Turret/In Overshoot Zone",
+        // position < TurretConstants.MIN_POSITION_DEGREES || position > TurretConstants.MAX_POSITION_DEGREES);
+        // SmartDashboard.putNumber("Turret/Distance From Limit",
+        // Math.min(position - TurretConstants.MIN_POSITION_DEGREES,
+        // TurretConstants.MAX_POSITION_DEGREES - position));
     }
 }
