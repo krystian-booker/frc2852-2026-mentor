@@ -10,6 +10,7 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -32,6 +33,7 @@ public class QuestNavSubsystem extends SubsystemBase {
 
     // State tracking
     private boolean isConnected = false;
+    private boolean isSeeded = false;
     private Pose2d latestRobotPose = new Pose2d();
 
     public QuestNavSubsystem(CommandSwerveDrivetrain drivetrain, Vision vision) {
@@ -76,21 +78,21 @@ public class QuestNavSubsystem extends SubsystemBase {
 
                 latestRobotPose = robotPose;
 
-                // Feed to drivetrain's Kalman filter
-                drivetrain.addVisionMeasurement(
-                        robotPose,
-                        frame.dataTimestamp(),
-                        visionStdDevs);
+                // Only feed to drivetrain after seeded from vision
+                if (isSeeded) {
+                    drivetrain.addVisionMeasurement(
+                            robotPose,
+                            frame.dataTimestamp(),
+                            visionStdDevs);
+                }
             } else {
                 isConnected = false;
             }
         }
 
         // Telemetry
-        // SmartDashboard.putBoolean("QuestNav/Connected", isConnected);
-        // SmartDashboard.putNumber("QuestNav/Pose X", latestRobotPose.getX());
-        // SmartDashboard.putNumber("QuestNav/Pose Y", latestRobotPose.getY());
-        // SmartDashboard.putNumber("QuestNav/Pose Rotation", latestRobotPose.getRotation().getDegrees());
+        SmartDashboard.putBoolean("QuestNav/Connected", isConnected);
+        SmartDashboard.putBoolean("QuestNav/Seeded", isSeeded);
     }
 
     /**
@@ -123,10 +125,21 @@ public class QuestNavSubsystem extends SubsystemBase {
             var visionPose = vision.getLatestPose2d();
             if (visionPose.isPresent()) {
                 resetPose(visionPose.get());
+                isSeeded = true;
                 return true;
             }
         }
         return false;
+    }
+
+    /** Returns true if QuestNav has been seeded from vision. */
+    public boolean isSeeded() {
+        return isSeeded;
+    }
+
+    /** Clears the seeded state, stopping QuestNav from feeding the drivetrain until re-seeded. */
+    public void clearSeeded() {
+        isSeeded = false;
     }
 
     /**

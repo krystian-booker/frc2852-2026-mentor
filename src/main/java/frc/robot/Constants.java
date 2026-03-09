@@ -290,6 +290,9 @@ public final class Constants {
     // Movement threshold for detecting if robot was moved while disabled (meters)
     // If robot moves more than this distance from seeded position, re-seeding is required
     public static final double SEEDING_MOVEMENT_THRESHOLD_METERS = 0.1;
+
+    // Polling interval for seeding checks while disabled (seconds)
+    public static final double SEEDING_POLL_INTERVAL_SECONDS = 1.0;
   }
 
   public static class BlinkinConstants {

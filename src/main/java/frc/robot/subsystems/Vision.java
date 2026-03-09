@@ -12,6 +12,7 @@ import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -199,7 +200,7 @@ public class Vision extends SubsystemBase {
         // SmartDashboard.putNumber("Vision/PoseX", latestEstimate.getX());
         // SmartDashboard.putNumber("Vision/PoseY", latestEstimate.getY());
         // SmartDashboard.putNumber("Vision/PoseRotation", latestEstimate.getRotation().getDegrees());
-        // SmartDashboard.putBoolean("Vision/FeedingEnabled", feedingEnabled);
+        SmartDashboard.putBoolean("Vision/FeedingEnabled", feedingEnabled);
         // SmartDashboard.putString("Vision/BestCamera", bestCamera != null ? bestCamera.name : "none");
     }
 

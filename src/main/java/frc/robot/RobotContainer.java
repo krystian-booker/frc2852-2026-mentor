@@ -2,6 +2,7 @@ package frc.robot;
 
 import frc.robot.Constants.ClimbConstants;
 import frc.robot.Constants.OperatorConstants;
+import frc.robot.Constants.QuestNavConstants;
 import frc.robot.commands.ShootCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Conveyor;
@@ -251,33 +252,37 @@ public class RobotContainer {
      * seeding, LEDs turn RED and re-seeding is allowed.
      */
     private void questNavInitialization() {
-        // Command seedingCommand = Commands.sequence(
-        // Commands.waitSeconds(5.0),
-        // Commands.runOnce(() -> {
-        // // Check if robot has been moved since last seeding
-        // if (isQuestNavSeeded && seededPose != null) {
-        // Pose2d currentPose = questNav.getLatestPose();
-        // double distance = currentPose.getTranslation().getDistance(seededPose.getTranslation());
-        // if (distance > QuestNavConstants.SEEDING_MOVEMENT_THRESHOLD_METERS) {
-        // // Robot was moved, reset seeding state
-        // isQuestNavSeeded = false;
-        // seededPose = null;
-        // // led.setPattern(LED.Pattern.RED);
-        // vision.setFeedingEnabled(true);
-        // }
-        // }
+        Command seedingCommand = Commands.sequence(
+                Commands.waitSeconds(QuestNavConstants.SEEDING_POLL_INTERVAL_SECONDS),
+                Commands.runOnce(() -> {
+                    // Check if robot has been moved since last seeding using vision pose
+                    if (isQuestNavSeeded && seededPose != null) {
+                        var visionPose = vision.getLatestPose2d();
+                        if (visionPose.isPresent() && vision.getVisibleTagCount() >= 2) {
+                            double distance = visionPose.get().getTranslation()
+                                    .getDistance(seededPose.getTranslation());
+                            if (distance > QuestNavConstants.SEEDING_MOVEMENT_THRESHOLD_METERS) {
+                                // Robot was moved, reset seeding state
+                                isQuestNavSeeded = false;
+                                seededPose = null;
+                                questNav.clearSeeded();
+                                vision.setFeedingEnabled(true);
+                            }
+                        }
+                    }
 
-        // // Attempt seeding if not seeded and 2+ tags visible
-        // if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
-        // if (questNav.seedPoseFromVision()) {
-        // isQuestNavSeeded = true;
-        // seededPose = questNav.getLatestPose();
-        // // led.setPattern(LED.Pattern.GREEN);
-        // vision.setFeedingEnabled(false);
-        // }
-        // }
-        // })).repeatedly().ignoringDisable(true);
-        // RobotModeTriggers.disabled().whileTrue(seedingCommand);
+                    // Attempt seeding if not seeded and 2+ tags visible
+                    if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
+                        if (questNav.seedPoseFromVision()) {
+                            isQuestNavSeeded = true;
+                            seededPose = questNav.getLatestPose();
+                            vision.setFeedingEnabled(false);
+                        }
+                    }
+
+                    SmartDashboard.putBoolean("QuestNav/SeededFromVision", isQuestNavSeeded);
+                })).repeatedly().ignoringDisable(true);
+        RobotModeTriggers.disabled().whileTrue(seedingCommand);
 
         // Turn off LEDs when auto or teleop starts
         // RobotModeTriggers.autonomous().onTrue(led.setPatternCommand(LED.Pattern.BLACK));
