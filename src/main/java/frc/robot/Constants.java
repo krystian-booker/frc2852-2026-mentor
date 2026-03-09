@@ -274,10 +274,10 @@ public final class Constants {
   public static class QuestNavConstants {
     // Transform from robot center to Quest headset mounting position
     // Measure these values based on where the Quest is mounted on your robot
-    public static final double QUEST_OFFSET_X_METERS = 0.0; // Forward/backward from robot center
-    public static final double QUEST_OFFSET_Y_METERS = 0.0; // Left/right from robot center
-    public static final double QUEST_OFFSET_Z_METERS = 0.0; // Up/down from robot center
-    public static final double QUEST_YAW_OFFSET_DEGREES = 0.0; // Rotation around vertical axis
+    public static final double QUEST_OFFSET_X_METERS = -0.14605; // Forward/backward from robot center
+    public static final double QUEST_OFFSET_Y_METERS = 0.2099564; // Left/right from robot center
+    public static final double QUEST_OFFSET_Z_METERS = 0.4172712; // Up/down from robot center
+    public static final double QUEST_YAW_OFFSET_DEGREES = 90.0; // Rotation around vertical axis
     public static final double QUEST_PITCH_OFFSET_DEGREES = 0.0; // Tilt forward/backward
     public static final double QUEST_ROLL_OFFSET_DEGREES = 0.0; // Tilt left/right
 
@@ -353,14 +353,20 @@ public final class Constants {
 
     // Left camera
     public static final CameraConfig LEFT_CAMERA = new CameraConfig("LEFT_CAMERA",
-        new Transform3d(new Translation3d(0.3, 0.25, 0.5), // 30cm fwd, 25cm left, 50cm up
-            new Rotation3d(0, Math.toRadians(-15), Math.toRadians(30)) // Pitched down 15°, yawed left 30°
+        new Transform3d(new Translation3d(0.0244348, 0.2737866, 0.6747256),
+            new Rotation3d(Math.toRadians(0), Math.toRadians(-30), Math.toRadians(-45))
         ));
 
     // Right camera
     public static final CameraConfig RIGHT_CAMERA = new CameraConfig("RIGHT_CAMERA",
-        new Transform3d(new Translation3d(0.3, -0.25, 0.5), // 30cm fwd, 25cm right, 50cm up
-            new Rotation3d(0, Math.toRadians(-15), Math.toRadians(-30)) // Pitched down 15°, yawed right 30°
+        new Transform3d(new Translation3d(0.0394716, -0.263906, 0.6851142),
+            new Rotation3d(Math.toRadians(0), Math.toRadians(-30), Math.toRadians(45))
+        ));
+
+    // Limelight 4
+    public static final CameraConfig LIMELIGHT = new CameraConfig("LIMELIGHT",
+        new Transform3d(new Translation3d(-0.1651, 0.2421636, 0.5263896),
+            new Rotation3d(Math.toRadians(0), Math.toRadians(0), Math.toRadians(90))
         ));
 
     // All cameras
