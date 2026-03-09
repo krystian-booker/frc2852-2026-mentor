@@ -4,8 +4,6 @@ import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -142,7 +140,7 @@ public final class Constants {
     public static final double GEAR_RATIO = 50.0; // Motor rotations per turret rotation
 
     // Forward offset: encoder reading (degrees) when turret points robot-forward.
-    public static final double FORWARD_ENCODER_POSITION_DEGREES = 55.0;
+    public static final double FORWARD_ENCODER_POSITION_DEGREES = 51.5;
 
     // Physical encoder limits (used for firmware soft limits — do not change without re-verifying travel)
     public static final double ENCODER_MIN_DEGREES = -180.0;
@@ -176,28 +174,37 @@ public final class Constants {
     public static final double POSITION_TOLERANCE_DEGREES = 1.0; // Degrees tolerance for isAtPosition()
 
     // CANCoder
-    public static final double CANCODER_OFFSET = -0.432373;
+    public static final double CANCODER_OFFSET = -0.427490;
   }
 
   public static class TurretAimingConstants {
-    // Target positions (meters)
-    public static final Translation2d BLUE_TARGET_POSITION = new Translation2d(0.0, 5.55);
-    public static final Translation2d RED_TARGET_POSITION = new Translation2d(16.54, 5.55);
+    // Target positions (meters) - alliance goals
+    public static final Translation2d BLUE_TARGET_POSITION = new Translation2d(4.625, 4.040);
+    public static final Translation2d RED_TARGET_POSITION = new Translation2d(11.915, 4.040);
+
+    // Zone boundaries (X axis, meters)
+    public static final double BLUE_ZONE_MAX_X = 4.625;
+    public static final double RED_ZONE_MIN_X = 11.905;
+
+    // Field Y centerline for left/right target selection
+    public static final double FIELD_CENTERLINE_Y = 4.035;
+
+    // Non-goal targets per alliance (used in neutral/opponent zone)
+    public static final Translation2d BLUE_LEFT_TARGET_POSITION = new Translation2d(1.5, 2.5);
+    public static final Translation2d BLUE_RIGHT_TARGET_POSITION = new Translation2d(1.5, 6.5);
+    public static final Translation2d RED_LEFT_TARGET_POSITION = new Translation2d(15.040, 2.5);
+    public static final Translation2d RED_RIGHT_TARGET_POSITION = new Translation2d(15.040, 6.5);
 
     // Turret mounting offset from robot center (if not centered)
-    public static final double TURRET_OFFSET_X_METERS = 0.0;
-    public static final double TURRET_OFFSET_Y_METERS = 0.0;
-
-    // Turret zero direction relative to robot forward (degrees)
-    // 0 means turret 0 degrees points in the same direction as robot forward
-    public static final double TURRET_ZERO_ANGLE_DEGREES = 0.0;
+    public static final double TURRET_OFFSET_X_METERS = -4.719 * 0.0254; // inches to meters
+    public static final double TURRET_OFFSET_Y_METERS = -5.250 * 0.0254; // inches to meters
 
     // Aiming tolerance
     public static final double AIM_TOLERANCE_DEGREES = 2.0;
 
     // Valid shooting range
-    public static final double MIN_SHOOTING_DISTANCE_METERS = 1.5;
-    public static final double MAX_SHOOTING_DISTANCE_METERS = 10.0;
+    public static final double MIN_SHOOTING_DISTANCE_METERS = 0;
+    public static final double MAX_SHOOTING_DISTANCE_METERS = 99.0;
 
     // Placeholder lookup tables (distance in meters -> value)
     // Format: { {distance1, value1}, {distance2, value2}, ... }
@@ -213,12 +220,12 @@ public final class Constants {
   public static class IntakeActuatorConstants {
     // String potentiometer (10-turn 3590S-2-103L on RoboRIO analog input)
     public static final int POTENTIOMETER_CHANNEL = 0; // RoboRIO analog input channel
-    public static final double POT_FULL_RANGE = 25.0; // Distance units over full pot voltage range - CALIBRATE ON ROBOT
-    public static final double POT_OFFSET = -14.562923469654109; // Distance reading at 0V - CALIBRATE ON ROBOT
+    public static final double POT_FULL_RANGE = 25; // Distance units over full pot voltage range - CALIBRATE ON ROBOT
+    public static final double POT_OFFSET = -14.890372885090148;// Distance reading at 0V - CALIBRATE ON ROBOT
 
     // Position limits (distance units matching pot calibration)
     public static final double MIN_POSITION_DISTANCE = 0.0;
-    public static final double MAX_POSITION_DISTANCE = 5.3;
+    public static final double MAX_POSITION_DISTANCE = 5;
 
     // PID Gains (runs on RoboRIO, output is duty cycle -1 to 1)
     public static final double P = 0.5; // Proportional
@@ -322,17 +329,17 @@ public final class Constants {
   public static class CalibrationConstants {
     // Field dimensions
     public static final double FIELD_LENGTH_METERS = 16.54;
-    public static final double FIELD_WIDTH_METERS = 8.21;
+    public static final double FIELD_WIDTH_METERS = 8.07;
 
     /**
      * Grid cell size for UI display (0.5m). This determines the visual grid shown in the webapp. Note: Build-time
      * processing uses 0.25m distance buckets for finer granularity. See GenerateLookupTables.java for details.
      */
     public static final double GRID_CELL_SIZE_METERS = 0.5;
-    public static final double CALIBRATION_START_X = 1.0;
-    public static final double CALIBRATION_START_Y = 1.0;
-    public static final double CALIBRATION_END_X = 15.5;
-    public static final double CALIBRATION_END_Y = 7.0;
+    public static final double CALIBRATION_START_X = 0.0;
+    public static final double CALIBRATION_START_Y = 0.0;
+    public static final double CALIBRATION_END_X = FIELD_LENGTH_METERS;
+    public static final double CALIBRATION_END_Y = FIELD_WIDTH_METERS;
 
     // Calculated grid size (30 columns x 13 rows = 390 cells)
     public static final int GRID_COLS = (int) ((CALIBRATION_END_X - CALIBRATION_START_X) / GRID_CELL_SIZE_METERS) + 1;
@@ -370,7 +377,6 @@ public final class Constants {
             new Rotation3d(Math.toRadians(0), Math.toRadians(0), Math.toRadians(90))));
 
     // All cameras
-    // TODO: once left camera is added fix this
     // public static final List<CameraConfig> CAMERAS = List.of(LEFT_CAMERA, RIGHT_CAMERA);
     public static final List<CameraConfig> CAMERAS = List.of(RIGHT_CAMERA);
 
@@ -385,49 +391,6 @@ public final class Constants {
     // Pose validity timeout - max age in seconds for a pose to be considered valid
     public static final double POSE_VALIDITY_TIMEOUT = 0.5;
 
-    // PID gains for simple drive-to-target
-    public static final double DRIVE_P = 2.0;
-    public static final double DRIVE_I = 0.0;
-    public static final double DRIVE_D = 0.0;
-    public static final double ROTATION_P = 3.0;
-    public static final double ROTATION_I = 0.0;
-    public static final double ROTATION_D = 0.0;
-
-    // Tolerances for drive-to-target
-    public static final double POSITION_TOLERANCE_METERS = 0.05;
-    public static final double ROTATION_TOLERANCE_RADIANS = Math.toRadians(2.0);
-
-    // AprilTag target positions - add/modify based on your field positions
-    public enum AprilTagTarget {
-      EXAMPLE_TAG_1(1, new Pose2d(2.0, 4.0, Rotation2d.fromDegrees(0))),
-      EXAMPLE_TAG_2(2, new Pose2d(3.0, 5.0, Rotation2d.fromDegrees(90))),
-      EXAMPLE_TAG_3(6, new Pose2d(4.0, 4.0, Rotation2d.fromDegrees(180)));
-
-      private final int tagId;
-      private final Pose2d targetPose;
-
-      AprilTagTarget(int tagId, Pose2d targetPose) {
-        this.tagId = tagId;
-        this.targetPose = targetPose;
-      }
-
-      public int getTagId() {
-        return tagId;
-      }
-
-      public Pose2d getTargetPose() {
-        return targetPose;
-      }
-
-      public static AprilTagTarget fromTagId(int tagId) {
-        for (AprilTagTarget target : values()) {
-          if (target.tagId == tagId) {
-            return target;
-          }
-        }
-        return null;
-      }
-    }
   }
 
 }

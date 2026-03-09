@@ -6,6 +6,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.TurretAimingConstants;
 import frc.robot.generated.TurretLookupTables;
 
@@ -15,6 +16,10 @@ import frc.robot.generated.TurretLookupTables;
  */
 public class TurretAimingCalculator {
     private final Supplier<Pose2d> poseSupplier;
+
+    // Low-pass filter state for smoothing turret angle (0.0 = no change, 1.0 = no filtering)
+    private static final double SMOOTHING_ALPHA = 0.15;
+    private double filteredAngleDegrees = Double.NaN;
 
     /**
      * Result of an aiming calculation.
@@ -51,7 +56,7 @@ public class TurretAimingCalculator {
             return new AimingResult(0.0, 0.0, false);
         }
 
-        Translation2d targetPosition = getTargetPosition();
+        Translation2d targetPosition = getTargetPosition(robotPose);
 
         // Account for turret offset from robot center
         Translation2d turretPosition = robotPose.getTranslation()
@@ -71,9 +76,6 @@ public class TurretAimingCalculator {
         // Convert to robot-relative angle (subtract robot heading)
         double robotRelativeRadians = fieldAngleRadians - robotPose.getRotation().getRadians();
 
-        // Account for turret zero angle offset
-        robotRelativeRadians -= Math.toRadians(TurretAimingConstants.TURRET_ZERO_ANGLE_DEGREES);
-
         // Normalize to (-180, +180) degrees
         double turretAngleDegrees = Math.toDegrees(robotRelativeRadians) % 360.0;
         if (turretAngleDegrees > 180.0) {
@@ -82,28 +84,100 @@ public class TurretAimingCalculator {
             turretAngleDegrees += 360.0;
         }
 
+        // Smooth the angle with a low-pass filter to reduce jitter from pose noise
+        if (Double.isNaN(filteredAngleDegrees)) {
+            filteredAngleDegrees = turretAngleDegrees;
+        } else {
+            // Handle wrap-around: if the raw vs filtered differ by more than 180°, adjust
+            double delta = turretAngleDegrees - filteredAngleDegrees;
+            if (delta > 180.0)
+                delta -= 360.0;
+            else if (delta < -180.0)
+                delta += 360.0;
+            filteredAngleDegrees += SMOOTHING_ALPHA * delta;
+            // Re-normalize
+            if (filteredAngleDegrees > 180.0)
+                filteredAngleDegrees -= 360.0;
+            else if (filteredAngleDegrees <= -180.0)
+                filteredAngleDegrees += 360.0;
+        }
+        turretAngleDegrees = filteredAngleDegrees;
+
         // Check if target is within valid shooting range
         boolean isReachable = distanceMeters >= TurretAimingConstants.MIN_SHOOTING_DISTANCE_METERS
                 && distanceMeters <= TurretAimingConstants.MAX_SHOOTING_DISTANCE_METERS;
 
         // Publish telemetry
-        // SmartDashboard.putNumber("TurretAim/TargetAngle", turretAngleDegrees);
-        // SmartDashboard.putNumber("TurretAim/Distance", distanceMeters);
-        // SmartDashboard.putBoolean("TurretAim/Reachable", isReachable);
+        SmartDashboard.putNumber("TurretAim/TargetAngle", turretAngleDegrees);
+        SmartDashboard.putNumber("TurretAim/Distance", distanceMeters);
+        SmartDashboard.putBoolean("TurretAim/Reachable", isReachable);
+        SmartDashboard.putString("TurretAim/Zone", getZoneName(robotPose));
+        SmartDashboard.putString("TurretAim/Target",
+                String.format("(%.1f, %.1f)", targetPosition.getX(), targetPosition.getY()));
 
         return new AimingResult(turretAngleDegrees, distanceMeters, isReachable);
     }
 
     /**
-     * Gets the target position based on the current alliance.
+     * Gets the target position based on the current alliance and robot position on the field.
      *
+     * <p>
+     * When the robot is in its own scoring zone, aims at the alliance goal. When in the neutral or opponent zone, aims
+     * at alliance-specific left/right targets based on robot Y position relative to the field centerline.
+     *
+     * @param robotPose The robot's current pose
      * @return Target position in field coordinates (meters)
      */
-    public Translation2d getTargetPosition() {
+    public Translation2d getTargetPosition(Pose2d robotPose) {
         Alliance alliance = DriverStation.getAlliance().orElse(Alliance.Blue);
-        return alliance == Alliance.Red
-                ? TurretAimingConstants.RED_TARGET_POSITION
-                : TurretAimingConstants.BLUE_TARGET_POSITION;
+        double robotX = robotPose.getX();
+        double robotY = robotPose.getY();
+
+        if (alliance == Alliance.Blue) {
+            if (robotX < TurretAimingConstants.BLUE_ZONE_MAX_X) {
+                return TurretAimingConstants.BLUE_TARGET_POSITION;
+            } else if (robotY < TurretAimingConstants.FIELD_CENTERLINE_Y) {
+                return TurretAimingConstants.BLUE_LEFT_TARGET_POSITION;
+            } else {
+                return TurretAimingConstants.BLUE_RIGHT_TARGET_POSITION;
+            }
+        } else {
+            if (robotX > TurretAimingConstants.RED_ZONE_MIN_X) {
+                return TurretAimingConstants.RED_TARGET_POSITION;
+            } else if (robotY < TurretAimingConstants.FIELD_CENTERLINE_Y) {
+                return TurretAimingConstants.RED_LEFT_TARGET_POSITION;
+            } else {
+                return TurretAimingConstants.RED_RIGHT_TARGET_POSITION;
+            }
+        }
+    }
+
+    /**
+     * Returns a human-readable zone name for dashboard telemetry.
+     */
+    private String getZoneName(Pose2d robotPose) {
+        Alliance alliance = DriverStation.getAlliance().orElse(Alliance.Blue);
+        double robotX = robotPose.getX();
+        double robotY = robotPose.getY();
+        String side = robotY < TurretAimingConstants.FIELD_CENTERLINE_Y ? " Left" : " Right";
+
+        if (alliance == Alliance.Blue) {
+            if (robotX < TurretAimingConstants.BLUE_ZONE_MAX_X) {
+                return "Blue Zone (Goal)";
+            } else if (robotX > TurretAimingConstants.RED_ZONE_MIN_X) {
+                return "Red Zone (Opponent)" + side;
+            } else {
+                return "Neutral Zone" + side;
+            }
+        } else {
+            if (robotX > TurretAimingConstants.RED_ZONE_MIN_X) {
+                return "Red Zone (Goal)";
+            } else if (robotX < TurretAimingConstants.BLUE_ZONE_MAX_X) {
+                return "Blue Zone (Opponent)" + side;
+            } else {
+                return "Neutral Zone" + side;
+            }
+        }
     }
 
     /**

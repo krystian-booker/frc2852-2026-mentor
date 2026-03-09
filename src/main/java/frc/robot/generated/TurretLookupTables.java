@@ -21,12 +21,12 @@ public final class TurretLookupTables {
 
     // ==================== QUALITY METRICS ====================
     /**
-     * Generated timestamp: 2026-03-08T22:12:04.0567228
-     * Data points: 2 (averaged into 2 entries, 0 outliers rejected)
+     * Generated timestamp: 2026-03-09T18:29:51.234453
+     * Data points: 81 (averaged into 21 entries, 9 outliers rejected)
      * Distance bucket size: 0.25m
      * Alliances in calibration data: Blue
      * Parse errors: 0, Validation errors: 0
-     * Coverage gaps: None detected
+     * Coverage gaps (>1m): 4.83m-9.71m, 9.82m-13.46m
      */
 
     /**
@@ -35,8 +35,27 @@ public final class TurretLookupTables {
      * Sorted by distance for efficient interpolation.
      */
     public static final double[][] HOOD_LOOKUP_TABLE = {
-        { 16.524, 0.00 }, // 1 samples
-        { 17.448, 25.00 } // 1 samples
+        { 1.230, 7.00 }, // 1 samples
+        { 1.388, 9.00 }, // 3 samples (1 rejected)
+        { 1.547, 8.33 }, // 3 samples
+        { 1.893, 13.58 }, // 6 samples (1 rejected)
+        { 2.157, 13.75 }, // 2 samples
+        { 2.340, 15.63 }, // 4 samples
+        { 2.581, 21.10 }, // 5 samples (1 rejected)
+        { 2.856, 22.36 }, // 7 samples (3 rejected)
+        { 3.092, 22.88 }, // 4 samples
+        { 3.368, 23.50 }, // 5 samples (3 rejected)
+        { 3.604, 23.50 }, // 2 samples
+        { 3.864, 24.39 }, // 9 samples
+        { 4.170, 23.83 }, // 3 samples
+        { 4.359, 25.00 }, // 6 samples
+        { 4.628, 25.00 }, // 4 samples
+        { 4.831, 25.00 }, // 3 samples
+        { 9.708, 25.00 }, // 1 samples
+        { 9.823, 25.00 }, // 1 samples
+        { 13.463, 9.00 }, // 1 samples
+        { 13.657, 9.00 }, // 1 samples
+        { 13.865, 9.00 } // 1 samples
     };
 
     /**
@@ -45,7 +64,26 @@ public final class TurretLookupTables {
      * Sorted by distance for efficient interpolation.
      */
     public static final double[][] FLYWHEEL_LOOKUP_TABLE = {
-        { 16.524, 1000 }, // 1 samples
-        { 17.448, 4450 } // 1 samples
+        { 1.230, 2350 }, // 1 samples
+        { 1.388, 2350 }, // 3 samples (1 rejected)
+        { 1.547, 2367 }, // 3 samples
+        { 1.893, 2483 }, // 6 samples (1 rejected)
+        { 2.157, 2550 }, // 2 samples
+        { 2.340, 2575 }, // 4 samples
+        { 2.581, 2690 }, // 5 samples (1 rejected)
+        { 2.856, 2764 }, // 7 samples (3 rejected)
+        { 3.092, 2813 }, // 4 samples
+        { 3.368, 2900 }, // 5 samples (3 rejected)
+        { 3.604, 2950 }, // 2 samples
+        { 3.864, 3022 }, // 9 samples
+        { 4.170, 3117 }, // 3 samples
+        { 4.359, 3192 }, // 6 samples
+        { 4.628, 3188 }, // 4 samples
+        { 4.831, 3267 }, // 3 samples
+        { 9.708, 3350 }, // 1 samples
+        { 9.823, 3350 }, // 1 samples
+        { 13.463, 2400 }, // 1 samples
+        { 13.657, 2400 }, // 1 samples
+        { 13.865, 2500 } // 1 samples
     };
 }

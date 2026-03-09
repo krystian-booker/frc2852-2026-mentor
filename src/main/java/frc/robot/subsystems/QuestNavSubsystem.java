@@ -93,6 +93,8 @@ public class QuestNavSubsystem extends SubsystemBase {
         // Telemetry
         SmartDashboard.putBoolean("QuestNav/Connected", isConnected);
         SmartDashboard.putBoolean("QuestNav/Seeded", isSeeded);
+        SmartDashboard.putNumber("QuestNav/Battery",
+                this.questNav.getBatteryPercent().isPresent() ? this.questNav.getBatteryPercent().getAsInt() : 0);
     }
 
     /**

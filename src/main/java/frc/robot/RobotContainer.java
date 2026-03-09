@@ -96,27 +96,27 @@ public class RobotContainer {
     shooterCalculator = new TurretAimingCalculator(() -> drivetrain.getState().Pose);
 
     // Set turret default command - auto-aim with operator stick override
-    // turret.setDefaultCommand(turret.run(() -> {
-    // double stickX = operatorController.getLeftX();
-    // double stickY = operatorController.getLeftY();
-    // double magnitude = Math.hypot(stickX, stickY);
+    turret.setDefaultCommand(turret.run(() -> {
+      double stickX = operatorController.getLeftX();
+      double stickY = operatorController.getLeftY();
+      double magnitude = Math.hypot(stickX, stickY);
 
-    // if (magnitude > 0.15) {
-    // // Manual field-oriented override
-    // double fieldAngleRad = Math.atan2(-stickX, -stickY);
-    // double robotHeadingRad = drivetrain.getState().Pose.getRotation().getRadians();
-    // double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) % 360.0;
-    // if (turretAngleDeg > 180.0)
-    // turretAngleDeg -= 360.0;
-    // else if (turretAngleDeg <= -180.0)
-    // turretAngleDeg += 360.0;
-    // turret.setPosition(turretAngleDeg);
-    // } else {
-    // // Auto-aim at target
-    // var result = turretAimingCalculator.calculate();
-    // turret.setPosition(result.turretAngleDegrees());
-    // }
-    // }).withName("TurretAimWithOverride"));
+      if (magnitude > 0.15) {
+        // Manual field-oriented override
+        double fieldAngleRad = Math.atan2(-stickX, -stickY);
+        double robotHeadingRad = drivetrain.getState().Pose.getRotation().getRadians();
+        double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) % 360.0;
+        if (turretAngleDeg > 180.0)
+          turretAngleDeg -= 360.0;
+        else if (turretAngleDeg <= -180.0)
+          turretAngleDeg += 360.0;
+        turret.setPosition(turretAngleDeg);
+      } else {
+        // Auto-aim at target
+        var result = shooterCalculator.calculate();
+        turret.setPosition(result.turretAngleDegrees());
+      }
+    }).withName("TurretAimWithOverride"));
 
     // Run intake in auto and teleop, but not test mode
     RobotModeTriggers.autonomous().whileTrue(intake.run(intake::runIntake));
@@ -133,7 +133,6 @@ public class RobotContainer {
 
     // Telemetry setup
     drivetrain.registerTelemetry(logger::telemeterize);
-
   }
 
   private void configureDriverBindings() {
@@ -170,8 +169,8 @@ public class RobotContainer {
     drivetrain.setDefaultCommand(
         drivetrain
             .applyRequest(() -> drive
-                .withVelocityX(driverController.getLeftY() * MaxSpeed)
-                .withVelocityY(driverController.getLeftX() * MaxSpeed)
+                .withVelocityX(-driverController.getLeftY() * MaxSpeed)
+                .withVelocityY(-driverController.getLeftX() * MaxSpeed)
                 .withRotationalRate(-driverController.getRightX()
                     * MaxAngularRate)));
 
@@ -181,20 +180,6 @@ public class RobotContainer {
     final var idle = new SwerveRequest.Idle();
     RobotModeTriggers.disabled().whileTrue(
         drivetrain.applyRequest(() -> idle).ignoringDisable(true));
-
-    // A BUTTON - Brake Mode
-    // Locks all 4 swerve modules into an X-pattern to prevent robot movement
-    // driverController.a().whileTrue(drivetrain.applyRequest(() -> brake));
-
-    // D-PAD UP - Robot-Centric Forward
-    // Drives straight forward at 0.5 m/s relative to robot's current heading
-    // driverController.povUp()
-    // .whileTrue(drivetrain.applyRequest(() -> forwardStraight.withVelocityX(0.5).withVelocityY(0)));
-
-    // D-PAD DOWN - Robot-Centric Backward
-    // Drives straight backward at 0.5 m/s relative to robot's current heading
-    // driverController.povDown()
-    // .whileTrue(drivetrain.applyRequest(() -> forwardStraight.withVelocityX(-0.5).withVelocityY(0)));
 
     // LEFT BUMPER - Reset Field-Centric Heading
     // Resets the gyro's "forward" direction to the robot's current facing direction
@@ -258,6 +243,7 @@ public class RobotContainer {
           SmartDashboard.putBoolean("QuestNav/SeededFromVision", isQuestNavSeeded);
         })).repeatedly().ignoringDisable(true);
     RobotModeTriggers.disabled().whileTrue(seedingCommand);
+    seedingCommand.schedule();
 
     // Turn off LEDs when auto or teleop starts
     // RobotModeTriggers.autonomous().onTrue(led.setPatternCommand(LED.Pattern.BLACK));
@@ -274,7 +260,18 @@ public class RobotContainer {
     // Right bumper toggles calibration mode - reads NetworkTables inputs
     // applies to hood/flywheel in real-time
     TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
-        hood, flywheel, conveyor, () -> drivetrain.getState().Pose, shooterCalculator);
+        hood, flywheel, conveyor, intakeActuator,
+        () -> drivetrain.getState().Pose, shooterCalculator,
+        drivetrain,
+        () -> drive.withVelocityX(driverController.getLeftY() * MaxSpeed)
+            .withVelocityY(driverController.getLeftX() * MaxSpeed)
+            .withRotationalRate(-driverController.getRightX() * MaxAngularRate),
+        () -> {
+          double stickMag = Math.hypot(driverController.getLeftX(),
+              driverController.getLeftY());
+          return stickMag > 0.1
+              || Math.abs(driverController.getRightX()) > 0.1;
+        });
 
     // Only allow toggling calibration mode while in test mode
     RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
@@ -285,24 +282,12 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.x()).whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
     // RobotModeTriggers.test().and(driverController.y()).whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
 
-    // --- Vision ---
-    // A: Toggle vision feeding on | B: Toggle vision feeding off
-    // RobotModeTriggers.test().and(driverController.a()).onTrue(Commands.runOnce(() ->
-    // vision.setFeedingEnabled(true)));
-    // RobotModeTriggers.test().and(driverController.b()).onTrue(Commands.runOnce(() ->
-    // vision.setFeedingEnabled(false)));
-
-    // -------------------------------------
-    // ---------------DONE------------------
-    // -------------------------------------
-
     // --- Conveyor ---
     // RobotModeTriggers.test().and(driverController.rightBumper()).whileTrue(conveyor.run(conveyor::runFeed));
     // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(conveyor::stop,
     // conveyor));
 
     // --- Intake Actuator ---
-    // SmartDashboard.putNumber("IntakeActuatorSet Position", 0.0);
     // RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
     // RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
     // RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
@@ -324,9 +309,9 @@ public class RobotContainer {
     // .onTrue(Commands.runOnce(climb::stop, climb));
 
     // --- Turret Manual Test ---
-    // RobotModeTriggers.test().and(driverController.a())
+    // driverController.a()
     // .whileTrue(turret.run(turret::testDirectionPositive).finallyDo(() -> turret.stop()));
-    // RobotModeTriggers.test().and(driverController.b())
+    // driverController.b()
     // .whileTrue(turret.run(turret::testDirectionNegative).finallyDo(() -> turret.stop()));
     // RobotModeTriggers.test().and(driverController.x())
     // .onTrue(Commands.runOnce(() -> turret.setPosition(0)));

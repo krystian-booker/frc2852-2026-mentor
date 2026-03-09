@@ -4,7 +4,6 @@ import static frc.robot.Constants.Vision.*;
 
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
-import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform3d;
@@ -13,11 +12,8 @@ import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Robot;
-import frc.robot.Constants.Vision.AprilTagTarget;
 import frc.robot.Constants.Vision.CameraConfig;
 
 import java.util.ArrayList;
@@ -34,9 +30,6 @@ import org.photonvision.simulation.SimCameraProperties;
 import org.photonvision.simulation.VisionSystemSim;
 import org.photonvision.targeting.PhotonTrackedTarget;
 
-import com.ctre.phoenix6.swerve.SwerveRequest;
-import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.path.PathConstraints;
 
 public class Vision extends SubsystemBase {
     /**
@@ -350,109 +343,6 @@ public class Vision extends SubsystemBase {
      */
     public boolean isFeedingEnabled() {
         return feedingEnabled;
-    }
-
-    /**
-     * Returns the first visible configured AprilTagTarget, if any.
-     * 
-     * @return Optional containing a visible target, or empty if none visible
-     */
-    public Optional<AprilTagTarget> getVisibleTarget() {
-        for (int tagId : aggregatedVisibleTagIds) {
-            AprilTagTarget target = AprilTagTarget.fromTagId(tagId);
-            if (target != null) {
-                return Optional.of(target);
-            }
-        }
-        return Optional.empty();
-    }
-
-    /**
-     * Creates a command to pathfind to an AprilTag target position using PathPlanner.
-     * 
-     * @param drivetrain The swerve drivetrain
-     * @param tagId The AprilTag ID to drive to
-     * @return Command that pathfinds to the target, or does nothing if tag not configured
-     */
-    public Command pathfindToAprilTagTarget(CommandSwerveDrivetrain drivetrain, int tagId) {
-        AprilTagTarget target = AprilTagTarget.fromTagId(tagId);
-        if (target == null) {
-            return Commands.none();
-        }
-
-        PathConstraints constraints = new PathConstraints(
-                3.0, // max velocity m/s
-                3.0, // max acceleration m/s^2
-                2 * Math.PI, // max angular velocity rad/s
-                4 * Math.PI // max angular acceleration rad/s^2
-        );
-
-        return AutoBuilder.pathfindToPose(target.getTargetPose(), constraints);
-    }
-
-    /**
-     * Creates a command to pathfind to any currently visible configured target.
-     * 
-     * @param drivetrain The swerve drivetrain
-     * @return Command that pathfinds to a visible target, or does nothing if none visible
-     */
-    public Command pathfindToVisibleTarget(CommandSwerveDrivetrain drivetrain) {
-        return Commands.defer(() -> {
-            Optional<AprilTagTarget> target = getVisibleTarget();
-            if (target.isPresent()) {
-                return pathfindToAprilTagTarget(drivetrain, target.get().getTagId());
-            }
-            return Commands.none();
-        }, Set.of(drivetrain));
-    }
-
-    /**
-     * Creates a command to drive directly to an AprilTag target using simple PID control. Use this for direct line
-     * driving when obstacles are not a concern.
-     * 
-     * @param drivetrain The swerve drivetrain
-     * @param tagId The AprilTag ID to drive to
-     * @return Command that drives to the target
-     */
-    public Command driveToAprilTagTarget(CommandSwerveDrivetrain drivetrain, int tagId) {
-        AprilTagTarget target = AprilTagTarget.fromTagId(tagId);
-        if (target == null) {
-            return Commands.none();
-        }
-
-        try (PIDController xController = new PIDController(DRIVE_P, DRIVE_I, DRIVE_D)) {
-            try (PIDController yController = new PIDController(DRIVE_P, DRIVE_I, DRIVE_D)) {
-                try (PIDController rotController = new PIDController(ROTATION_P, ROTATION_I, ROTATION_D)) {
-                    rotController.enableContinuousInput(-Math.PI, Math.PI);
-
-                    xController.setTolerance(POSITION_TOLERANCE_METERS);
-                    yController.setTolerance(POSITION_TOLERANCE_METERS);
-                    rotController.setTolerance(ROTATION_TOLERANCE_RADIANS);
-
-                    Pose2d targetPose = target.getTargetPose();
-
-                    SwerveRequest.FieldCentric driveRequest = new SwerveRequest.FieldCentric();
-
-                    return Commands.run(() -> {
-                        Pose2d currentPose = drivetrain.getState().Pose;
-
-                        double xSpeed = xController.calculate(currentPose.getX(), targetPose.getX());
-                        double ySpeed = yController.calculate(currentPose.getY(), targetPose.getY());
-                        double rotSpeed = rotController.calculate(
-                                currentPose.getRotation().getRadians(),
-                                targetPose.getRotation().getRadians());
-
-                        drivetrain.setControl(driveRequest
-                                .withVelocityX(xSpeed)
-                                .withVelocityY(ySpeed)
-                                .withRotationalRate(rotSpeed));
-                    }, drivetrain)
-                            .until(() -> xController.atSetpoint() && yController.atSetpoint()
-                                    && rotController.atSetpoint())
-                            .finallyDo(() -> drivetrain.setControl(new SwerveRequest.SwerveDriveBrake()));
-                }
-            }
-        }
     }
 
     /**

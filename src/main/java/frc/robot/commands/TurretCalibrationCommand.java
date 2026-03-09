@@ -1,6 +1,9 @@
 package frc.robot.commands;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+
+import com.ctre.phoenix6.swerve.SwerveRequest;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.networktables.BooleanPublisher;
@@ -10,28 +13,40 @@ import edu.wpi.first.networktables.IntegerPublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 
 import frc.robot.Constants.CalibrationConstants;
 import frc.robot.Constants.FlywheelConstants;
 import frc.robot.Constants.HoodConstants;
+import frc.robot.Constants.IntakeActuatorConstants;
+import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Conveyor;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
+import frc.robot.subsystems.IntakeActuator;
 import frc.robot.util.TurretAimingCalculator;
 
 /**
- * Calibration command for tuning turret lookup tables.
- * Acts as a thin client - only handles hardware I/O.
- * The webapp is the single source of truth for all calibration data.
+ * Calibration command for tuning turret lookup tables. Acts as a thin client - only handles hardware I/O. The webapp is
+ * the single source of truth for all calibration data.
  */
 public class TurretCalibrationCommand extends Command {
 
     private final Hood hood;
     private final Flywheel flywheel;
     private final Conveyor conveyor;
+    private final IntakeActuator intakeActuator;
     private final Supplier<Pose2d> poseSupplier;
     private final TurretAimingCalculator aimingCalculator;
+    private final CommandSwerveDrivetrain drivetrain;
+    private final Supplier<SwerveRequest> driveRequestSupplier;
+    private final BooleanSupplier driverActive;
+    private final SwerveRequest.SwerveDriveBrake brakeRequest = new SwerveRequest.SwerveDriveBrake();
+
+    // Intake actuator agitation state
+    private boolean agitateRetract;
+    private long agitateTimer;
 
     // NetworkTables
     private final NetworkTable table;
@@ -63,19 +78,31 @@ public class TurretCalibrationCommand extends Command {
     /**
      * Creates a new TurretCalibrationCommand.
      *
-     * @param hood              The hood subsystem
-     * @param flywheel          The flywheel subsystem
-     * @param conveyor          The conveyor subsystem
-     * @param poseSupplier      Supplier for the robot's current pose
-     * @param aimingCalculator  The turret aiming calculator for distance calculation
+     * @param hood The hood subsystem
+     * @param flywheel The flywheel subsystem
+     * @param conveyor The conveyor subsystem
+     * @param intakeActuator The intake actuator subsystem (oscillates during feeding)
+     * @param poseSupplier Supplier for the robot's current pose
+     * @param aimingCalculator The turret aiming calculator for distance calculation
+     * @param drivetrain The swerve drivetrain (locked in X-brake when driver is idle)
+     * @param driveRequestSupplier Supplier for the driver's swerve request
+     * @param driverActive Whether the driver is actively controlling the drivetrain
      */
     public TurretCalibrationCommand(Hood hood, Flywheel flywheel, Conveyor conveyor,
-            Supplier<Pose2d> poseSupplier, TurretAimingCalculator aimingCalculator) {
+            IntakeActuator intakeActuator,
+            Supplier<Pose2d> poseSupplier, TurretAimingCalculator aimingCalculator,
+            CommandSwerveDrivetrain drivetrain,
+            Supplier<SwerveRequest> driveRequestSupplier,
+            BooleanSupplier driverActive) {
         this.hood = hood;
         this.flywheel = flywheel;
         this.conveyor = conveyor;
+        this.intakeActuator = intakeActuator;
         this.poseSupplier = poseSupplier;
         this.aimingCalculator = aimingCalculator;
+        this.drivetrain = drivetrain;
+        this.driveRequestSupplier = driveRequestSupplier;
+        this.driverActive = driverActive;
 
         // Initialize NetworkTables
         table = NetworkTableInstance.getDefault().getTable("TurretCalibration");
@@ -118,7 +145,7 @@ public class TurretCalibrationCommand extends Command {
         table.getIntegerTopic("Grid/Rows").publish().set(CalibrationConstants.GRID_ROWS);
         table.getIntegerTopic("Grid/Cols").publish().set(CalibrationConstants.GRID_COLS);
 
-        addRequirements(hood, flywheel, conveyor);
+        addRequirements(hood, flywheel, conveyor, intakeActuator, drivetrain);
     }
 
     @Override
@@ -126,6 +153,8 @@ public class TurretCalibrationCommand extends Command {
         enabledPub.set(true);
         statusPub.set("Calibration Mode Active");
         calibrationInfoPub.set("Webapp is source of truth for calibration data");
+        agitateRetract = true;
+        agitateTimer = System.currentTimeMillis();
     }
 
     @Override
@@ -157,7 +186,30 @@ public class TurretCalibrationCommand extends Command {
         double inputFlywheelRPM = inputFlywheelRPMSub.get();
         hood.setPosition(inputHoodAngle);
         flywheel.setVelocity(inputFlywheelRPM);
+        SmartDashboard.putNumber("Calibration/InputHoodAngle", inputHoodAngle);
+        SmartDashboard.putNumber("Calibration/InputFlywheelRPM", inputFlywheelRPM);
         conveyor.runFeed();
+
+        // Agitate intake actuator - alternate retract/extend on a timer
+        // double timeout = agitateRetract
+        // ? IntakeActuatorConstants.AGITATE_RETRACT_SECONDS
+        // : IntakeActuatorConstants.AGITATE_EXTEND_SECONDS;
+        // if (System.currentTimeMillis() - agitateTimer >= timeout * 1000) {
+        // agitateRetract = !agitateRetract;
+        // agitateTimer = System.currentTimeMillis();
+        // }
+        // if (agitateRetract) {
+        // intakeActuator.setPosition(IntakeActuatorConstants.MIN_POSITION_DISTANCE);
+        // } else {
+        // intakeActuator.setPosition(IntakeActuatorConstants.MAX_POSITION_DISTANCE);
+        // }
+
+        // Lock wheels in X-brake when driver is not actively driving
+        if (driverActive.getAsBoolean()) {
+            drivetrain.setControl(driveRequestSupplier.get());
+        } else {
+            drivetrain.setControl(brakeRequest);
+        }
 
         // Publish robot state to webapp
         positionXPub.set(robotX);
@@ -182,6 +234,7 @@ public class TurretCalibrationCommand extends Command {
         flywheel.setVelocity(0);
         hood.setNeutral();
         conveyor.stop();
+        intakeActuator.setPosition(IntakeActuatorConstants.MAX_POSITION_DISTANCE);
 
         if (interrupted) {
             statusPub.set("Calibration Interrupted");
@@ -224,8 +277,7 @@ public class TurretCalibrationCommand extends Command {
     }
 
     /**
-     * Calculates the next target position for the calibration grid.
-     * Moves right along rows, then down to next row.
+     * Calculates the next target position for the calibration grid. Moves right along rows, then down to next row.
      *
      * @return Array of [x, y] for next target
      */

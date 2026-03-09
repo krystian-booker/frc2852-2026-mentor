@@ -318,10 +318,10 @@ public class Turret extends SubsystemBase {
         SmartDashboard.putNumber("Turret/Target Degrees", targetPositionDegrees);
         SmartDashboard.putBoolean("Turret/At Position", isAtPosition());
 
-        // double encoderDeg = getEncoderDegrees();
-        // double canCoderDeg = getCANCoderPositionDegrees();
-        // SmartDashboard.putNumber("Turret/Encoder Degrees", encoderDeg);
-        // SmartDashboard.putNumber("Turret/CANCoder Degrees", canCoderDeg);
+        double encoderDeg = getEncoderDegrees();
+        double canCoderDeg = getCANCoderPositionDegrees();
+        SmartDashboard.putNumber("Turret/Encoder Degrees", encoderDeg);
+        SmartDashboard.putNumber("Turret/CANCoder Degrees", canCoderDeg);
         // SmartDashboard.putNumber("Turret/CANCoder Raw Rotations",
         // canCoderPosition.refresh().getValue().in(Rotations));
         // SmartDashboard.putNumber("Turret/Motor Raw Rotations", motorPosition.refresh().getValue().in(Rotations));

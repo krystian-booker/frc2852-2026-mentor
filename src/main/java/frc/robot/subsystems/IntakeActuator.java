@@ -11,6 +11,7 @@ import com.revrobotics.spark.config.SparkFlexConfig;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj.AnalogPotentiometer;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -140,12 +141,11 @@ public class IntakeActuator extends SubsystemBase {
         output = MathUtil.clamp(output, -IntakeActuatorConstants.MAX_OUTPUT, IntakeActuatorConstants.MAX_OUTPUT);
         motor.setVoltage(output * 12.0);
 
-        // SmartDashboard.putNumber("IntakeActuator/Position Distance", getCurrentPosition());
-        // SmartDashboard.putNumber("IntakeActuator/Target Distance", targetPositionDistance);
-        // SmartDashboard.putBoolean("IntakeActuator/At Position", atPosition());
-        // SmartDashboard.putNumber("IntakeActuator/Applied Output", motor.getAppliedOutput());
-        // SmartDashboard.putNumber("IntakeActuator/Output Current", getOutputCurrent());
-        // SmartDashboard.putBoolean("IntakeActuator/Is Extended", isExtended());
-        // SmartDashboard.putBoolean("IntakeActuator/PID Enabled", pidEnabled);
+        SmartDashboard.putNumber("IntakeActuator/Position Distance", getCurrentPosition());
+        SmartDashboard.putNumber("IntakeActuator/Target Distance", targetPositionDistance);
+        SmartDashboard.putBoolean("IntakeActuator/At Position", atPosition());
+        SmartDashboard.putNumber("IntakeActuator/Applied Output", motor.getAppliedOutput());
+        SmartDashboard.putNumber("IntakeActuator/Output Current", getOutputCurrent());
+        SmartDashboard.putBoolean("IntakeActuator/Is Extended", isExtended());
     }
 }
