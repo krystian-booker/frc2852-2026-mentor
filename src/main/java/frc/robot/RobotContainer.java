@@ -4,6 +4,7 @@ import frc.robot.Constants.ClimbConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
 import frc.robot.commands.ShootCommand;
+import frc.robot.commands.TurretCalibrationCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Conveyor;
 import frc.robot.subsystems.Flywheel;
@@ -72,7 +73,7 @@ public class RobotContainer {
   private QuestNavSubsystem questNav = null;
 
   // Turret aiming calculator
-  private final TurretAimingCalculator turretAimingCalculator = null;
+  private TurretAimingCalculator shooterCalculator = null;
 
   // QuestNav seeding state
   private boolean isQuestNavSeeded = false;
@@ -92,7 +93,7 @@ public class RobotContainer {
     questNav = new QuestNavSubsystem(drivetrain, vision);
 
     // Initialize turret aiming calculator with pose supplier from drivetrain
-    // turretAimingCalculator = new TurretAimingCalculator(() -> drivetrain.getState().Pose);
+    shooterCalculator = new TurretAimingCalculator(() -> drivetrain.getState().Pose);
 
     // Set turret default command - auto-aim with operator stick override
     // turret.setDefaultCommand(turret.run(() -> {
@@ -117,8 +118,9 @@ public class RobotContainer {
     // }
     // }).withName("TurretAimWithOverride"));
 
-    // Set intake default command - always running
-    intake.setDefaultCommand(intake.run(intake::runIntake));
+    // Run intake in auto and teleop, but not test mode
+    RobotModeTriggers.autonomous().whileTrue(intake.run(intake::runIntake));
+    RobotModeTriggers.teleop().whileTrue(intake.run(intake::runIntake));
 
     // Configure normal bindings (always available)
     configureDriverBindings();
@@ -145,7 +147,7 @@ public class RobotContainer {
     // Locks wheels in X-brake while shooting unless driver is actively driving
     driverController.rightTrigger(0.5).whileTrue(
         new ShootCommand(flywheel, hood, conveyor, intakeActuator, turret,
-            turretAimingCalculator,
+            shooterCalculator,
             drivetrain,
             () -> drive.withVelocityX(driverController.getLeftY() * MaxSpeed)
                 .withVelocityY(driverController.getLeftX() * MaxSpeed)
@@ -271,11 +273,11 @@ public class RobotContainer {
     // Turret Calibration Mode
     // Right bumper toggles calibration mode - reads NetworkTables inputs
     // applies to hood/flywheel in real-time
-    // TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
-    // hood, flywheel, conveyor, () -> drivetrain.getState().Pose, turretAimingCalculator);
+    TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
+        hood, flywheel, conveyor, () -> drivetrain.getState().Pose, shooterCalculator);
 
     // Only allow toggling calibration mode while in test mode
-    // RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
+    RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
 
     // Swerve
     // RobotModeTriggers.test().and(driverController.a()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kForward));
@@ -348,8 +350,7 @@ public class RobotContainer {
     // flywheel.setVelocity(2000)));
     // RobotModeTriggers.test().and(driverController.b()).whileTrue(flywheel.run(() ->
     // flywheel.setVelocity(3500)));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.run(() ->
-    // flywheel.setVelocity(4500)));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.run(() -> flywheel.setVelocity(6000)));
     // RobotModeTriggers.test().and(driverController.y())
     // .onTrue(Commands.runOnce(() -> flywheel.setVelocity(0), flywheel));
 

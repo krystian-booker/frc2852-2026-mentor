@@ -104,8 +104,8 @@ public class ShootCommand extends Command {
     @Override
     public void execute() {
         // Continuously update flywheel RPM and hood angle from LUT
-        double targetRPM = 2000; // aimingCalculator.getFlywheelRPM();
-        double targetHoodAngle = 15; // aimingCalculator.getHoodAngle();
+        double targetRPM = aimingCalculator.getFlywheelRPM();
+        double targetHoodAngle = aimingCalculator.getHoodAngle();
 
         flywheel.setVelocity(targetRPM);
         hood.setPosition(targetHoodAngle);

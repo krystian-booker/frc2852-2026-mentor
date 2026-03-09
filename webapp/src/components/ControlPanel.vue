@@ -12,9 +12,9 @@ const flywheelAtSetpoint = useNTBoolean(TOPICS.FLYWHEEL_AT_SETPOINT, false)
 
 // Read constants from robot (with fallback defaults)
 const minHoodAngle = useNTDouble(TOPICS.CONSTANTS.MIN_HOOD_ANGLE, 0)
-const maxHoodAngle = useNTDouble(TOPICS.CONSTANTS.MAX_HOOD_ANGLE, 90)
-const minFlywheelRPM = useNTDouble(TOPICS.CONSTANTS.MIN_FLYWHEEL_RPM, 1000)
-const maxFlywheelRPM = useNTDouble(TOPICS.CONSTANTS.MAX_FLYWHEEL_RPM, 6000)
+const maxHoodAngle = useNTDouble(TOPICS.CONSTANTS.MAX_HOOD_ANGLE, 25)
+const minFlywheelRPM = useNTDouble(TOPICS.CONSTANTS.MIN_FLYWHEEL_RPM, 500)
+const maxFlywheelRPM = useNTDouble(TOPICS.CONSTANTS.MAX_FLYWHEEL_RPM, 4700)
 
 // Input values (local state, published to NT)
 const inputHoodAngle = ref(25)
@@ -32,22 +32,16 @@ const debouncedPublishFlywheelRPM = useDebounceFn((value: number) => {
   publishDouble(TOPICS.INPUT_FLYWHEEL_RPM, value)
 }, 100)
 
-// Publish changes to NetworkTables with debouncing (only after constants received)
+// Publish changes to NetworkTables with debouncing
 watch(inputHoodAngle, (value) => {
-  if (constantsReceived.value) {
-    debouncedPublishHoodAngle(value)
-  }
+  debouncedPublishHoodAngle(value)
 })
 
 watch(inputFlywheelRPM, (value) => {
-  if (constantsReceived.value) {
-    debouncedPublishFlywheelRPM(value)
-  }
+  debouncedPublishFlywheelRPM(value)
 })
 
-// Unified watcher for all constants - waits for all values before publishing
-// This prevents race condition where separate watchers could fire out of order
-// and publish unclamped values
+// Clamp inputs when constants change and publish initial values on startup
 watch(
   [minHoodAngle, maxHoodAngle, minFlywheelRPM, maxFlywheelRPM],
   ([newMinHood, newMaxHood, newMinRPM, newMaxRPM]) => {
@@ -65,14 +59,14 @@ watch(
       inputFlywheelRPM.value = newMaxRPM
     }
 
-    // On first receipt of constants, publish clamped initial values
+    // Publish initial values so robot receives them immediately
     if (!constantsReceived.value) {
       constantsReceived.value = true
-      // Publish clamped initial values immediately (no debounce for initialization)
       publishDouble(TOPICS.INPUT_HOOD_ANGLE, inputHoodAngle.value)
       publishDouble(TOPICS.INPUT_FLYWHEEL_RPM, inputFlywheelRPM.value)
     }
-  }
+  },
+  { immediate: true }
 )
 
 // Blur handlers to clamp values when user finishes typing

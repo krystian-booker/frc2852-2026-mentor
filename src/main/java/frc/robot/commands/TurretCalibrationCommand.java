@@ -56,6 +56,10 @@ public class TurretCalibrationCommand extends Command {
     private final DoubleSubscriber inputHoodAngleSub;
     private final DoubleSubscriber inputFlywheelRPMSub;
 
+    // Retained publishers (must be stored to prevent GC from unpublishing)
+    @SuppressWarnings("unused")
+    private final DoublePublisher[] retainedPublishers;
+
     /**
      * Creates a new TurretCalibrationCommand.
      *
@@ -98,17 +102,19 @@ public class TurretCalibrationCommand extends Command {
         inputFlywheelRPMSub = table.getDoubleTopic("Input/FlywheelRPM")
                 .subscribe(CalibrationConstants.DEFAULT_FLYWHEEL_RPM);
 
-        // Set initial values for inputs so they appear in webapp
-        table.getDoubleTopic("Input/HoodAngle").publish()
-                .set(CalibrationConstants.DEFAULT_HOOD_ANGLE);
-        table.getDoubleTopic("Input/FlywheelRPM").publish()
-                .set(CalibrationConstants.DEFAULT_FLYWHEEL_RPM);
-
-        // Publish constants for webapp to read (one-time on startup)
-        table.getDoubleTopic("Constants/MinFlywheelRPM").publish().set(FlywheelConstants.MIN_RPM);
-        table.getDoubleTopic("Constants/MaxFlywheelRPM").publish().set(FlywheelConstants.MAX_RPM);
-        table.getDoubleTopic("Constants/MinHoodAngle").publish().set(HoodConstants.MIN_POSITION_DEGREES);
-        table.getDoubleTopic("Constants/MaxHoodAngle").publish().set(HoodConstants.MAX_POSITION_DEGREES);
+        // Publish constants for webapp to read
+        // Publishers must be stored to prevent GC from unpublishing the topics
+        DoublePublisher minRPMPub = table.getDoubleTopic("Constants/MinFlywheelRPM").publish();
+        minRPMPub.set(FlywheelConstants.MIN_RPM);
+        DoublePublisher maxRPMPub = table.getDoubleTopic("Constants/MaxFlywheelRPM").publish();
+        maxRPMPub.set(FlywheelConstants.MAX_RPM);
+        DoublePublisher minHoodPub = table.getDoubleTopic("Constants/MinHoodAngle").publish();
+        minHoodPub.set(HoodConstants.MIN_POSITION_DEGREES);
+        DoublePublisher maxHoodPub = table.getDoubleTopic("Constants/MaxHoodAngle").publish();
+        maxHoodPub.set(HoodConstants.MAX_POSITION_DEGREES);
+        retainedPublishers = new DoublePublisher[] {
+                minRPMPub, maxRPMPub, minHoodPub, maxHoodPub
+        };
         table.getIntegerTopic("Grid/Rows").publish().set(CalibrationConstants.GRID_ROWS);
         table.getIntegerTopic("Grid/Cols").publish().set(CalibrationConstants.GRID_COLS);
 

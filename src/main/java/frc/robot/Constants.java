@@ -49,7 +49,7 @@ public final class Constants {
 
     // RPM Limits
     public static final double MIN_RPM = 1000.0; // Minimum flywheel RPM for calibration/validation
-    public static final double MAX_RPM = 6000.0; // Maximum flywheel RPM for calibration/validation
+    public static final double MAX_RPM = 4700.0; // Maximum flywheel RPM for calibration/validation
 
     // PID/Feedforward Gains
     public static final double S = 2.1000;

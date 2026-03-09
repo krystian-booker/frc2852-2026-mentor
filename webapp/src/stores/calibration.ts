@@ -26,9 +26,9 @@ export const useCalibrationStore = defineStore('calibration', () => {
 
   // Validation bounds (defaults, should be updated from NetworkTables constants)
   const minHoodAngle = ref(0)
-  const maxHoodAngle = ref(90)
+  const maxHoodAngle = ref(25)
   const minFlywheelRPM = ref(1000)
-  const maxFlywheelRPM = ref(6000)
+  const maxFlywheelRPM = ref(4700)
 
   // Load from localStorage on init
   const loadFromStorage = () => {
