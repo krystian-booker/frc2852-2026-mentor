@@ -354,23 +354,22 @@ public final class Constants {
     // Left camera
     public static final CameraConfig LEFT_CAMERA = new CameraConfig("LEFT_CAMERA",
         new Transform3d(new Translation3d(0.0244348, 0.2737866, 0.6747256),
-            new Rotation3d(Math.toRadians(0), Math.toRadians(-30), Math.toRadians(-45))
-        ));
+            new Rotation3d(Math.toRadians(0), Math.toRadians(-30), Math.toRadians(-45))));
 
     // Right camera
     public static final CameraConfig RIGHT_CAMERA = new CameraConfig("RIGHT_CAMERA",
         new Transform3d(new Translation3d(0.0394716, -0.263906, 0.6851142),
-            new Rotation3d(Math.toRadians(0), Math.toRadians(-30), Math.toRadians(45))
-        ));
+            new Rotation3d(Math.toRadians(0), Math.toRadians(-30), Math.toRadians(45))));
 
     // Limelight 4
     public static final CameraConfig LIMELIGHT = new CameraConfig("LIMELIGHT",
         new Transform3d(new Translation3d(-0.1651, 0.2421636, 0.5263896),
-            new Rotation3d(Math.toRadians(0), Math.toRadians(0), Math.toRadians(90))
-        ));
+            new Rotation3d(Math.toRadians(0), Math.toRadians(0), Math.toRadians(90))));
 
     // All cameras
-    public static final List<CameraConfig> CAMERAS = List.of(LEFT_CAMERA, RIGHT_CAMERA);
+    // TODO: once left camera is added fix this
+    // public static final List<CameraConfig> CAMERAS = List.of(LEFT_CAMERA, RIGHT_CAMERA);
+    public static final List<CameraConfig> CAMERAS = List.of(RIGHT_CAMERA);
 
     // The layout of the AprilTags on the field
     public static final AprilTagFieldLayout kTagLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
