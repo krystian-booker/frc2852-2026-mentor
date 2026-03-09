@@ -14,6 +14,7 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.networktables.StructArrayPublisher;
 import edu.wpi.first.networktables.StructPublisher;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.Mechanism2d;
 import edu.wpi.first.wpilibj.smartdashboard.MechanismLigament2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -22,15 +23,18 @@ import edu.wpi.first.wpilibj.util.Color8Bit;
 
 public class Telemetry {
     private final double MaxSpeed;
+    private final Field2d field = new Field2d();
 
     /**
      * Construct a telemetry object, with the specified max speed of the robot
-     * 
+     *
      * @param maxSpeed Maximum speed in meters per second
      */
     public Telemetry(double maxSpeed) {
         MaxSpeed = maxSpeed;
         SignalLogger.start();
+
+        SmartDashboard.putData("Field", field);
 
         /* Set up the module state Mechanism2d telemetry */
         for (int i = 0; i < 4; ++i) {
@@ -109,6 +113,7 @@ public class Telemetry {
         SignalLogger.writeDouble("DriveState/OdometryPeriod", state.OdometryPeriod, "seconds");
 
         /* Telemeterize the pose to a Field2d */
+        field.setRobotPose(state.Pose);
         fieldTypePub.set("Field2d");
 
         m_poseArray[0] = state.Pose.getX();
