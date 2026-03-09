@@ -66,7 +66,7 @@ public final class Constants {
     public static final double STATOR_CURRENT_LIMIT = 120.0; // Amps
 
     // Velocity Control
-    public static final double VELOCITY_TOLERANCE_RPM = 50.0; // RPM tolerance for atSetpoint()
+    public static final double VELOCITY_TOLERANCE_RPM = 100.0; // RPM tolerance for atSetpoint()
   }
 
   public static class HoodConstants {
@@ -80,9 +80,9 @@ public final class Constants {
     public static final double V = 19.0191;
     public static final double A = 0.0;
     public static final double G = 0.0352;
-    public static final double P = 10.0; // Proportional (Volts per rotation error) - reduced from 50 for safe testing
-    public static final double I = 0.0; // Integral
-    public static final double D = 0.5; // Derivative
+    public static final double P = 80.0;
+    public static final double I = 0.0;
+    public static final double D = 0.5;
 
     // Motion Magic - max speed (beyond physical limit, motor-limited)
     public static final double MOTION_MAGIC_CRUISE_VELOCITY = 36000.0; // deg/s
@@ -96,7 +96,7 @@ public final class Constants {
     public static final double STATOR_CURRENT_LIMIT = 20.0; // Amps (was 80)
 
     // Position Control
-    public static final double POSITION_TOLERANCE_DEGREES = 0.5; // Degrees tolerance for atPosition()
+    public static final double POSITION_TOLERANCE_DEGREES = 2; // Degrees tolerance for atPosition()
   }
 
   public static class ClimbConstants {
@@ -119,8 +119,8 @@ public final class Constants {
     public static final double A = 0.0; // Acceleration feedforward (Volts per RPS/s)
     public static final double G = 0.0; // Gravity feedforward (Volts)
     public static final double P = 80.0; // Proportional (Volts per rotation error)
-    public static final double I = 0.0; // Integral
-    public static final double D = 0.5; // Derivative
+    public static final double I = 0.0;
+    public static final double D = 0.5;
 
     // Motion Magic - slow for safety
     public static final double MOTION_MAGIC_CRUISE_VELOCITY = 5.0; // rot/s
@@ -222,8 +222,8 @@ public final class Constants {
 
     // PID Gains (runs on RoboRIO, output is duty cycle -1 to 1)
     public static final double P = 0.5; // Proportional
-    public static final double I = 0.0; // Integral - eliminates steady-state crawl
-    public static final double D = 0.0; // Derivative
+    public static final double I = 0.0;
+    public static final double D = 0.0;
 
     // Max output clamp (0.0 to 1.0) - limits motor duty cycle for safe testing
     public static final double MAX_OUTPUT = 1.0; // 15% power - reduced for safe testing

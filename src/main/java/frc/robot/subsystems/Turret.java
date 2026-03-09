@@ -313,12 +313,14 @@ public class Turret extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // double position = getPositionDegrees();
+        double position = getPositionDegrees();
+        SmartDashboard.putNumber("Turret/Position Degrees", position);
+        SmartDashboard.putNumber("Turret/Target Degrees", targetPositionDegrees);
+        SmartDashboard.putBoolean("Turret/At Position", isAtPosition());
+
         // double encoderDeg = getEncoderDegrees();
         // double canCoderDeg = getCANCoderPositionDegrees();
-        // SmartDashboard.putNumber("Turret/Position Degrees", position);
         // SmartDashboard.putNumber("Turret/Encoder Degrees", encoderDeg);
-        // SmartDashboard.putNumber("Turret/Target Degrees", targetPositionDegrees);
         // SmartDashboard.putNumber("Turret/CANCoder Degrees", canCoderDeg);
         // SmartDashboard.putNumber("Turret/CANCoder Raw Rotations",
         // canCoderPosition.refresh().getValue().in(Rotations));
@@ -326,7 +328,6 @@ public class Turret extends SubsystemBase {
         // SmartDashboard.putNumber("Turret/Motor Stator Current",
         // motor.getStatorCurrent().refresh().getValue().in(Amps));
         // SmartDashboard.putNumber("Turret/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
-        // SmartDashboard.putBoolean("Turret/At Position", isAtPosition());
         // SmartDashboard.putBoolean("Turret/In Overshoot Zone",
         // position < TurretConstants.MIN_POSITION_DEGREES || position > TurretConstants.MAX_POSITION_DEGREES);
         // SmartDashboard.putNumber("Turret/Distance From Limit",

@@ -8,6 +8,7 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkFlexConfig;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj.AnalogPotentiometer;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -135,12 +136,9 @@ public class IntakeActuator extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // Run PID loop when enabled - calculate motor output from potentiometer feedback
-        // if (pidEnabled) {
-        // double output = pidController.calculate(getCurrentPosition());
-        // output = MathUtil.clamp(output, -IntakeActuatorConstants.MAX_OUTPUT, IntakeActuatorConstants.MAX_OUTPUT);
-        // motor.setVoltage(output * 12.0);
-        // }
+        double output = pidController.calculate(getCurrentPosition());
+        output = MathUtil.clamp(output, -IntakeActuatorConstants.MAX_OUTPUT, IntakeActuatorConstants.MAX_OUTPUT);
+        motor.setVoltage(output * 12.0);
 
         // SmartDashboard.putNumber("IntakeActuator/Position Distance", getCurrentPosition());
         // SmartDashboard.putNumber("IntakeActuator/Target Distance", targetPositionDistance);

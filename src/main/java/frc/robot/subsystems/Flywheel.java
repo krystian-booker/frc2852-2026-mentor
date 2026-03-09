@@ -210,8 +210,8 @@ public class Flywheel extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // SmartDashboard.putNumber("Flywheel/Velocity RPM", getCurrentVelocityRPM());
-        // SmartDashboard.putNumber("Flywheel/Target RPM", targetVelocityRPM);
-        // SmartDashboard.putBoolean("Flywheel/At Setpoint", atSetpoint());
+        SmartDashboard.putNumber("Flywheel/Velocity RPM", getCurrentVelocityRPM());
+        SmartDashboard.putNumber("Flywheel/Target RPM", targetVelocityRPM);
+        SmartDashboard.putBoolean("Flywheel/At Setpoint", atSetpoint());
     }
 }
