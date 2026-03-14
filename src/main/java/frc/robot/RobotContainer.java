@@ -152,16 +152,8 @@ public class RobotContainer {
         new ShootCommand(flywheel, hood, conveyor, intakeActuator, turret,
             shooterCalculator,
             drivetrain,
-            () -> drive.withVelocityX(-driverController.getLeftY() * MaxSpeed)
-                .withVelocityY(-driverController.getLeftX() * MaxSpeed)
-                .withRotationalRate(-driverController.getRightX()
-                    * MaxAngularRate),
-            () -> {
-              double stickMag = Math.hypot(driverController.getLeftX(),
-                  driverController.getLeftY());
-              return stickMag > 0.1
-                  || Math.abs(driverController.getRightX()) > 0.1;
-            })
+            this::getDriveRequest,
+            this::isDriverActive)
                 .withName("Shoot"));
 
     // DEFAULT COMMAND - Field-Centric Drive
@@ -171,12 +163,7 @@ public class RobotContainer {
     // Right Stick X: Controls rotation (counterclockwise is positive)
     // The negatives account for controller axis inversion
     drivetrain.setDefaultCommand(
-        drivetrain
-            .applyRequest(() -> drive
-                .withVelocityX(-driverController.getLeftY() * MaxSpeed)
-                .withVelocityY(-driverController.getLeftX() * MaxSpeed)
-                .withRotationalRate(-driverController.getRightX()
-                    * MaxAngularRate)));
+        drivetrain.applyRequest(this::getDriveRequest));
 
     // DISABLED MODE - Idle Request
     // Ensures the configured neutral mode (coast) is applied to
@@ -267,15 +254,8 @@ public class RobotContainer {
         hood, flywheel, conveyor, intakeActuator,
         () -> drivetrain.getState().Pose, shooterCalculator,
         drivetrain,
-        () -> drive.withVelocityX(-driverController.getLeftY() * MaxSpeed)
-            .withVelocityY(-driverController.getLeftX() * MaxSpeed)
-            .withRotationalRate(-driverController.getRightX() * MaxAngularRate),
-        () -> {
-          double stickMag = Math.hypot(driverController.getLeftX(),
-              driverController.getLeftY());
-          return stickMag > 0.1
-              || Math.abs(driverController.getRightX()) > 0.1;
-        });
+        this::getDriveRequest,
+        this::isDriverActive);
 
     // Only allow toggling calibration mode while in test mode
     // RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
@@ -362,6 +342,21 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.start())
     // .onTrue(hood.zeroHoodCommand());
 
+  }
+
+  /** Builds a field-centric drive request from driver joystick input. */
+  private SwerveRequest getDriveRequest() {
+    return drive
+        .withVelocityX(-driverController.getLeftY() * MaxSpeed)
+        .withVelocityY(-driverController.getLeftX() * MaxSpeed)
+        .withRotationalRate(-driverController.getRightX() * MaxAngularRate);
+  }
+
+  /** Returns true when the driver is actively providing joystick input. */
+  private boolean isDriverActive() {
+    double stickMag = Math.hypot(driverController.getLeftX(),
+        driverController.getLeftY());
+    return stickMag > 0.1 || Math.abs(driverController.getRightX()) > 0.1;
   }
 
   public Command getAutonomousCommand() {
