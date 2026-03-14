@@ -159,7 +159,13 @@ public class Turret extends SubsystemBase {
     }
 
     public void setPosition(double aimDegrees) {
-        // Clamp to aiming-relative range (0 = forward)
+        // Wrap into turret range before clamping
+        if (aimDegrees > TurretConstants.MAX_POSITION_DEGREES) {
+            aimDegrees -= 360.0;
+        } else if (aimDegrees < TurretConstants.MIN_POSITION_DEGREES) {
+            aimDegrees += 360.0;
+        }
+        // Safety clamp (should rarely trigger after wrapping)
         targetPositionDegrees = Math.max(TurretConstants.MIN_POSITION_DEGREES,
                 Math.min(TurretConstants.MAX_POSITION_DEGREES, aimDegrees));
 
@@ -231,6 +237,10 @@ public class Turret extends SubsystemBase {
             double turretAngle = fieldTarget[0] - robotHeadingSupplier.getAsDouble();
             // Normalize to [-180, 180]
             turretAngle = ((turretAngle % 360.0) + 540.0) % 360.0 - 180.0;
+            // Wrap into turret range
+            if (turretAngle > TurretConstants.MAX_POSITION_DEGREES) {
+                turretAngle -= 360.0;
+            }
             setPosition(turretAngle);
         })).withName("TurretFieldHold");
     }

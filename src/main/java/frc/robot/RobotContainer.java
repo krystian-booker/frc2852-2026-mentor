@@ -3,6 +3,7 @@ package frc.robot;
 import frc.robot.Constants.ClimbConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
+import frc.robot.Constants.TurretConstants;
 import frc.robot.commands.ShootCommand;
 import frc.robot.commands.TurretCalibrationCommand;
 import frc.robot.generated.TunerConstants;
@@ -26,8 +27,8 @@ import static edu.wpi.first.units.Units.*;
 
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
-
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
 
 import edu.wpi.first.math.geometry.Pose2d;
@@ -110,6 +111,8 @@ public class RobotContainer {
           turretAngleDeg -= 360.0;
         else if (turretAngleDeg <= -180.0)
           turretAngleDeg += 360.0;
+        if (turretAngleDeg > TurretConstants.MAX_POSITION_DEGREES)
+          turretAngleDeg -= 360.0;
         turret.setPosition(turretAngleDeg);
       } else {
         // Auto-aim at target
@@ -139,7 +142,7 @@ public class RobotContainer {
     // Auto-extend intake actuator at the start of autonomous and teleop
     RobotModeTriggers.autonomous().onTrue(intakeActuator.extend());
     RobotModeTriggers.teleop().onTrue(intakeActuator.extend());
-    RobotModeTriggers.test().onTrue(intakeActuator.extend());
+    // RobotModeTriggers.test().onTrue(intakeActuator.extend());
 
     // Hood homing: drive to hard stop and zero encoder on first enable
     RobotModeTriggers.autonomous().onTrue(hood.zeroHoodCommand().onlyIf(() -> !hood.isHomed()));

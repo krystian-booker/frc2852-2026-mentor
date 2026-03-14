@@ -149,7 +149,7 @@ public final class Constants {
     public static final double GEAR_RATIO = 50.0; // Motor rotations per turret rotation
 
     // Forward offset: encoder reading (degrees) when turret points robot-forward.
-    public static final double FORWARD_ENCODER_POSITION_DEGREES = 42;
+    public static final double FORWARD_ENCODER_POSITION_DEGREES = 18.28125000000000355;
 
     // Physical encoder limits (used for firmware soft limits — do not change without re-verifying travel)
     public static final double ENCODER_MIN_DEGREES = -180.0;
@@ -238,7 +238,7 @@ public final class Constants {
     // Stall detection
     public static final double STALL_CURRENT_THRESHOLD_AMPS = 20;
     public static final double STALL_DETECTION_DELAY_SECONDS = 0.1; // Ignore current for 100ms after motor start
-    public static final int STALL_CURRENT_SAMPLE_COUNT = 2; // Consecutive cycles above threshold to confirm stall
+    public static final int STALL_CURRENT_SAMPLE_COUNT = 1; // Consecutive cycles above threshold to confirm stall
 
     // Agitate command (time-based, alternates extend/retract regardless of position reached)
     public static final double AGITATE_EXTEND_SECONDS = 0.4;

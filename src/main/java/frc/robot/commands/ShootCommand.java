@@ -113,7 +113,7 @@ public class ShootCommand extends Command {
         // Check if all conditions are met to begin feeding
         boolean flywheelReady = flywheel.atSetpoint();
         boolean hoodReady = hood.atPosition();
-        boolean turretReady = true;// turret.isAtPosition();
+        boolean turretReady = true; // turret.isAtPosition();
 
         if (flywheelReady && hoodReady && turretReady) {
             isFeeding = true;

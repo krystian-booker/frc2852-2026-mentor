@@ -8,6 +8,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.TurretAimingConstants;
+import frc.robot.Constants.TurretConstants;
 import frc.robot.generated.TurretLookupTables;
 
 /**
@@ -84,6 +85,11 @@ public class TurretAimingCalculator {
             turretAngleDegrees += 360.0;
         }
 
+        // Wrap into turret's physical range [-225, +135]
+        if (turretAngleDegrees > TurretConstants.MAX_POSITION_DEGREES) {
+            turretAngleDegrees -= 360.0;
+        }
+
         // Smooth the angle with a low-pass filter to reduce jitter from pose noise
         if (Double.isNaN(filteredAngleDegrees)) {
             filteredAngleDegrees = turretAngleDegrees;
@@ -95,10 +101,10 @@ public class TurretAimingCalculator {
             else if (delta < -180.0)
                 delta += 360.0;
             filteredAngleDegrees += SMOOTHING_ALPHA * delta;
-            // Re-normalize
-            if (filteredAngleDegrees > 180.0)
+            // Re-normalize to turret range
+            if (filteredAngleDegrees > TurretConstants.MAX_POSITION_DEGREES)
                 filteredAngleDegrees -= 360.0;
-            else if (filteredAngleDegrees <= -180.0)
+            else if (filteredAngleDegrees < TurretConstants.MIN_POSITION_DEGREES)
                 filteredAngleDegrees += 360.0;
         }
         turretAngleDegrees = filteredAngleDegrees;
