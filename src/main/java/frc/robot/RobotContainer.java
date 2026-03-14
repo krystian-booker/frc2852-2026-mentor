@@ -141,6 +141,10 @@ public class RobotContainer {
     RobotModeTriggers.teleop().onTrue(intakeActuator.extend());
     RobotModeTriggers.test().onTrue(intakeActuator.extend());
 
+    // Hood homing: drive to hard stop and zero encoder on first enable
+    RobotModeTriggers.autonomous().onTrue(hood.zeroHoodCommand().onlyIf(() -> !hood.isHomed()));
+    RobotModeTriggers.teleop().onTrue(hood.zeroHoodCommand().onlyIf(() -> !hood.isHomed()));
+
     // RIGHT TRIGGER - Shoot (held)
     // Spins up flywheel and sets hood from LUT, then feeds when ready
     // Locks wheels in X-brake while shooting unless driver is actively driving
@@ -274,7 +278,7 @@ public class RobotContainer {
         });
 
     // Only allow toggling calibration mode while in test mode
-    RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
+    // RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
 
     // Swerve
     // RobotModeTriggers.test().and(driverController.a()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kForward));
@@ -288,9 +292,9 @@ public class RobotContainer {
     // conveyor));
 
     // --- Intake Actuator ---
-    RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
-    RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
-    RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
 
     // --- Intake ---
     // RobotModeTriggers.test().and(driverController.leftBumper()).whileTrue(intake.run(intake::runIntake));
@@ -353,6 +357,10 @@ public class RobotContainer {
     // .onTrue(hood.runOnce(() -> hood.nudge(-5)));
     // RobotModeTriggers.test().and(driverController.leftBumper())
     // .onTrue(Commands.runOnce(hood::setNeutral, hood));
+
+    // Hood manual re-home (start button in test mode)
+    // RobotModeTriggers.test().and(driverController.start())
+    // .onTrue(hood.zeroHoodCommand());
 
   }
 

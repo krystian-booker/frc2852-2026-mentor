@@ -6,6 +6,7 @@ import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
+import com.ctre.phoenix6.configs.SoftwareLimitSwitchConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
@@ -16,7 +17,10 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.Constants;
@@ -40,6 +44,7 @@ public class Hood extends SubsystemBase {
 
     // State
     private double targetPositionDegrees = 0.0;
+    private boolean isHomed = false;
 
     public Hood() {
         // Initialize hardware
@@ -218,6 +223,73 @@ public class Hood extends SubsystemBase {
         configureMotor();
     }
 
+    public boolean isHomed() {
+        return isHomed;
+    }
+
+    private void disableReverseSoftLimit() {
+        SoftwareLimitSwitchConfigs softLimits = new SoftwareLimitSwitchConfigs();
+        motor.getConfigurator().refresh(softLimits);
+        softLimits.ReverseSoftLimitEnable = false;
+        motor.getConfigurator().apply(softLimits);
+    }
+
+    private void enableSoftLimits() {
+        SoftwareLimitSwitchConfigs softLimits = new SoftwareLimitSwitchConfigs();
+        softLimits.ForwardSoftLimitEnable = true;
+        softLimits.ForwardSoftLimitThreshold = HoodConstants.MAX_POSITION_DEGREES / 360.0;
+        softLimits.ReverseSoftLimitEnable = true;
+        softLimits.ReverseSoftLimitThreshold = HoodConstants.MIN_POSITION_DEGREES / 360.0;
+        motor.getConfigurator().apply(softLimits);
+    }
+
+    /** Drives hood to reverse hard stop, detects stall via stator current, then zeroes encoder. */
+    public Command zeroHoodCommand() {
+        Timer homingTimer = new Timer();
+        int[] stallCount = {0};
+
+        return Commands.sequence(
+            runOnce(() -> {
+                isHomed = false;
+                stallCount[0] = 0;
+                disableReverseSoftLimit();
+                homingTimer.restart();
+                motor.setControl(voltageRequest.withOutput(HoodConstants.HOMING_VOLTAGE));
+            }),
+            Commands.idle(this).until(() -> {
+                double current = Math.abs(getStatorCurrent());
+                if (homingTimer.hasElapsed(HoodConstants.HOMING_TIMEOUT_SECONDS)) {
+                    return true;
+                }
+                if (!homingTimer.hasElapsed(HoodConstants.HOMING_STALL_DETECTION_DELAY_SECONDS)) {
+                    return false;
+                }
+                if (current >= HoodConstants.HOMING_STALL_CURRENT_THRESHOLD_AMPS) {
+                    stallCount[0]++;
+                } else {
+                    stallCount[0] = 0;
+                }
+                return stallCount[0] >= HoodConstants.HOMING_STALL_SAMPLE_COUNT;
+            }),
+            runOnce(() -> {
+                motor.setControl(neutralRequest);
+                if (stallCount[0] >= HoodConstants.HOMING_STALL_SAMPLE_COUNT) {
+                    motor.setPosition(0.0);
+                    targetPositionDegrees = 0.0;
+                    isHomed = true;
+                } else {
+                    System.err.println("Hood homing timed out without stall detection -- NOT zeroed.");
+                }
+                enableSoftLimits();
+            })
+        )
+        .finallyDo(() -> {
+            motor.setControl(neutralRequest);
+            enableSoftLimits();
+        })
+        .withName("Hood.zeroHood");
+    }
+
     private double clamp(double value, double min, double max) {
         return Math.max(min, Math.min(max, value));
     }
@@ -231,5 +303,6 @@ public class Hood extends SubsystemBase {
         SmartDashboard.putNumber("Hood/Motor Stator Current", motor.getStatorCurrent().refresh().getValue().in(Amps));
         SmartDashboard.putNumber("Hood/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
         SmartDashboard.putBoolean("Hood/At Position", atPosition());
+        SmartDashboard.putBoolean("Hood/Is Homed", isHomed);
     }
 }

@@ -16,6 +16,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.Constants;
@@ -228,12 +229,12 @@ public class Climb extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // double position = getCurrentPositionRotations();
-        // SmartDashboard.putNumber("Climb/Position Rotations", position);
-        // SmartDashboard.putNumber("Climb/Target Rotations", targetPositionRotations);
-        // SmartDashboard.putNumber("Climb/Motor Stator Current",
-        // motor.getStatorCurrent().refresh().getValue().in(Amps));
-        // SmartDashboard.putNumber("Climb/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
-        // SmartDashboard.putBoolean("Climb/At Position", atPosition());
+        double position = getCurrentPositionRotations();
+        SmartDashboard.putNumber("Climb/Position Rotations", position);
+        SmartDashboard.putNumber("Climb/Target Rotations", targetPositionRotations);
+        SmartDashboard.putNumber("Climb/Motor Stator Current",
+                motor.getStatorCurrent().refresh().getValue().in(Amps));
+        SmartDashboard.putNumber("Climb/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
+        SmartDashboard.putBoolean("Climb/At Position", atPosition());
     }
 }

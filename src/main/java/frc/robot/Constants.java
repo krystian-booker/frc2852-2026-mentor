@@ -95,16 +95,25 @@ public final class Constants {
 
     // Position Control
     public static final double POSITION_TOLERANCE_DEGREES = 2; // Degrees tolerance for atPosition()
+
+    // Homing (drives hood to reverse hard stop, detects stall, zeroes encoder)
+    public static final double HOMING_VOLTAGE = -1.5; // Volts (negative = toward zero stop; exceeds kS=0.4338V)
+    public static final double HOMING_STALL_CURRENT_THRESHOLD_AMPS = 8.0; // Stator amps (well under 20A limit, well
+                                                                          // above ~2-3A running current)
+    public static final double HOMING_STALL_DETECTION_DELAY_SECONDS = 0.25; // Ignore inrush for 250ms after motor start
+    public static final int HOMING_STALL_SAMPLE_COUNT = 5; // 5 consecutive cycles above threshold = 100ms confirmed
+                                                           // stall
+    public static final double HOMING_TIMEOUT_SECONDS = 3.0; // Safety timeout
   }
 
   public static class ClimbConstants {
     // Mechanical
-    public static final double GEAR_RATIO = 75.0; // Motor rotations per mechanism rotation - PLACEHOLDER, needs
-                                                  // measuring
+    public static final double GEAR_RATIO = 5; // Motor rotations per mechanism rotation - PLACEHOLDER, needs
+                                               // measuring
 
     // Position setpoints (mechanism rotations)
     public static final double FULLY_DOWN = 0.0;
-    public static final double FULL_EXTENSION_POSITION = 10;
+    public static final double FULL_EXTENSION_POSITION = 10.238;
     public static final double CLIMB_LIFT_POSITION = 3.0;
 
     // Soft limits (mechanism rotations)
@@ -140,7 +149,7 @@ public final class Constants {
     public static final double GEAR_RATIO = 50.0; // Motor rotations per turret rotation
 
     // Forward offset: encoder reading (degrees) when turret points robot-forward.
-    public static final double FORWARD_ENCODER_POSITION_DEGREES = 51.5;
+    public static final double FORWARD_ENCODER_POSITION_DEGREES = 42;
 
     // Physical encoder limits (used for firmware soft limits — do not change without re-verifying travel)
     public static final double ENCODER_MIN_DEGREES = -180.0;
@@ -174,7 +183,7 @@ public final class Constants {
     public static final double POSITION_TOLERANCE_DEGREES = 1.0; // Degrees tolerance for isAtPosition()
 
     // CANCoder
-    public static final double CANCODER_OFFSET = -0.427490;
+    public static final double CANCODER_OFFSET = -0.092773;
   }
 
   public static class TurretAimingConstants {
@@ -229,11 +238,14 @@ public final class Constants {
     // Stall detection
     public static final double STALL_CURRENT_THRESHOLD_AMPS = 20;
     public static final double STALL_DETECTION_DELAY_SECONDS = 0.1; // Ignore current for 100ms after motor start
-    public static final int STALL_CURRENT_SAMPLE_COUNT = 3; // Consecutive cycles above threshold to confirm stall
+    public static final int STALL_CURRENT_SAMPLE_COUNT = 2; // Consecutive cycles above threshold to confirm stall
 
     // Agitate command (time-based, alternates extend/retract regardless of position reached)
-    public static final double AGITATE_EXTEND_SECONDS = 0.2;
-    public static final double AGITATE_RETRACT_SECONDS = 0.2;
+    public static final double AGITATE_EXTEND_SECONDS = 0.4;
+    public static final double AGITATE_RETRACT_SECONDS = 0.4;
+
+    // Position re-check: re-drives to hard stop if settled for this long (detects if bumped out of position)
+    public static final double POSITION_RECHECK_INTERVAL_SECONDS = 1.0;
   }
 
   public static class IntakeConstants {

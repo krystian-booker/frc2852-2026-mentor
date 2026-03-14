@@ -29,6 +29,7 @@ public class IntakeActuator extends SubsystemBase {
     // State
     private ActuatorState state = ActuatorState.IDLE;
     private final Timer moveTimer = new Timer();
+    private final Timer settledTimer = new Timer();
     private int stallCurrentCount = 0;
 
     public IntakeActuator() {
@@ -130,9 +131,11 @@ public class IntakeActuator extends SubsystemBase {
 
     public Command agitate() {
         return Commands.repeatingSequence(
-                run(this::driveRetractOpenLoop)
+                runOnce(this::driveRetract)
+                        .andThen(Commands.idle(this).until(this::isRetracted))
                         .withTimeout(IntakeActuatorConstants.AGITATE_RETRACT_SECONDS),
-                run(this::driveExtendOpenLoop)
+                runOnce(this::driveExtend)
+                        .andThen(Commands.idle(this).until(this::isExtended))
                         .withTimeout(IntakeActuatorConstants.AGITATE_EXTEND_SECONDS))
                 .finallyDo(this::driveExtend)
                 .withName("IntakeActuator.agitate");
@@ -155,8 +158,18 @@ public class IntakeActuator extends SubsystemBase {
                             ? ActuatorState.EXTENDED
                             : ActuatorState.RETRACTED;
                     stallCurrentCount = 0;
+                    settledTimer.restart();
                 }
             }
+        }
+
+        // Position re-check: if settled at a hard stop for too long, re-drive to confirm position
+        if (state == ActuatorState.EXTENDED
+                && settledTimer.hasElapsed(IntakeActuatorConstants.POSITION_RECHECK_INTERVAL_SECONDS)) {
+            driveExtend();
+        } else if (state == ActuatorState.RETRACTED
+                && settledTimer.hasElapsed(IntakeActuatorConstants.POSITION_RECHECK_INTERVAL_SECONDS)) {
+            driveRetract();
         }
 
         SmartDashboard.putString("IntakeActuator/State", state.name());
