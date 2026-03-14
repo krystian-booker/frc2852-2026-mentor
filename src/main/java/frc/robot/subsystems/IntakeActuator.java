@@ -172,9 +172,9 @@ public class IntakeActuator extends SubsystemBase {
             driveRetract();
         }
 
-        SmartDashboard.putString("IntakeActuator/State", state.name());
-        SmartDashboard.putNumber("IntakeActuator/Output Current", getOutputCurrent());
-        SmartDashboard.putNumber("IntakeActuator/Stall Count", stallCurrentCount);
-        SmartDashboard.putNumber("IntakeActuator/Applied Output", motor.getAppliedOutput());
+        // SmartDashboard.putString("IntakeActuator/State", state.name());
+        // SmartDashboard.putNumber("IntakeActuator/Output Current", getOutputCurrent());
+        // SmartDashboard.putNumber("IntakeActuator/Stall Count", stallCurrentCount);
+        // SmartDashboard.putNumber("IntakeActuator/Applied Output", motor.getAppliedOutput());
     }
 }

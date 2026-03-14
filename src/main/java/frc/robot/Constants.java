@@ -353,6 +353,14 @@ public final class Constants {
     public static final String CALIBRATION_FILE_PATH = "/home/lvuser/deploy/calibration/turret_calibration_data.csv";
   }
 
+  public static class AutoConstants {
+    public static final double PATHFINDING_MAX_VELOCITY = 3.0; // m/s
+    public static final double PATHFINDING_MAX_ACCELERATION = 3.0; // m/s^2
+    public static final double PATHFINDING_MAX_ANGULAR_VELOCITY = Math.toRadians(540.0); // rad/s
+    public static final double PATHFINDING_MAX_ANGULAR_ACCELERATION = Math.toRadians(720.0); // rad/s^2
+    public static final double PATHFINDING_TIMEOUT_SECONDS = 3.0; // Give up pathfinding after this time
+  }
+
   public static class Vision {
     // Camera configuration record for multi-camera support
     public record CameraConfig(String name, Transform3d robotToCam) {
@@ -374,8 +382,7 @@ public final class Constants {
             new Rotation3d(Math.toRadians(0), Math.toRadians(0), Math.toRadians(90))));
 
     // All cameras
-    // public static final List<CameraConfig> CAMERAS = List.of(LEFT_CAMERA, RIGHT_CAMERA);
-    public static final List<CameraConfig> CAMERAS = List.of(RIGHT_CAMERA);
+    public static final List<CameraConfig> CAMERAS = List.of(LEFT_CAMERA, RIGHT_CAMERA);
 
     // The layout of the AprilTags on the field
     public static final AprilTagFieldLayout kTagLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);

@@ -114,12 +114,12 @@ public class TurretAimingCalculator {
                 && distanceMeters <= TurretAimingConstants.MAX_SHOOTING_DISTANCE_METERS;
 
         // Publish telemetry
-        SmartDashboard.putNumber("TurretAim/TargetAngle", turretAngleDegrees);
-        SmartDashboard.putNumber("TurretAim/Distance", distanceMeters);
-        SmartDashboard.putBoolean("TurretAim/Reachable", isReachable);
-        SmartDashboard.putString("TurretAim/Zone", getZoneName(robotPose));
-        SmartDashboard.putString("TurretAim/Target",
-                String.format("(%.1f, %.1f)", targetPosition.getX(), targetPosition.getY()));
+        // SmartDashboard.putNumber("TurretAim/TargetAngle", turretAngleDegrees);
+        // SmartDashboard.putNumber("TurretAim/Distance", distanceMeters);
+        // SmartDashboard.putBoolean("TurretAim/Reachable", isReachable);
+        // SmartDashboard.putString("TurretAim/Zone", getZoneName(robotPose));
+        // SmartDashboard.putString("TurretAim/Target",
+        // String.format("(%.1f, %.1f)", targetPosition.getX(), targetPosition.getY()));
 
         return new AimingResult(turretAngleDegrees, distanceMeters, isReachable);
     }

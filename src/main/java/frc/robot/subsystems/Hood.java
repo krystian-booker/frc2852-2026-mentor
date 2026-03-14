@@ -184,9 +184,9 @@ public class Hood extends SubsystemBase {
     }
 
     /**
-     * Hot-reload only Slot0 and MotionMagic gains. Uses per-group config objects
-     * so gear ratio, soft limits, and current limits are never touched.
-     * Motion Magic params are in deg/s (matching HoodConstants convention), divided by 360 internally.
+     * Hot-reload only Slot0 and MotionMagic gains. Uses per-group config objects so gear ratio, soft limits, and
+     * current limits are never touched. Motion Magic params are in deg/s (matching HoodConstants convention), divided
+     * by 360 internally.
      */
     public void applyTuningConfig(double kS, double kV, double kA, double kG,
             double kP, double kI, double kD,
@@ -246,48 +246,47 @@ public class Hood extends SubsystemBase {
     /** Drives hood to reverse hard stop, detects stall via stator current, then zeroes encoder. */
     public Command zeroHoodCommand() {
         Timer homingTimer = new Timer();
-        int[] stallCount = {0};
+        int[] stallCount = { 0 };
 
         return Commands.sequence(
-            runOnce(() -> {
-                isHomed = false;
-                stallCount[0] = 0;
-                disableReverseSoftLimit();
-                homingTimer.restart();
-                motor.setControl(voltageRequest.withOutput(HoodConstants.HOMING_VOLTAGE));
-            }),
-            Commands.idle(this).until(() -> {
-                double current = Math.abs(getStatorCurrent());
-                if (homingTimer.hasElapsed(HoodConstants.HOMING_TIMEOUT_SECONDS)) {
-                    return true;
-                }
-                if (!homingTimer.hasElapsed(HoodConstants.HOMING_STALL_DETECTION_DELAY_SECONDS)) {
-                    return false;
-                }
-                if (current >= HoodConstants.HOMING_STALL_CURRENT_THRESHOLD_AMPS) {
-                    stallCount[0]++;
-                } else {
+                runOnce(() -> {
+                    isHomed = false;
                     stallCount[0] = 0;
-                }
-                return stallCount[0] >= HoodConstants.HOMING_STALL_SAMPLE_COUNT;
-            }),
-            runOnce(() -> {
-                motor.setControl(neutralRequest);
-                if (stallCount[0] >= HoodConstants.HOMING_STALL_SAMPLE_COUNT) {
-                    motor.setPosition(0.0);
-                    targetPositionDegrees = 0.0;
-                    isHomed = true;
-                } else {
-                    System.err.println("Hood homing timed out without stall detection -- NOT zeroed.");
-                }
-                enableSoftLimits();
-            })
-        )
-        .finallyDo(() -> {
-            motor.setControl(neutralRequest);
-            enableSoftLimits();
-        })
-        .withName("Hood.zeroHood");
+                    disableReverseSoftLimit();
+                    homingTimer.restart();
+                    motor.setControl(voltageRequest.withOutput(HoodConstants.HOMING_VOLTAGE));
+                }),
+                Commands.idle(this).until(() -> {
+                    double current = Math.abs(getStatorCurrent());
+                    if (homingTimer.hasElapsed(HoodConstants.HOMING_TIMEOUT_SECONDS)) {
+                        return true;
+                    }
+                    if (!homingTimer.hasElapsed(HoodConstants.HOMING_STALL_DETECTION_DELAY_SECONDS)) {
+                        return false;
+                    }
+                    if (current >= HoodConstants.HOMING_STALL_CURRENT_THRESHOLD_AMPS) {
+                        stallCount[0]++;
+                    } else {
+                        stallCount[0] = 0;
+                    }
+                    return stallCount[0] >= HoodConstants.HOMING_STALL_SAMPLE_COUNT;
+                }),
+                runOnce(() -> {
+                    motor.setControl(neutralRequest);
+                    if (stallCount[0] >= HoodConstants.HOMING_STALL_SAMPLE_COUNT) {
+                        motor.setPosition(0.0);
+                        targetPositionDegrees = 0.0;
+                        isHomed = true;
+                    } else {
+                        System.err.println("Hood homing timed out without stall detection -- NOT zeroed.");
+                    }
+                    enableSoftLimits();
+                }))
+                .finallyDo(() -> {
+                    motor.setControl(neutralRequest);
+                    enableSoftLimits();
+                })
+                .withName("Hood.zeroHood");
     }
 
     private double clamp(double value, double min, double max) {
@@ -296,13 +295,14 @@ public class Hood extends SubsystemBase {
 
     @Override
     public void periodic() {
-        double position = getCurrentPositionDegrees();
-        SmartDashboard.putNumber("Hood/Position Degrees", position);
-        SmartDashboard.putNumber("Hood/Target Degrees", targetPositionDegrees);
-        SmartDashboard.putNumber("Hood/Motor Raw Rotations", motorPosition.refresh().getValue().in(Rotations));
-        SmartDashboard.putNumber("Hood/Motor Stator Current", motor.getStatorCurrent().refresh().getValue().in(Amps));
-        SmartDashboard.putNumber("Hood/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
-        SmartDashboard.putBoolean("Hood/At Position", atPosition());
-        SmartDashboard.putBoolean("Hood/Is Homed", isHomed);
+        // double position = getCurrentPositionDegrees();
+        // SmartDashboard.putNumber("Hood/Position Degrees", position);
+        // SmartDashboard.putNumber("Hood/Target Degrees", targetPositionDegrees);
+        // SmartDashboard.putNumber("Hood/Motor Raw Rotations", motorPosition.refresh().getValue().in(Rotations));
+        // SmartDashboard.putNumber("Hood/Motor Stator Current",
+        // motor.getStatorCurrent().refresh().getValue().in(Amps));
+        // SmartDashboard.putNumber("Hood/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
+        // SmartDashboard.putBoolean("Hood/At Position", atPosition());
+        // SmartDashboard.putBoolean("Hood/Is Homed", isHomed);
     }
 }

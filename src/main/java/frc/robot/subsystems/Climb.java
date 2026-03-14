@@ -229,12 +229,12 @@ public class Climb extends SubsystemBase {
 
     @Override
     public void periodic() {
-        double position = getCurrentPositionRotations();
-        SmartDashboard.putNumber("Climb/Position Rotations", position);
-        SmartDashboard.putNumber("Climb/Target Rotations", targetPositionRotations);
-        SmartDashboard.putNumber("Climb/Motor Stator Current",
-                motor.getStatorCurrent().refresh().getValue().in(Amps));
-        SmartDashboard.putNumber("Climb/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
-        SmartDashboard.putBoolean("Climb/At Position", atPosition());
+        // double position = getCurrentPositionRotations();
+        // SmartDashboard.putNumber("Climb/Position Rotations", position);
+        // SmartDashboard.putNumber("Climb/Target Rotations", targetPositionRotations);
+        // SmartDashboard.putNumber("Climb/Motor Stator Current",
+        // motor.getStatorCurrent().refresh().getValue().in(Amps));
+        // SmartDashboard.putNumber("Climb/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
+        // SmartDashboard.putBoolean("Climb/At Position", atPosition());
     }
 }

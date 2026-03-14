@@ -30,7 +30,6 @@ import org.photonvision.simulation.SimCameraProperties;
 import org.photonvision.simulation.VisionSystemSim;
 import org.photonvision.targeting.PhotonTrackedTarget;
 
-
 public class Vision extends SubsystemBase {
     /**
      * Inner class representing a single camera instance with its own pose estimator and state.
@@ -193,7 +192,7 @@ public class Vision extends SubsystemBase {
         // SmartDashboard.putNumber("Vision/PoseX", latestEstimate.getX());
         // SmartDashboard.putNumber("Vision/PoseY", latestEstimate.getY());
         // SmartDashboard.putNumber("Vision/PoseRotation", latestEstimate.getRotation().getDegrees());
-        SmartDashboard.putBoolean("Vision/FeedingEnabled", feedingEnabled);
+        // SmartDashboard.putBoolean("Vision/FeedingEnabled", feedingEnabled);
         // SmartDashboard.putString("Vision/BestCamera", bestCamera != null ? bestCamera.name : "none");
     }
 

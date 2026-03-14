@@ -25,17 +25,21 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 
 import static edu.wpi.first.units.Units.*;
 
+import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
+import com.pathplanner.lib.commands.PathfindingCommand;
+import frc.robot.auto.PathfindingAutoBuilder;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.QuestNavSubsystem;
 
@@ -81,12 +85,19 @@ public class RobotContainer {
   private Pose2d seededPose = null;
 
   // Auto setup
-  private final SendableChooser<Command> autoChooser;
+  private final SendableChooser<String> autoChooser;
 
   public RobotContainer() {
     DriverStation.silenceJoystickConnectionWarning(true);
 
-    autoChooser = AutoBuilder.buildAutoChooser("Tests");
+    // Register named commands before building auto chooser
+    NamedCommands.registerCommand("shoot",
+        new ShootCommand(flywheel, hood, conveyor, intakeActuator, turret, shooterCalculator));
+
+    autoChooser = new SendableChooser<>();
+    for (String name : AutoBuilder.getAllAutoNames()) {
+      autoChooser.addOption(name, name);
+    }
     SmartDashboard.putData("Auto Mode", autoChooser);
 
     // Initialize vision subsystems (after drivetrain)
@@ -133,6 +144,7 @@ public class RobotContainer {
 
     // Warmup PathPlanner to avoid Java pauses
     CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand());
+    CommandScheduler.getInstance().schedule(PathfindingCommand.warmupCommand());
 
     // Telemetry setup
     drivetrain.registerTelemetry(logger::telemeterize);
@@ -233,8 +245,6 @@ public class RobotContainer {
               vision.setFeedingEnabled(false);
             }
           }
-
-          SmartDashboard.putBoolean("QuestNav/SeededFromVision", isQuestNavSeeded);
         })).repeatedly().ignoringDisable(true);
     RobotModeTriggers.disabled().whileTrue(seedingCommand);
     seedingCommand.schedule();
@@ -253,12 +263,12 @@ public class RobotContainer {
     // Turret Calibration Mode
     // Right bumper toggles calibration mode - reads NetworkTables inputs
     // applies to hood/flywheel in real-time
-    TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
-        hood, flywheel, conveyor, intakeActuator,
-        () -> drivetrain.getState().Pose, shooterCalculator,
-        drivetrain,
-        this::getDriveRequest,
-        this::isDriverActive);
+    // TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
+    // hood, flywheel, conveyor, intakeActuator,
+    // () -> drivetrain.getState().Pose, shooterCalculator,
+    // drivetrain,
+    // this::getDriveRequest,
+    // this::isDriverActive);
 
     // Only allow toggling calibration mode while in test mode
     // RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
@@ -363,6 +373,13 @@ public class RobotContainer {
   }
 
   public Command getAutonomousCommand() {
-    return autoChooser.getSelected();
+    String autoName = autoChooser.getSelected();
+    if (autoName == null) {
+      return Commands.none();
+    }
+    // if (SmartDashboard.getBoolean("Auto Pathfinding", true)) {
+    return PathfindingAutoBuilder.buildAutoWithPathfinding(autoName, () -> drivetrain.getState().Pose);
+    // }
+    // return PathfindingAutoBuilder.buildAuto(autoName);
   }
 }
