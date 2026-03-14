@@ -65,6 +65,10 @@ public final class Constants {
 
     // Velocity Control
     public static final double VELOCITY_TOLERANCE_RPM = 100.0; // RPM tolerance for atSetpoint()
+
+    // Ball exit velocity
+    public static final double WHEEL_DIAMETER_METERS = 4.0 * 0.0254; // 4" = 0.1016m
+    public static final double EXIT_VELOCITY_EFFICIENCY = 0.85; // ball gets 85% of surface speed
   }
 
   public static class HoodConstants {
@@ -215,6 +219,14 @@ public final class Constants {
     // Flywheel RPM lookup table (distance -> RPM)
     public static final double[][] FLYWHEEL_LOOKUP_TABLE = { { 1.5, 3000.0 }, { 3.0, 3500.0 }, { 5.0, 4000.0 },
         { 7.0, 4500.0 }, { 10.0, 5000.0 } };
+  }
+
+  public static class ShootOnTheMoveConstants {
+    public static final boolean DEFAULT_ENABLED = true;
+    public static final double MIN_VELOCITY_THRESHOLD_MPS = 0.15; // below this, no SOTM
+    public static final int CONVERGENCE_ITERATIONS = 2;
+    public static final double MAX_TIME_OF_FLIGHT_SECONDS = 1.5;
+    public static final double PIPELINE_LATENCY_SECONDS = 0.02; // 20ms vision+processing lag
   }
 
   public static class IntakeActuatorConstants {

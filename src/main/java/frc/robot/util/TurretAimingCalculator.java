@@ -4,11 +4,14 @@ import java.util.function.Supplier;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.Constants.ShootOnTheMoveConstants;
 import frc.robot.Constants.TurretAimingConstants;
 import frc.robot.generated.TurretLookupTables;
+import frc.robot.util.VirtualGoalCalculator.VirtualGoalResult;
 
 /**
  * Utility class that calculates the turret angle needed to point at a specific field target based on the robot's
@@ -16,6 +19,8 @@ import frc.robot.generated.TurretLookupTables;
  */
 public class TurretAimingCalculator {
     private final Supplier<Pose2d> poseSupplier;
+    private final Supplier<ChassisSpeeds> speedsSupplier;
+    private final VirtualGoalCalculator virtualGoalCalculator;
 
     // Low-pass filter state for smoothing turret angle (0.0 = no change, 1.0 = no filtering)
     private static final double SMOOTHING_ALPHA = 0.15;
@@ -35,12 +40,24 @@ public class TurretAimingCalculator {
     }
 
     /**
-     * Creates a new TurretAimingCalculator.
+     * Creates a new TurretAimingCalculator with shoot-on-the-move support.
      *
-     * @param poseSupplier Supplier for the robot's current pose (e.g., drivetrain.getState()::Pose)
+     * @param poseSupplier   Supplier for the robot's current pose
+     * @param speedsSupplier Supplier for the robot's field-relative chassis speeds
+     */
+    public TurretAimingCalculator(Supplier<Pose2d> poseSupplier, Supplier<ChassisSpeeds> speedsSupplier) {
+        this.poseSupplier = poseSupplier;
+        this.speedsSupplier = speedsSupplier;
+        this.virtualGoalCalculator = new VirtualGoalCalculator();
+    }
+
+    /**
+     * Creates a new TurretAimingCalculator without shoot-on-the-move (backward compatible).
+     *
+     * @param poseSupplier Supplier for the robot's current pose
      */
     public TurretAimingCalculator(Supplier<Pose2d> poseSupplier) {
-        this.poseSupplier = poseSupplier;
+        this(poseSupplier, () -> new ChassisSpeeds());
     }
 
     /**
@@ -68,10 +85,20 @@ public class TurretAimingCalculator {
         // Calculate distance to target
         double distanceMeters = turretPosition.getDistance(targetPosition);
 
-        // Calculate field-relative angle to target
-        double fieldAngleRadians = Math.atan2(
-                targetPosition.getY() - turretPosition.getY(),
-                targetPosition.getX() - turretPosition.getX());
+        // --- SOTM virtual goal compensation ---
+        ChassisSpeeds fieldSpeeds = speedsSupplier.get();
+
+        // Latency compensation: project turret position forward by pipeline delay
+        Translation2d compensatedTurretPos = new Translation2d(
+                turretPosition.getX() + fieldSpeeds.vxMetersPerSecond * ShootOnTheMoveConstants.PIPELINE_LATENCY_SECONDS,
+                turretPosition.getY() + fieldSpeeds.vyMetersPerSecond * ShootOnTheMoveConstants.PIPELINE_LATENCY_SECONDS);
+
+        VirtualGoalResult vgResult = virtualGoalCalculator.calculate(
+                compensatedTurretPos, targetPosition, fieldSpeeds, distanceMeters);
+
+        // Use virtual goal angle and distance instead of real ones
+        double fieldAngleRadians = vgResult.virtualAngleRadians();
+        distanceMeters = vgResult.virtualDistanceMeters();
 
         // Convert to robot-relative angle (subtract robot heading)
         double robotRelativeRadians = fieldAngleRadians - robotPose.getRotation().getRadians();

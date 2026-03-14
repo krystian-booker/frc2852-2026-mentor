@@ -93,7 +93,9 @@ public class RobotContainer {
     questNav = new QuestNavSubsystem(drivetrain, vision);
 
     // Initialize turret aiming calculator with pose supplier from drivetrain
-    shooterCalculator = new TurretAimingCalculator(() -> drivetrain.getState().Pose);
+    shooterCalculator = new TurretAimingCalculator(
+        () -> drivetrain.getState().Pose,
+        () -> drivetrain.getState().Speeds);
 
     // Set turret default command - auto-aim with operator stick override
     turret.setDefaultCommand(turret.run(() -> {
