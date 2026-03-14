@@ -148,8 +148,8 @@ public class RobotContainer {
         new ShootCommand(flywheel, hood, conveyor, intakeActuator, turret,
             shooterCalculator,
             drivetrain,
-            () -> drive.withVelocityX(driverController.getLeftY() * MaxSpeed)
-                .withVelocityY(driverController.getLeftX() * MaxSpeed)
+            () -> drive.withVelocityX(-driverController.getLeftY() * MaxSpeed)
+                .withVelocityY(-driverController.getLeftX() * MaxSpeed)
                 .withRotationalRate(-driverController.getRightX()
                     * MaxAngularRate),
             () -> {
@@ -263,8 +263,8 @@ public class RobotContainer {
         hood, flywheel, conveyor, intakeActuator,
         () -> drivetrain.getState().Pose, shooterCalculator,
         drivetrain,
-        () -> drive.withVelocityX(driverController.getLeftY() * MaxSpeed)
-            .withVelocityY(driverController.getLeftX() * MaxSpeed)
+        () -> drive.withVelocityX(-driverController.getLeftY() * MaxSpeed)
+            .withVelocityY(-driverController.getLeftX() * MaxSpeed)
             .withRotationalRate(-driverController.getRightX() * MaxAngularRate),
         () -> {
           double stickMag = Math.hypot(driverController.getLeftX(),
