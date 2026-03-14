@@ -34,7 +34,7 @@ public class Intake extends SubsystemBase {
 
         // Motor output
         config.idleMode(IdleMode.kBrake);
-        config.inverted(false);
+        config.inverted(true);
 
         // Current limits
         config.smartCurrentLimit(IntakeConstants.SMART_CURRENT_LIMIT);

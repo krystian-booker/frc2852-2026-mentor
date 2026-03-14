@@ -8,9 +8,7 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkFlexConfig;
 
-import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.wpilibj.AnalogPotentiometer;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -21,50 +19,32 @@ import frc.robot.Constants.IntakeActuatorConstants;
 
 public class IntakeActuator extends SubsystemBase {
 
+    public enum ActuatorState {
+        IDLE, EXTENDING, EXTENDED, RETRACTING, RETRACTED
+    }
+
     // Hardware
     private final SparkFlex motor;
-    private final AnalogPotentiometer potentiometer;
-
-    // PID controller (runs on RoboRIO since feedback comes from external potentiometer)
-    private final PIDController pidController;
 
     // State
-    private double targetPositionDistance = 0.0;
+    private ActuatorState state = ActuatorState.IDLE;
+    private final Timer moveTimer = new Timer();
+    private int stallCurrentCount = 0;
 
     public IntakeActuator() {
-        // Initialize hardware
         motor = new SparkFlex(CANIds.INTAKE_ACTUATOR_MOTOR, MotorType.kBrushless);
-
-        // Initialize string potentiometer on RoboRIO analog input
-        // AnalogPotentiometer maps normalized voltage (0-1) to: (fullRange * voltage/vRef) + offset
-        potentiometer = new AnalogPotentiometer(
-                IntakeActuatorConstants.POTENTIOMETER_CHANNEL,
-                IntakeActuatorConstants.POT_FULL_RANGE,
-                IntakeActuatorConstants.POT_OFFSET);
-
-        // Initialize PID controller (runs on RoboRIO each periodic cycle)
-        pidController = new PIDController(
-                IntakeActuatorConstants.P,
-                IntakeActuatorConstants.I,
-                IntakeActuatorConstants.D);
-        pidController.setTolerance(IntakeActuatorConstants.POSITION_TOLERANCE_DISTANCE);
-
-        // Configure motor
         configureMotor();
     }
 
     private void configureMotor() {
         SparkFlexConfig config = new SparkFlexConfig();
 
-        // Motor output
-        config.idleMode(IdleMode.kCoast);
+        config.idleMode(IdleMode.kBrake);
         config.inverted(true);
 
-        // Current limits
         config.smartCurrentLimit(IntakeActuatorConstants.SMART_CURRENT_LIMIT);
         config.secondaryCurrentLimit(IntakeActuatorConstants.SECONDARY_CURRENT_LIMIT);
 
-        // Apply configuration with retry
         REVLibError error = REVLibError.kError;
         for (int i = 0; i < 5; i++) {
             error = motor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
@@ -77,75 +57,111 @@ public class IntakeActuator extends SubsystemBase {
         }
     }
 
-    public void setPosition(double distance) {
-        targetPositionDistance = distance;
-        pidController.setSetpoint(targetPositionDistance);
+    public void driveExtend() {
+        if (state == ActuatorState.EXTENDING) {
+            return;
+        }
+        motor.set(IntakeActuatorConstants.EXTEND_DUTY_CYCLE);
+        state = ActuatorState.EXTENDING;
+        stallCurrentCount = 0;
+        moveTimer.restart();
     }
 
-    public boolean atPosition() {
-        return pidController.atSetpoint();
+    public void driveRetract() {
+        if (state == ActuatorState.RETRACTING) {
+            return;
+        }
+        motor.set(IntakeActuatorConstants.RETRACT_DUTY_CYCLE);
+        state = ActuatorState.RETRACTING;
+        stallCurrentCount = 0;
+        moveTimer.restart();
     }
 
-    public double getCurrentPosition() {
-        return potentiometer.get();
+    public void driveExtendOpenLoop() {
+        motor.set(IntakeActuatorConstants.EXTEND_DUTY_CYCLE);
     }
 
-    public double getTargetPositionDistance() {
-        return targetPositionDistance;
+    public void driveRetractOpenLoop() {
+        motor.set(IntakeActuatorConstants.RETRACT_DUTY_CYCLE);
+    }
+
+    public boolean isExtended() {
+        return state == ActuatorState.EXTENDED;
+    }
+
+    public boolean isRetracted() {
+        return state == ActuatorState.RETRACTED;
     }
 
     public double getOutputCurrent() {
         return motor.getOutputCurrent();
     }
 
-    public boolean isExtended() {
-        return getCurrentPosition() >= IntakeActuatorConstants.EXTENDED_POSITION_THRESHOLD_DISTANCE;
-    }
-
-    public boolean isRetracted() {
-        return getCurrentPosition() <= IntakeActuatorConstants.POSITION_TOLERANCE_DISTANCE;
-    }
-
     public void stop() {
-        motor.setVoltage(0);
-        pidController.reset();
+        motor.set(0);
+        if (state != ActuatorState.EXTENDED && state != ActuatorState.RETRACTED) {
+            state = ActuatorState.IDLE;
+        }
     }
 
     // Commands
 
-    public Command retract() {
-        return run(() -> setPosition(IntakeActuatorConstants.MIN_POSITION_DISTANCE))
-                .until(this::atPosition)
-                .withName("IntakeActuator.retract");
+    public Command extend() {
+        return runOnce(this::driveExtend)
+                .andThen(Commands.idle(this).until(this::isExtended).withTimeout(2.0))
+                .finallyDo(() -> {
+                    if (!isExtended()) {
+                        stop();
+                    }
+                })
+                .withName("IntakeActuator.extend");
     }
 
-    public Command extend() {
-        return run(() -> setPosition(IntakeActuatorConstants.MAX_POSITION_DISTANCE))
-                .until(this::atPosition)
-                .withName("IntakeActuator.extend");
+    public Command retract() {
+        return runOnce(this::driveRetract)
+                .andThen(Commands.idle(this).until(this::isRetracted).withTimeout(2.0))
+                .finallyDo(() -> {
+                    if (!isRetracted()) {
+                        stop();
+                    }
+                })
+                .withName("IntakeActuator.retract");
     }
 
     public Command agitate() {
         return Commands.repeatingSequence(
-                run(() -> setPosition(IntakeActuatorConstants.MIN_POSITION_DISTANCE))
+                run(this::driveRetractOpenLoop)
                         .withTimeout(IntakeActuatorConstants.AGITATE_RETRACT_SECONDS),
-                run(() -> setPosition(IntakeActuatorConstants.MAX_POSITION_DISTANCE))
+                run(this::driveExtendOpenLoop)
                         .withTimeout(IntakeActuatorConstants.AGITATE_EXTEND_SECONDS))
-                .finallyDo(() -> setPosition(IntakeActuatorConstants.MAX_POSITION_DISTANCE))
+                .finallyDo(this::driveExtend)
                 .withName("IntakeActuator.agitate");
     }
 
     @Override
     public void periodic() {
-        double output = pidController.calculate(getCurrentPosition());
-        output = MathUtil.clamp(output, -IntakeActuatorConstants.MAX_OUTPUT, IntakeActuatorConstants.MAX_OUTPUT);
-        motor.setVoltage(output * 12.0);
+        // Stall detection state machine
+        if (state == ActuatorState.EXTENDING || state == ActuatorState.RETRACTING) {
+            if (moveTimer.hasElapsed(IntakeActuatorConstants.STALL_DETECTION_DELAY_SECONDS)) {
+                if (getOutputCurrent() >= IntakeActuatorConstants.STALL_CURRENT_THRESHOLD_AMPS) {
+                    stallCurrentCount++;
+                } else {
+                    stallCurrentCount = 0;
+                }
 
-        SmartDashboard.putNumber("IntakeActuator/Position Distance", getCurrentPosition());
-        SmartDashboard.putNumber("IntakeActuator/Target Distance", targetPositionDistance);
-        SmartDashboard.putBoolean("IntakeActuator/At Position", atPosition());
-        SmartDashboard.putNumber("IntakeActuator/Applied Output", motor.getAppliedOutput());
+                if (stallCurrentCount >= IntakeActuatorConstants.STALL_CURRENT_SAMPLE_COUNT) {
+                    motor.set(0);
+                    state = (state == ActuatorState.EXTENDING)
+                            ? ActuatorState.EXTENDED
+                            : ActuatorState.RETRACTED;
+                    stallCurrentCount = 0;
+                }
+            }
+        }
+
+        SmartDashboard.putString("IntakeActuator/State", state.name());
         SmartDashboard.putNumber("IntakeActuator/Output Current", getOutputCurrent());
-        SmartDashboard.putBoolean("IntakeActuator/Is Extended", isExtended());
+        SmartDashboard.putNumber("IntakeActuator/Stall Count", stallCurrentCount);
+        SmartDashboard.putNumber("IntakeActuator/Applied Output", motor.getAppliedOutput());
     }
 }

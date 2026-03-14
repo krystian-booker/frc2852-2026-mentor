@@ -128,16 +128,16 @@ public class ShootCommand extends Command {
                 agitateTimer = System.currentTimeMillis();
             }
             if (agitateRetract) {
-                intakeActuator.setPosition(IntakeActuatorConstants.MIN_POSITION_DISTANCE);
+                intakeActuator.driveRetractOpenLoop();
             } else {
-                intakeActuator.setPosition(IntakeActuatorConstants.MAX_POSITION_DISTANCE);
+                intakeActuator.driveExtendOpenLoop();
             }
         } else {
             if (isFeeding) {
                 conveyor.stop();
             }
             isFeeding = false;
-            intakeActuator.setPosition(IntakeActuatorConstants.MAX_POSITION_DISTANCE);
+            intakeActuator.driveExtend();
         }
 
         // Lock wheels in X-brake when driver is not actively driving (teleop only)
@@ -160,7 +160,7 @@ public class ShootCommand extends Command {
 
     @Override
     public void end(boolean interrupted) {
-        intakeActuator.setPosition(IntakeActuatorConstants.MAX_POSITION_DISTANCE);
+        intakeActuator.driveExtend();
         flywheel.setVelocity(0);
         conveyor.stop();
         isFeeding = false;

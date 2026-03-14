@@ -19,7 +19,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.CalibrationConstants;
 import frc.robot.Constants.FlywheelConstants;
 import frc.robot.Constants.HoodConstants;
-import frc.robot.Constants.IntakeActuatorConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Conveyor;
 import frc.robot.subsystems.Flywheel;
@@ -190,20 +189,6 @@ public class TurretCalibrationCommand extends Command {
         SmartDashboard.putNumber("Calibration/InputFlywheelRPM", inputFlywheelRPM);
         conveyor.runFeed();
 
-        // Agitate intake actuator - alternate retract/extend on a timer
-        // double timeout = agitateRetract
-        // ? IntakeActuatorConstants.AGITATE_RETRACT_SECONDS
-        // : IntakeActuatorConstants.AGITATE_EXTEND_SECONDS;
-        // if (System.currentTimeMillis() - agitateTimer >= timeout * 1000) {
-        // agitateRetract = !agitateRetract;
-        // agitateTimer = System.currentTimeMillis();
-        // }
-        // if (agitateRetract) {
-        // intakeActuator.setPosition(IntakeActuatorConstants.MIN_POSITION_DISTANCE);
-        // } else {
-        // intakeActuator.setPosition(IntakeActuatorConstants.MAX_POSITION_DISTANCE);
-        // }
-
         // Lock wheels in X-brake when driver is not actively driving
         if (driverActive.getAsBoolean()) {
             drivetrain.setControl(driveRequestSupplier.get());
@@ -234,7 +219,7 @@ public class TurretCalibrationCommand extends Command {
         flywheel.setVelocity(0);
         hood.setNeutral();
         conveyor.stop();
-        intakeActuator.setPosition(IntakeActuatorConstants.MAX_POSITION_DISTANCE);
+        intakeActuator.driveExtend();
 
         if (interrupted) {
             statusPub.set("Calibration Interrupted");

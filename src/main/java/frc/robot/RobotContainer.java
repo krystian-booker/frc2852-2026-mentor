@@ -288,9 +288,9 @@ public class RobotContainer {
     // conveyor));
 
     // --- Intake Actuator ---
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
+    RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
+    RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
+    RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
 
     // --- Intake ---
     // RobotModeTriggers.test().and(driverController.leftBumper()).whileTrue(intake.run(intake::runIntake));

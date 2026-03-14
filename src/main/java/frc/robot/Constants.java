@@ -218,33 +218,18 @@ public final class Constants {
   }
 
   public static class IntakeActuatorConstants {
-    // String potentiometer (10-turn 3590S-2-103L on RoboRIO analog input)
-    public static final int POTENTIOMETER_CHANNEL = 0; // RoboRIO analog input channel
-    public static final double POT_FULL_RANGE = 25; // Distance units over full pot voltage range - CALIBRATE ON ROBOT
-    public static final double POT_OFFSET = -14.890372885090148;// Distance reading at 0V - CALIBRATE ON ROBOT
+    // Current Limits
+    public static final int SMART_CURRENT_LIMIT = 60; // Amps
+    public static final int SECONDARY_CURRENT_LIMIT = 60; // Amps
 
-    // Position limits (distance units matching pot calibration)
-    public static final double MIN_POSITION_DISTANCE = 0.0;
-    public static final double MAX_POSITION_DISTANCE = 5;
+    // Open-loop duty cycles
+    public static final double EXTEND_DUTY_CYCLE = 0.5;
+    public static final double RETRACT_DUTY_CYCLE = -0.5;
 
-    // PID Gains (runs on RoboRIO, output is duty cycle -1 to 1)
-    public static final double P = 0.5; // Proportional
-    public static final double I = 0.0;
-    public static final double D = 0.0;
-
-    // Max output clamp (0.0 to 1.0) - limits motor duty cycle for safe testing
-    public static final double MAX_OUTPUT = 1.0; // 15% power - reduced for safe testing
-
-    // Current Limits - reduced for safe testing
-    public static final int SMART_CURRENT_LIMIT = 60; // Amps (was 60)
-    public static final int SECONDARY_CURRENT_LIMIT = 60; // Amps (was 60)
-
-    // Position Control
-    public static final double POSITION_TOLERANCE_DISTANCE = 0.3; // Distance tolerance for atPosition()
-
-    // Current Spike Safety Retraction
-    public static final double CURRENT_SPIKE_THRESHOLD_AMPS = 35.0; // Threshold to trigger safety retraction
-    public static final double EXTENDED_POSITION_THRESHOLD_DISTANCE = 2.0; // Consider "extended" above this
+    // Stall detection
+    public static final double STALL_CURRENT_THRESHOLD_AMPS = 20;
+    public static final double STALL_DETECTION_DELAY_SECONDS = 0.1; // Ignore current for 100ms after motor start
+    public static final int STALL_CURRENT_SAMPLE_COUNT = 3; // Consecutive cycles above threshold to confirm stall
 
     // Agitate command (time-based, alternates extend/retract regardless of position reached)
     public static final double AGITATE_EXTEND_SECONDS = 0.2;
@@ -257,11 +242,11 @@ public final class Constants {
 
     // Preset Speeds (duty cycle -1.0 to 1.0)
     public static final double INTAKE_SPEED = 1.0; // Speed for intaking game pieces
-    public static final double OUTTAKE_SPEED = -0.6; // Speed for ejecting game pieces
+    public static final double OUTTAKE_SPEED = -1.0; // Speed for ejecting game pieces
 
     // Current Limits
-    public static final int SMART_CURRENT_LIMIT = 40; // Amps
-    public static final int SECONDARY_CURRENT_LIMIT = 60; // Amps
+    public static final int SMART_CURRENT_LIMIT = 60; // Amps
+    public static final int SECONDARY_CURRENT_LIMIT = 80; // Amps
   }
 
   public static class ConveyorConstants {
