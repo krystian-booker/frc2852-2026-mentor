@@ -235,17 +235,23 @@ public final class Constants {
     public static final double EXTEND_DUTY_CYCLE = 0.5;
     public static final double RETRACT_DUTY_CYCLE = -0.5;
 
-    // Stall detection
-    public static final double STALL_CURRENT_THRESHOLD_AMPS = 20;
-    public static final double STALL_DETECTION_DELAY_SECONDS = 0.1; // Ignore current for 100ms after motor start
-    public static final int STALL_CURRENT_SAMPLE_COUNT = 1; // Consecutive cycles above threshold to confirm stall
+    // Through Bore Encoder (external encoder port on SparkFlex)
+    public static final int ENCODER_COUNTS_PER_REV = 8192;
+    public static final double GEAR_RATIO = 1.0;
+    public static final double RETRACTED_POSITION_ROTATIONS = 0.0;
+    public static final double EXTENDED_POSITION_ROTATIONS = 3.5; // PLACEHOLDER - measure on robot
+    public static final double POSITION_TOLERANCE_ROTATIONS = 0.25;
+
+    // Closed-loop position PID
+    public static final double KP = 0.1;
+    public static final double KI = 0.0;
+    public static final double KD = 0.0;
+    public static final double MAX_OUTPUT = 0.5;
+    public static final double MIN_OUTPUT = -0.5;
 
     // Agitate command (time-based, alternates extend/retract regardless of position reached)
     public static final double AGITATE_EXTEND_SECONDS = 0.4;
     public static final double AGITATE_RETRACT_SECONDS = 0.4;
-
-    // Position re-check: re-drives to hard stop if settled for this long (detects if bumped out of position)
-    public static final double POSITION_RECHECK_INTERVAL_SECONDS = 1.0;
   }
 
   public static class IntakeConstants {
