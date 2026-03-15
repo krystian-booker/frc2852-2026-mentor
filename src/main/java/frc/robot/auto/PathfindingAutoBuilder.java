@@ -87,7 +87,7 @@ public final class PathfindingAutoBuilder {
                     Constants.AutoConstants.PATHFINDING_MAX_ANGULAR_VELOCITY,
                     Constants.AutoConstants.PATHFINDING_MAX_ANGULAR_ACCELERATION);
 
-            Command pathfindToStart = AutoBuilder.pathfindToPose(startPose, constraints)
+            Command pathfindToStart = AutoBuilder.pathfindToPoseFlipped(startPose, constraints)
                     .withTimeout(Constants.AutoConstants.PATHFINDING_TIMEOUT_SECONDS);
 
             // Schedule PathPlannerAuto independently after pathfinding completes.

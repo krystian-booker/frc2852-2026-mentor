@@ -354,8 +354,8 @@ public final class Constants {
   }
 
   public static class AutoConstants {
-    public static final double PATHFINDING_MAX_VELOCITY = 3.0; // m/s
-    public static final double PATHFINDING_MAX_ACCELERATION = 3.0; // m/s^2
+    public static final double PATHFINDING_MAX_VELOCITY = 1.0; // m/s
+    public static final double PATHFINDING_MAX_ACCELERATION = 1.0; // m/s^2
     public static final double PATHFINDING_MAX_ANGULAR_VELOCITY = Math.toRadians(540.0); // rad/s
     public static final double PATHFINDING_MAX_ANGULAR_ACCELERATION = Math.toRadians(720.0); // rad/s^2
     public static final double PATHFINDING_TIMEOUT_SECONDS = 3.0; // Give up pathfinding after this time

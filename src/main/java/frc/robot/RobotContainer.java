@@ -90,6 +90,11 @@ public class RobotContainer {
   public RobotContainer() {
     DriverStation.silenceJoystickConnectionWarning(true);
 
+    // Initialize vision subsystems
+    vision = new Vision(drivetrain::addVisionMeasurement);
+    questNav = new QuestNavSubsystem(drivetrain, vision);
+    shooterCalculator = new TurretAimingCalculator(() -> drivetrain.getState().Pose);
+
     // Register named commands before building auto chooser
     NamedCommands.registerCommand("shoot",
         new ShootCommand(flywheel, hood, conveyor, intakeActuator, turret, shooterCalculator));
@@ -99,13 +104,6 @@ public class RobotContainer {
       autoChooser.addOption(name, name);
     }
     SmartDashboard.putData("Auto Mode", autoChooser);
-
-    // Initialize vision subsystems (after drivetrain)
-    vision = new Vision(drivetrain::addVisionMeasurement);
-    questNav = new QuestNavSubsystem(drivetrain, vision);
-
-    // Initialize turret aiming calculator with pose supplier from drivetrain
-    shooterCalculator = new TurretAimingCalculator(() -> drivetrain.getState().Pose);
 
     // Set turret default command - auto-aim with operator stick override
     turret.setDefaultCommand(turret.run(() -> {
