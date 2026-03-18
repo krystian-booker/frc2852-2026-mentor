@@ -95,7 +95,7 @@ public class RobotContainer {
     NamedCommands.registerCommand("shoot",
         new ShootCommand(flywheel, hood, conveyor, intakeActuator, turret, shooterCalculator));
 
-    autoChooser = AutoBuilder.buildAutoChooser();
+    autoChooser = AutoBuilder.buildAutoChooser("Outpost");
     SmartDashboard.putData("Auto Mode", autoChooser);
 
     // Set turret default command - auto-aim with operator stick override
@@ -255,15 +255,15 @@ public class RobotContainer {
     // Turret Calibration Mode
     // Right bumper toggles calibration mode - reads NetworkTables inputs
     // applies to hood/flywheel in real-time
-    TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
-        hood, flywheel, conveyor, intakeActuator,
-        () -> drivetrain.getState().Pose, shooterCalculator,
-        drivetrain,
-        this::getDriveRequest,
-        this::isDriverActive);
+    // TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
+    // hood, flywheel, conveyor, intakeActuator,
+    // () -> drivetrain.getState().Pose, shooterCalculator,
+    // drivetrain,
+    // this::getDriveRequest,
+    // this::isDriverActive);
 
-    // Only allow toggling calibration mode while in test mode
-    RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
+    // // Only allow toggling calibration mode while in test mode
+    // RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
 
     // Swerve
     // RobotModeTriggers.test().and(driverController.a()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kForward));

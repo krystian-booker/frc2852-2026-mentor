@@ -140,6 +140,6 @@ public class IntakeActuator extends SubsystemBase {
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("IntakeActuator/Position", encoder.getPosition());
+        // SmartDashboard.putNumber("IntakeActuator/Position", encoder.getPosition());
     }
 }
