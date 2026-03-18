@@ -149,7 +149,7 @@ public final class Constants {
     public static final double GEAR_RATIO = 50.0; // Motor rotations per turret rotation
 
     // Forward offset: encoder reading (degrees) when turret points robot-forward.
-    public static final double FORWARD_ENCODER_POSITION_DEGREES = 18.28125000000000355;
+    public static final double FORWARD_ENCODER_POSITION_DEGREES = 48.5;
 
     // Physical encoder limits (used for firmware soft limits — do not change without re-verifying travel)
     public static final double ENCODER_MIN_DEGREES = -180.0;
@@ -183,7 +183,7 @@ public final class Constants {
     public static final double POSITION_TOLERANCE_DEGREES = 1.0; // Degrees tolerance for isAtPosition()
 
     // CANCoder
-    public static final double CANCODER_OFFSET = -0.092773;
+    public static final double CANCODER_OFFSET = -0.359131;
   }
 
   public static class TurretAimingConstants {
@@ -239,7 +239,7 @@ public final class Constants {
     public static final int ENCODER_COUNTS_PER_REV = 8192;
     public static final double GEAR_RATIO = 1.0;
     public static final double RETRACTED_POSITION_ROTATIONS = 0.0;
-    public static final double EXTENDED_POSITION_ROTATIONS = 3.5; // PLACEHOLDER - measure on robot
+    public static final double EXTENDED_POSITION_ROTATIONS = 5.0; // PLACEHOLDER - measure on robot
     public static final double POSITION_TOLERANCE_ROTATIONS = 0.25;
 
     // Closed-loop position PID
