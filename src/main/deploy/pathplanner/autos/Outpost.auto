@@ -7,13 +7,7 @@
         {
           "type": "path",
           "data": {
-            "pathName": "LeftToDepot"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "DepotBottomToTop"
+            "pathName": "ToOutpost"
           }
         },
         {

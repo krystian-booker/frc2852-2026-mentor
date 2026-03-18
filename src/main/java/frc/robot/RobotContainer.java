@@ -25,21 +25,17 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 
 import static edu.wpi.first.units.Units.*;
 
-import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
-import com.pathplanner.lib.commands.PathfindingCommand;
-import frc.robot.auto.PathfindingAutoBuilder;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.QuestNavSubsystem;
 
@@ -85,7 +81,7 @@ public class RobotContainer {
   private Pose2d seededPose = null;
 
   // Auto setup
-  private final SendableChooser<String> autoChooser;
+  private final SendableChooser<Command> autoChooser;
 
   public RobotContainer() {
     DriverStation.silenceJoystickConnectionWarning(true);
@@ -99,10 +95,7 @@ public class RobotContainer {
     NamedCommands.registerCommand("shoot",
         new ShootCommand(flywheel, hood, conveyor, intakeActuator, turret, shooterCalculator));
 
-    autoChooser = new SendableChooser<>();
-    for (String name : AutoBuilder.getAllAutoNames()) {
-      autoChooser.addOption(name, name);
-    }
+    autoChooser = AutoBuilder.buildAutoChooser();
     SmartDashboard.putData("Auto Mode", autoChooser);
 
     // Set turret default command - auto-aim with operator stick override
@@ -142,10 +135,11 @@ public class RobotContainer {
 
     // Warmup PathPlanner to avoid Java pauses
     CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand());
-    CommandScheduler.getInstance().schedule(PathfindingCommand.warmupCommand());
+    // CommandScheduler.getInstance().schedule(PathfindingCommand.warmupCommand());
 
     // Telemetry setup
     drivetrain.registerTelemetry(logger::telemeterize);
+
   }
 
   private void configureDriverBindings() {
@@ -371,13 +365,6 @@ public class RobotContainer {
   }
 
   public Command getAutonomousCommand() {
-    String autoName = autoChooser.getSelected();
-    if (autoName == null) {
-      return Commands.none();
-    }
-    // if (SmartDashboard.getBoolean("Auto Pathfinding", true)) {
-    return PathfindingAutoBuilder.buildAutoWithPathfinding(autoName, () -> drivetrain.getState().Pose);
-    // }
-    // return PathfindingAutoBuilder.buildAuto(autoName);
+    return autoChooser.getSelected();
   }
 }
