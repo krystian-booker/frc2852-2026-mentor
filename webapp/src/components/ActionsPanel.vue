@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useNTBoolean, useNTDouble, useNTInteger } from '../composables/useNetworkTables'
+import { useNTDouble, useNTInteger } from '../composables/useNetworkTables'
 import { useCalibrationStore } from '../stores/calibration'
 import { exportCSV } from '../utils/csvExport'
 import { TOPICS } from '../constants/topics'
@@ -10,10 +10,9 @@ const store = useCalibrationStore()
 
 // Modal state
 const showClearModal = ref(false)
+const showMirrorModal = ref(false)
 
-// Subscribe to robot state needed for local save and validation
-const hoodAtPosition = useNTBoolean(TOPICS.HOOD_AT_POSITION, false)
-const flywheelAtSetpoint = useNTBoolean(TOPICS.FLYWHEEL_AT_SETPOINT, false)
+// Subscribe to robot state needed for saving
 const distance = useNTDouble(TOPICS.DISTANCE, 0)
 const positionX = useNTDouble(TOPICS.POSITION_X, 0)
 const positionY = useNTDouble(TOPICS.POSITION_Y, 0)
@@ -22,18 +21,13 @@ const gridCol = useNTInteger(TOPICS.GRID.CURRENT_COL, 0)
 const inputHoodAngle = useNTDouble(TOPICS.INPUT_HOOD_ANGLE, 25)
 const inputFlywheelRPM = useNTDouble(TOPICS.INPUT_FLYWHEEL_RPM, 3000)
 
-// Compute readyToSave locally
-const readyToSave = computed(() => {
-  return hoodAtPosition.value &&
-         flywheelAtSetpoint.value &&
-         store.isHoodAngleValid(inputHoodAngle.value) &&
-         store.isFlywheelRPMValid(inputFlywheelRPM.value)
-})
+const readyToSave = computed(() => true)
 
 const exportMessage = ref('')
 const importMessage = ref('')
 const importIsError = ref(false)
 const saveMessage = ref('')
+const mirrorMessage = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 
 const savePoint = () => {
@@ -134,6 +128,21 @@ const deletePoint = () => {
     store.removePoint(row, col)
   }
 }
+
+const mirrorQuadrants = () => {
+  showMirrorModal.value = true
+}
+
+const confirmMirror = () => {
+  const result = store.mirrorFromBottomRight()
+  showMirrorModal.value = false
+  mirrorMessage.value = `Mirrored ${result.copied} points (${result.skipped} skipped - already had data)`
+  setTimeout(() => { mirrorMessage.value = '' }, 5000)
+}
+
+const cancelMirror = () => {
+  showMirrorModal.value = false
+}
 </script>
 
 <template>
@@ -165,6 +174,10 @@ const deletePoint = () => {
         Import CSV
       </button>
 
+      <button class="btn btn-mirror" @click="mirrorQuadrants">
+        Mirror from BR
+      </button>
+
       <button class="btn btn-warning" @click="deletePoint">
         Delete Point
       </button>
@@ -182,6 +195,10 @@ const deletePoint = () => {
       @change="handleImport"
     />
 
+    <div v-if="mirrorMessage" class="message success">
+      {{ mirrorMessage }}
+    </div>
+
     <div v-if="saveMessage" class="message success">
       {{ saveMessage }}
     </div>
@@ -193,6 +210,15 @@ const deletePoint = () => {
     <div v-if="importMessage" class="message" :class="{ error: importIsError }">
       {{ importMessage }}
     </div>
+
+    <ConfirmModal
+      v-if="showMirrorModal"
+      title="Mirror from Bottom-Right"
+      message="This will copy all calibration points from the bottom-right quadrant to the other three quadrants (bottom-left, top-left, top-right) using field symmetry. Existing points in target quadrants will not be overwritten."
+      confirm-text="Mirror"
+      @confirm="confirmMirror"
+      @cancel="cancelMirror"
+    />
 
     <ConfirmModal
       v-if="showClearModal"
@@ -290,6 +316,15 @@ h3 {
 
 .btn-secondary:hover {
   background: #5c6bc0;
+}
+
+.btn-mirror {
+  background: #7c4dff;
+  color: white;
+}
+
+.btn-mirror:hover {
+  background: #9e7cff;
 }
 
 .btn-warning {

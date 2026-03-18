@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { FIELD_DIMENSIONS } from '../constants/fieldConstants'
 
 export interface CalibrationPoint {
   timestamp: string
@@ -144,6 +145,69 @@ export const useCalibrationStore = defineStore('calibration', () => {
     Math.round((points.value.length / totalCells.value) * 100)
   )
 
+  // Mirror points from bottom-right quadrant to all other quadrants
+  const mirrorFromBottomRight = (): { copied: number; skipped: number } => {
+    const halfRows = Math.floor(gridRows.value / 2)
+    const halfCols = Math.floor(gridCols.value / 2)
+
+    // Get all points in bottom-right quadrant (low rows, high cols)
+    const sourcePoints = points.value.filter(
+      p => p.gridRow < halfRows && p.gridCol >= halfCols
+    )
+
+    let copied = 0
+    let skipped = 0
+
+    for (const source of sourcePoints) {
+      const mirrorCol = gridCols.value - 1 - source.gridCol
+      const mirrorRow = gridRows.value - 1 - source.gridRow
+
+      const targets = [
+        // Bottom-left: flip columns (vertical mirror)
+        {
+          row: source.gridRow,
+          col: mirrorCol,
+          robotX: FIELD_DIMENSIONS.widthMeters - source.robotX,
+          robotY: source.robotY
+        },
+        // Top-left: flip both (vertical + horizontal mirror)
+        {
+          row: mirrorRow,
+          col: mirrorCol,
+          robotX: FIELD_DIMENSIONS.widthMeters - source.robotX,
+          robotY: FIELD_DIMENSIONS.heightMeters - source.robotY
+        },
+        // Top-right: flip rows (horizontal mirror)
+        {
+          row: mirrorRow,
+          col: source.gridCol,
+          robotX: source.robotX,
+          robotY: FIELD_DIMENSIONS.heightMeters - source.robotY
+        }
+      ]
+
+      for (const target of targets) {
+        if (!hasPointAt(target.row, target.col)) {
+          addPoint({
+            robotX: target.robotX,
+            robotY: target.robotY,
+            distanceToTarget: source.distanceToTarget,
+            hoodAngleDegrees: source.hoodAngleDegrees,
+            flywheelRPM: source.flywheelRPM,
+            gridRow: target.row,
+            gridCol: target.col,
+            alliance: source.alliance
+          })
+          copied++
+        } else {
+          skipped++
+        }
+      }
+    }
+
+    return { copied, skipped }
+  }
+
   // Generate CSV content
   const generateCSV = (): string => {
     const header = 'timestamp,robot_x,robot_y,distance_to_target,hood_angle_degrees,flywheel_rpm,grid_row,grid_col,alliance'
@@ -271,6 +335,7 @@ export const useCalibrationStore = defineStore('calibration', () => {
     setGridDimensions,
     setValidationBounds,
     isHoodAngleValid,
-    isFlywheelRPMValid
+    isFlywheelRPMValid,
+    mirrorFromBottomRight
   }
 })
