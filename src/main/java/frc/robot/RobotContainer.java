@@ -125,7 +125,6 @@ public class RobotContainer {
 
     // Run intake in auto and teleop, but not test mode
     RobotModeTriggers.autonomous().whileTrue(intake.run(intake::runIntake));
-    RobotModeTriggers.teleop().whileTrue(intake.run(intake::runIntake));
 
     // Configure normal bindings (always available)
     configureDriverBindings();
@@ -151,6 +150,10 @@ public class RobotContainer {
     // Hood homing: drive to hard stop and zero encoder on first enable
     RobotModeTriggers.autonomous().onTrue(hood.zeroHoodCommand().onlyIf(() -> !hood.isHomed()));
     RobotModeTriggers.teleop().onTrue(hood.zeroHoodCommand().onlyIf(() -> !hood.isHomed()));
+
+    // LEFT TRIGGER - Intake (held)
+    // Runs the intake roller to acquire game pieces
+    driverController.leftTrigger(0.5).whileTrue(intake.run(intake::runIntake));
 
     // RIGHT TRIGGER - Shoot (held)
     // Spins up flywheel and sets hood from LUT, then feeds when ready

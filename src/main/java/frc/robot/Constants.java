@@ -61,7 +61,7 @@ public final class Constants {
     public static final double SUPPLY_CURRENT_LIMIT = 60.0; // Amps - main limit
     public static final double SUPPLY_CURRENT_LOWER_LIMIT = 40.0; // Amps - reduced limit after time
     public static final double SUPPLY_CURRENT_LOWER_TIME = 1.0; // Seconds - time before reducing
-    public static final double STATOR_CURRENT_LIMIT = 80.0; // Amps
+    public static final double STATOR_CURRENT_LIMIT = 60.0; // Amps
 
     // Velocity Control
     public static final double VELOCITY_TOLERANCE_RPM = 100.0; // RPM tolerance for atSetpoint()
