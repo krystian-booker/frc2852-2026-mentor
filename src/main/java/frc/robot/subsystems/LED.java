@@ -47,7 +47,7 @@ public class LED extends SubsystemBase {
 
     public LED() {
         blinkin = new Spark(BlinkinConstants.PWM_PORT);
-        setPattern(Pattern.RED);
+        setPattern(Pattern.BLACK);
     }
 
     /**

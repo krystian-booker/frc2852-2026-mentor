@@ -307,13 +307,8 @@ public final class Constants {
     public static final double STD_DEV_Y = 0.02;
     public static final double STD_DEV_THETA = 0.035;
 
-    // Movement threshold for detecting if robot was moved while disabled (meters)
-    // If robot moves more than this distance from seeded position, re-seeding is
-    // required
-    public static final double SEEDING_MOVEMENT_THRESHOLD_METERS = 0.1;
-
-    // Polling interval for seeding checks while disabled (seconds)
-    public static final double SEEDING_POLL_INTERVAL_SECONDS = 1.0;
+    // DIO port for the reseed button on the robot
+    public static final int RESEED_BUTTON_DIO_PORT = 0;
   }
 
   public static class BlinkinConstants {

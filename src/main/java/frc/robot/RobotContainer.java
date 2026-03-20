@@ -11,6 +11,7 @@ import frc.robot.subsystems.Conveyor;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Intake;
+import frc.robot.subsystems.LED;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
 import frc.robot.subsystems.Climb;
@@ -35,7 +36,9 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.QuestNavSubsystem;
 
@@ -49,7 +52,7 @@ public class RobotContainer {
   private final IntakeActuator intakeActuator = new IntakeActuator();
   private final Turret turret = new Turret();
   private final Climb climb = new Climb();
-  // private final LED led = new LED();
+  private final LED led = new LED();
 
   // Controllers
   private final CommandXboxController driverController = new CommandXboxController(
@@ -78,7 +81,10 @@ public class RobotContainer {
 
   // QuestNav seeding state
   private boolean isQuestNavSeeded = false;
-  private Pose2d seededPose = null;
+
+  // Physical reseed button on the robot (DIO, active-low for normally-open button)
+  private final DigitalInput reseedButtonInput = new DigitalInput(QuestNavConstants.RESEED_BUTTON_DIO_PORT);
+  private final Trigger reseedButton = new Trigger(() -> !reseedButtonInput.get());
 
   // Auto setup
   private final SendableChooser<Command> autoChooser;
@@ -206,47 +212,48 @@ public class RobotContainer {
   }
 
   /**
-   * Configure disabled mode bindings for QuestNav seeding. LEDs start RED and
-   * turn GREEN once QuestNav is seeded from a
-   * multi-tag vision pose. Seeding only happens while disabled, every 5 seconds.
-   * If the robot is moved after seeding,
-   * LEDs turn RED and re-seeding is allowed.
+   * Configure QuestNav seeding with LED feedback.
+   * LEDs start OFF, turn RED when searching for tags, and GREEN once seeded.
+   * The physical reseed button (DIO) resets to RED and re-seeds when 2+ tags visible.
    */
   private void questNavInitialization() {
-    Command seedingCommand = Commands.sequence(
-        Commands.waitSeconds(QuestNavConstants.SEEDING_POLL_INTERVAL_SECONDS),
-        Commands.runOnce(() -> {
-          // Check if robot has been moved since last seeding using vision pose
-          if (isQuestNavSeeded && seededPose != null) {
-            var visionPose = vision.getLatestPose2d();
-            if (visionPose.isPresent() && vision.getVisibleTagCount() >= 2) {
-              double distance = visionPose.get().getTranslation()
-                  .getDistance(seededPose.getTranslation());
-              if (distance > QuestNavConstants.SEEDING_MOVEMENT_THRESHOLD_METERS) {
-                // Robot was moved, reset seeding state
-                isQuestNavSeeded = false;
-                seededPose = null;
-                questNav.clearSeeded();
-                vision.setFeedingEnabled(true);
+    // Automatic initial seeding: poll every second while disabled until first seed
+    Command initialSeedingCommand = Commands.sequence(
+        // Turn RED to indicate searching for tags
+        led.setPatternCommand(LED.Pattern.RED),
+        Commands.sequence(
+            Commands.waitSeconds(1.0),
+            Commands.runOnce(() -> {
+              if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
+                if (questNav.seedPoseFromVision()) {
+                  isQuestNavSeeded = true;
+                  vision.setFeedingEnabled(false);
+                }
               }
-            }
-          }
+            })).repeatedly().until(() -> isQuestNavSeeded),
+        // Turn GREEN once seeded
+        led.setPatternCommand(LED.Pattern.GREEN)).ignoringDisable(true);
+    RobotModeTriggers.disabled().onTrue(initialSeedingCommand);
 
-          // Attempt seeding if not seeded and 2+ tags visible
-          if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
-            if (questNav.seedPoseFromVision()) {
-              isQuestNavSeeded = true;
-              seededPose = questNav.getLatestPose();
-              vision.setFeedingEnabled(false);
-            }
+    // Reseed button: only works while disabled so a mid-match press is ignored
+    reseedButton.and(RobotModeTriggers.disabled()).onTrue(Commands.sequence(
+        Commands.runOnce(() -> {
+          isQuestNavSeeded = false;
+          questNav.clearSeeded();
+          vision.setFeedingEnabled(true);
+        }),
+        // Turn RED while waiting for tags
+        led.setPatternCommand(LED.Pattern.RED),
+        // Wait for 2+ visible tags, then reseed
+        Commands.waitUntil(() -> vision.getVisibleTagCount() >= 2),
+        Commands.runOnce(() -> {
+          if (questNav.seedPoseFromVision()) {
+            isQuestNavSeeded = true;
+            vision.setFeedingEnabled(false);
           }
-        })).repeatedly().ignoringDisable(true);
-    RobotModeTriggers.disabled().whileTrue(seedingCommand);
-    seedingCommand.schedule();
-
-    // Turn off LEDs when auto or teleop starts
-    // RobotModeTriggers.autonomous().onTrue(led.setPatternCommand(LED.Pattern.BLACK));
-    // RobotModeTriggers.teleop().onTrue(led.setPatternCommand(LED.Pattern.BLACK));
+        }),
+        // Turn GREEN once re-seeded
+        led.setPatternCommand(LED.Pattern.GREEN)).ignoringDisable(true));
   }
 
   /**
