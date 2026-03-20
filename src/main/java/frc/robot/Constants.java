@@ -241,8 +241,8 @@ public final class Constants {
     public static final int SECONDARY_CURRENT_LIMIT = 60; // Amps
 
     // Open-loop duty cycles
-    public static final double EXTEND_DUTY_CYCLE = 0.5;
-    public static final double RETRACT_DUTY_CYCLE = -0.5;
+    public static final double EXTEND_DUTY_CYCLE = 1.0;
+    public static final double RETRACT_DUTY_CYCLE = -1.0;
 
     // Through Bore Encoder (external encoder port on SparkFlex)
     public static final int ENCODER_COUNTS_PER_REV = 8192;
@@ -252,16 +252,16 @@ public final class Constants {
     public static final double POSITION_TOLERANCE_ROTATIONS = 0.25;
 
     // Closed-loop position PID
-    public static final double KP = 0.1;
+    public static final double KP = 1.0;
     public static final double KI = 0.0;
-    public static final double KD = 0.0;
-    public static final double MAX_OUTPUT = 0.5;
-    public static final double MIN_OUTPUT = -0.5;
+    public static final double KD = 0.05;
+    public static final double MAX_OUTPUT = 1.0;
+    public static final double MIN_OUTPUT = -1.0;
 
     // Agitate command (time-based, alternates extend/retract regardless of position
     // reached)
-    public static final double AGITATE_EXTEND_SECONDS = 0.4;
-    public static final double AGITATE_RETRACT_SECONDS = 0.4;
+    public static final double AGITATE_EXTEND_SECONDS = 0.6;
+    public static final double AGITATE_RETRACT_SECONDS = 0.6;
   }
 
   public static class IntakeConstants {
