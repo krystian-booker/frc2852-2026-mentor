@@ -61,7 +61,7 @@ public final class Constants {
     public static final double SUPPLY_CURRENT_LIMIT = 60.0; // Amps - main limit
     public static final double SUPPLY_CURRENT_LOWER_LIMIT = 40.0; // Amps - reduced limit after time
     public static final double SUPPLY_CURRENT_LOWER_TIME = 1.0; // Seconds - time before reducing
-    public static final double STATOR_CURRENT_LIMIT = 120.0; // Amps
+    public static final double STATOR_CURRENT_LIMIT = 60.0; // Amps
 
     // Velocity Control
     public static final double VELOCITY_TOLERANCE_RPM = 100.0; // RPM tolerance for atSetpoint()
@@ -174,10 +174,10 @@ public final class Constants {
     public static final double MOTION_MAGIC_JERK = 200.0000;
 
     // Current Limits - reduced for safe testing
-    public static final double SUPPLY_CURRENT_LIMIT = 80.0; // Amps - main limit (was 80)
+    public static final double SUPPLY_CURRENT_LIMIT = 20.0; // Amps - main limit (was 80)
     public static final double SUPPLY_CURRENT_LOWER_LIMIT = 60; // Amps - reduced limit after time (was 60)
     public static final double SUPPLY_CURRENT_LOWER_TIME = 0.5; // Seconds - time before reducing
-    public static final double STATOR_CURRENT_LIMIT = 80.0; // Amps (was 80)
+    public static final double STATOR_CURRENT_LIMIT = 40.0; // Amps (was 80)
 
     // Position Control
     public static final double POSITION_TOLERANCE_DEGREES = 1.0; // Degrees tolerance for isAtPosition()
@@ -228,7 +228,7 @@ public final class Constants {
 
   public static class IntakeActuatorConstants {
     // Current Limits
-    public static final int SMART_CURRENT_LIMIT = 60; // Amps
+    public static final int SMART_CURRENT_LIMIT = 30; // Amps
     public static final int SECONDARY_CURRENT_LIMIT = 60; // Amps
 
     // Open-loop duty cycles
@@ -263,7 +263,7 @@ public final class Constants {
     public static final double OUTTAKE_SPEED = -1.0; // Speed for ejecting game pieces
 
     // Current Limits
-    public static final int SMART_CURRENT_LIMIT = 60; // Amps
+    public static final int SMART_CURRENT_LIMIT = 30; // Amps
     public static final int SECONDARY_CURRENT_LIMIT = 80; // Amps
   }
 
@@ -273,11 +273,11 @@ public final class Constants {
 
     // Preset Speeds (duty cycle -1.0 to 1.0)
     // Running at max speed for 8 balls/second throughput
-    public static final double FEED_SPEED = 1.0; // Full speed for feeding shooter
+    public static final double FEED_SPEED = 0.7; // Full speed for feeding shooter
     public static final double REVERSE_SPEED = -0.5; // Reverse for clearing jams
 
     // Current Limits - higher limits for sustained high-speed operation
-    public static final int SMART_CURRENT_LIMIT = 60; // Amps
+    public static final int SMART_CURRENT_LIMIT = 30; // Amps
     public static final int SECONDARY_CURRENT_LIMIT = 80; // Amps
   }
 

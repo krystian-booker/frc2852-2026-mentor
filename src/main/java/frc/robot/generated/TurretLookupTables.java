@@ -21,7 +21,7 @@ public final class TurretLookupTables {
 
     // ==================== QUALITY METRICS ====================
     /**
-     * Generated timestamp: 2026-03-18T19:01:25.7880659
+     * Generated timestamp: 2026-03-19T15:36:43.154164545
      * Data points: 297 (averaged into 37 entries, 33 outliers rejected)
      * Distance bucket size: 0.25m
      * Alliances in calibration data: Blue
