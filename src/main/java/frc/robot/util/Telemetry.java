@@ -28,7 +28,7 @@ public class Telemetry {
   private final Field2d field = new Field2d();
 
   /** Set to false to disable all telemetry except Field2d. */
-  public static boolean VERBOSE = true;
+  public static boolean VERBOSE = false;
 
   /**
    * Construct a telemetry object, with the specified max speed of the robot
