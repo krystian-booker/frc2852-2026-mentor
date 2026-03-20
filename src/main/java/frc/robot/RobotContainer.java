@@ -94,6 +94,7 @@ public class RobotContainer {
     // Register named commands before building auto chooser
     NamedCommands.registerCommand("shoot",
         new ShootCommand(flywheel, hood, conveyor, intakeActuator, turret, shooterCalculator));
+    NamedCommands.registerCommand("extendIntake", intakeActuator.extend());
 
     autoChooser = AutoBuilder.buildAutoChooser();
     SmartDashboard.putData("Auto Mode", autoChooser);
@@ -143,12 +144,9 @@ public class RobotContainer {
 
   private void configureDriverBindings() {
     // Auto-extend intake actuator at the start of autonomous and teleop
-    RobotModeTriggers.autonomous().onTrue(intakeActuator.extend());
     RobotModeTriggers.teleop().onTrue(intakeActuator.extend());
-    // RobotModeTriggers.test().onTrue(intakeActuator.extend());
 
     // Hood homing: drive to hard stop and zero encoder on first enable
-    RobotModeTriggers.autonomous().onTrue(hood.zeroHoodCommand().onlyIf(() -> !hood.isHomed()));
     RobotModeTriggers.teleop().onTrue(hood.zeroHoodCommand().onlyIf(() -> !hood.isHomed()));
 
     // LEFT TRIGGER - Intake (held)
@@ -164,7 +162,7 @@ public class RobotContainer {
             drivetrain,
             this::getDriveRequest,
             this::isDriverActive)
-                .withName("Shoot"));
+            .withName("Shoot"));
 
     // DEFAULT COMMAND - Field-Centric Drive
     // Note that X is defined as forward according to WPILib convention,
@@ -208,8 +206,10 @@ public class RobotContainer {
   }
 
   /**
-   * Configure disabled mode bindings for QuestNav seeding. LEDs start RED and turn GREEN once QuestNav is seeded from a
-   * multi-tag vision pose. Seeding only happens while disabled, every 5 seconds. If the robot is moved after seeding,
+   * Configure disabled mode bindings for QuestNav seeding. LEDs start RED and
+   * turn GREEN once QuestNav is seeded from a
+   * multi-tag vision pose. Seeding only happens while disabled, every 5 seconds.
+   * If the robot is moved after seeding,
    * LEDs turn RED and re-seeding is allowed.
    */
   private void questNavInitialization() {
@@ -250,7 +250,8 @@ public class RobotContainer {
   }
 
   /**
-   * Configure test mode bindings using RobotModeTriggers. These bindings are only active when the robot is in test
+   * Configure test mode bindings using RobotModeTriggers. These bindings are only
+   * active when the robot is in test
    * mode.
    */
   private void configureTestBindings() {
@@ -286,13 +287,16 @@ public class RobotContainer {
 
     // --- Intake ---
     // RobotModeTriggers.test().and(driverController.leftBumper()).whileTrue(intake.run(intake::runIntake));
-    // RobotModeTriggers.test().and(driverController.x()).onTrue(Commands.runOnce(intake::stop, intake));
+    // RobotModeTriggers.test().and(driverController.x()).onTrue(Commands.runOnce(intake::stop,
+    // intake));
 
     // --- Climb ---
     // RobotModeTriggers.test().and(driverController.a())
-    // .whileTrue(climb.run(climb::testDirectionPositive).finallyDo(() -> climb.stop()));
+    // .whileTrue(climb.run(climb::testDirectionPositive).finallyDo(() ->
+    // climb.stop()));
     // RobotModeTriggers.test().and(driverController.b())
-    // .whileTrue(climb.run(climb::testDirectionNegative).finallyDo(() -> climb.stop()));
+    // .whileTrue(climb.run(climb::testDirectionNegative).finallyDo(() ->
+    // climb.stop()));
     // RobotModeTriggers.test().and(driverController.x())
     // .onTrue(Commands.runOnce(() -> climb.nudge(1.0), climb));
     // RobotModeTriggers.test().and(driverController.y())
@@ -302,9 +306,11 @@ public class RobotContainer {
 
     // --- Turret Manual Test ---
     // driverController.a()
-    // .whileTrue(turret.run(turret::testDirectionPositive).finallyDo(() -> turret.stop()));
+    // .whileTrue(turret.run(turret::testDirectionPositive).finallyDo(() ->
+    // turret.stop()));
     // driverController.b()
-    // .whileTrue(turret.run(turret::testDirectionNegative).finallyDo(() -> turret.stop()));
+    // .whileTrue(turret.run(turret::testDirectionNegative).finallyDo(() ->
+    // turret.stop()));
     // RobotModeTriggers.test().and(driverController.x())
     // .onTrue(Commands.runOnce(() -> turret.setPosition(0)));
     // RobotModeTriggers.test().and(driverController.y())
@@ -314,7 +320,8 @@ public class RobotContainer {
 
     // --- Turret Field Hold ---
     // RobotModeTriggers.test().and(driverController.rightBumper())
-    // .whileTrue(turret.fieldHoldCommand(() -> drivetrain.getState().Pose.getRotation().getDegrees()));
+    // .whileTrue(turret.fieldHoldCommand(() ->
+    // drivetrain.getState().Pose.getRotation().getDegrees()));
     // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop,
     // turret));
 
@@ -323,22 +330,28 @@ public class RobotContainer {
     // FlywheelAutoTuneCommand(flywheel));
 
     // --- Flywheel ---
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(flywheel.run(() ->
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(flywheel.run(()
+    // ->
     // flywheel.setVelocity(2000)));
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(flywheel.run(() ->
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(flywheel.run(()
+    // ->
     // flywheel.setVelocity(3500)));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.run(() -> flywheel.setVelocity(6000)));
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.run(()
+    // -> flywheel.setVelocity(6000)));
     // RobotModeTriggers.test().and(driverController.y())
     // .onTrue(Commands.runOnce(() -> flywheel.setVelocity(0), flywheel));
 
     // --- Hood Auto-Tune ---
-    // RobotModeTriggers.test().and(driverController.start()).toggleOnTrue(new HoodAutoTuneCommand(hood));
+    // RobotModeTriggers.test().and(driverController.start()).toggleOnTrue(new
+    // HoodAutoTuneCommand(hood));
 
     // --- Hood ---
     // RobotModeTriggers.test().and(driverController.a())
-    // .whileTrue(hood.run(hood::testDirectionPositive).finallyDo(() -> hood.setNeutral()));
+    // .whileTrue(hood.run(hood::testDirectionPositive).finallyDo(() ->
+    // hood.setNeutral()));
     // RobotModeTriggers.test().and(driverController.b())
-    // .whileTrue(hood.run(hood::testDirectionNegative).finallyDo(() -> hood.setNeutral()));
+    // .whileTrue(hood.run(hood::testDirectionNegative).finallyDo(() ->
+    // hood.setNeutral()));
     // RobotModeTriggers.test().and(driverController.x())
     // .onTrue(hood.runOnce(() -> hood.nudge(5)));
     // RobotModeTriggers.test().and(driverController.y())
