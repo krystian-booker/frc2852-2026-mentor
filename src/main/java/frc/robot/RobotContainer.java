@@ -203,6 +203,10 @@ public class RobotContainer {
     operatorController.povLeft()
         .onTrue(Commands.runOnce(() -> climb.setPosition(ClimbConstants.FULLY_DOWN), climb));
 
+    // Intake actuator controls
+    operatorController.a().onTrue(intakeActuator.extend());
+    operatorController.b().onTrue(intakeActuator.retract());
+
     // Climb manual jog controls for zeroing
     RobotModeTriggers.test().and(operatorController.rightBumper()
         .whileTrue(climb.run(() -> climb.manualMove(12.0)).finallyDo(() -> climb.stop())));
