@@ -151,11 +151,13 @@ public final class Constants {
     // Forward offset: encoder reading (degrees) when turret points robot-forward.
     public static final double FORWARD_ENCODER_POSITION_DEGREES = 48.5;
 
-    // Physical encoder limits (used for firmware soft limits — do not change without re-verifying travel)
+    // Physical encoder limits (used for firmware soft limits — do not change
+    // without re-verifying travel)
     public static final double ENCODER_MIN_DEGREES = -180.0;
     public static final double ENCODER_MAX_DEGREES = 180.0;
 
-    // Aiming-relative limits (0 = forward): encoder limits shifted by forward offset
+    // Aiming-relative limits (0 = forward): encoder limits shifted by forward
+    // offset
     public static final double MIN_POSITION_DEGREES = ENCODER_MIN_DEGREES - FORWARD_ENCODER_POSITION_DEGREES; // -225
     public static final double MAX_POSITION_DEGREES = ENCODER_MAX_DEGREES - FORWARD_ENCODER_POSITION_DEGREES; // +135
 
@@ -215,15 +217,22 @@ public final class Constants {
     public static final double MIN_SHOOTING_DISTANCE_METERS = 0;
     public static final double MAX_SHOOTING_DISTANCE_METERS = 99.0;
 
-    // Placeholder lookup tables (distance in meters -> value)
-    // Format: { {distance1, value1}, {distance2, value2}, ... }
-    // Hood angle lookup table (distance -> hood angle in degrees)
-    public static final double[][] HOOD_LOOKUP_TABLE = { { 1.5, 15.0 }, { 3.0, 25.0 }, { 5.0, 35.0 }, { 7.0, 40.0 },
-        { 10.0, 45.0 } };
+    // Fallback 2D grids (used when generated tables are empty / no calibration
+    // data)
+    // Indexed by [row][col] matching CalibrationConstants grid dimensions
+    public static final double[][] HOOD_GRID_FALLBACK;
+    public static final double[][] FLYWHEEL_GRID_FALLBACK;
 
-    // Flywheel RPM lookup table (distance -> RPM)
-    public static final double[][] FLYWHEEL_LOOKUP_TABLE = { { 1.5, 3000.0 }, { 3.0, 3500.0 }, { 5.0, 4000.0 },
-        { 7.0, 4500.0 }, { 10.0, 5000.0 } };
+    static {
+      HOOD_GRID_FALLBACK = new double[CalibrationConstants.GRID_ROWS][CalibrationConstants.GRID_COLS];
+      FLYWHEEL_GRID_FALLBACK = new double[CalibrationConstants.GRID_ROWS][CalibrationConstants.GRID_COLS];
+      for (int r = 0; r < CalibrationConstants.GRID_ROWS; r++) {
+        for (int c = 0; c < CalibrationConstants.GRID_COLS; c++) {
+          HOOD_GRID_FALLBACK[r][c] = CalibrationConstants.DEFAULT_HOOD_ANGLE;
+          FLYWHEEL_GRID_FALLBACK[r][c] = CalibrationConstants.DEFAULT_FLYWHEEL_RPM;
+        }
+      }
+    }
   }
 
   public static class IntakeActuatorConstants {
@@ -249,7 +258,8 @@ public final class Constants {
     public static final double MAX_OUTPUT = 0.5;
     public static final double MIN_OUTPUT = -0.5;
 
-    // Agitate command (time-based, alternates extend/retract regardless of position reached)
+    // Agitate command (time-based, alternates extend/retract regardless of position
+    // reached)
     public static final double AGITATE_EXTEND_SECONDS = 0.4;
     public static final double AGITATE_RETRACT_SECONDS = 0.4;
   }
@@ -298,7 +308,8 @@ public final class Constants {
     public static final double STD_DEV_THETA = 0.035;
 
     // Movement threshold for detecting if robot was moved while disabled (meters)
-    // If robot moves more than this distance from seeded position, re-seeding is required
+    // If robot moves more than this distance from seeded position, re-seeding is
+    // required
     public static final double SEEDING_MOVEMENT_THRESHOLD_METERS = 0.1;
 
     // Polling interval for seeding checks while disabled (seconds)
@@ -313,21 +324,12 @@ public final class Constants {
    * Constants for the turret calibration system.
    *
    * <p>
-   * <strong>Grid vs Bucket Spacing Design:</strong> The calibration system uses two different spacing granularities by
-   * design:
-   *
-   * <ul>
-   * <li><strong>UI Grid (0.5m cell size):</strong> Used by the webapp to display robot position and track which cells
-   * have been calibrated. The larger spacing makes the grid visually manageable and provides clear guidance for where
-   * to position the robot.</li>
-   * <li><strong>Build-time Distance Buckets (0.25m):</strong> Used by GenerateLookupTables.java when processing
-   * calibration data. The finer granularity allows multiple samples taken within the same UI grid cell to be grouped
-   * into different distance buckets, providing more precise interpolation data.</li>
-   * </ul>
-   *
-   * <p>
-   * This is intentional: a single UI grid cell may contain multiple calibration points at slightly different distances,
-   * and the build-time processing preserves this detail for better interpolation accuracy.
+   * The calibration grid maps the field into cells of GRID_CELL_SIZE_METERS. Each
+   * cell stores
+   * a tuned hood angle and flywheel RPM. The webapp records per-cell calibration
+   * data, and
+   * GenerateLookupTables.java processes it into 2D grid arrays for runtime
+   * bilinear interpolation.
    */
   public static class CalibrationConstants {
     // Field dimensions
@@ -335,8 +337,8 @@ public final class Constants {
     public static final double FIELD_WIDTH_METERS = 8.07;
 
     /**
-     * Grid cell size for UI display (0.5m). This determines the visual grid shown in the webapp. Note: Build-time
-     * processing uses 0.25m distance buckets for finer granularity. See GenerateLookupTables.java for details.
+     * Grid cell size in meters. Used for both UI display and 2D lookup table
+     * generation.
      */
     public static final double GRID_CELL_SIZE_METERS = 0.5;
     public static final double CALIBRATION_START_X = 0.0;
@@ -393,7 +395,8 @@ public final class Constants {
     // The layout of the AprilTags on the field
     public static final AprilTagFieldLayout kTagLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
 
-    // The standard deviations of our vision estimated poses, which affect correction rate
+    // The standard deviations of our vision estimated poses, which affect
+    // correction rate
     // (Fake values. Experiment and determine estimation noise on an actual robot.)
     public static final Matrix<N3, N1> kSingleTagStdDevs = VecBuilder.fill(4, 4, 8);
     public static final Matrix<N3, N1> kMultiTagStdDevs = VecBuilder.fill(0.5, 0.5, 1);

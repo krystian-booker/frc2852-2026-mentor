@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { FIELD_DIMENSIONS } from '../constants/fieldConstants'
+import { FIELD_DIMENSIONS, CALIBRATION_AREA } from '../constants/fieldConstants'
 
 export interface CalibrationPoint {
   timestamp: string
@@ -119,6 +119,57 @@ export const useCalibrationStore = defineStore('calibration', () => {
   const removePoint = (gridRow: number, gridCol: number) => {
     points.value = points.value.filter(
       p => !(p.gridRow === gridRow && p.gridCol === gridCol)
+    )
+    saveToStorage()
+  }
+
+  // Bulk update existing points and create new ones for empty cells
+  const bulkUpdatePoints = (
+    positions: { row: number; col: number }[],
+    updates: { hoodAngleDegrees: number; flywheelRPM: number }
+  ) => {
+    const posSet = new Set(positions.map(p => `${p.row},${p.col}`))
+    const existingKeys = new Set<string>()
+
+    // Update existing points
+    for (const point of points.value) {
+      const key = `${point.gridRow},${point.gridCol}`
+      if (posSet.has(key)) {
+        point.hoodAngleDegrees = updates.hoodAngleDegrees
+        point.flywheelRPM = updates.flywheelRPM
+        point.timestamp = new Date().toISOString()
+        existingKeys.add(key)
+      }
+    }
+
+    // Create new points for empty cells
+    for (const pos of positions) {
+      const key = `${pos.row},${pos.col}`
+      if (!existingKeys.has(key)) {
+        const robotX = CALIBRATION_AREA.minX + pos.col * CALIBRATION_AREA.cellSize
+        const robotY = CALIBRATION_AREA.minY + pos.row * CALIBRATION_AREA.cellSize
+        points.value.push({
+          timestamp: new Date().toISOString(),
+          robotX,
+          robotY,
+          distanceToTarget: Math.sqrt(robotX ** 2 + robotY ** 2),
+          hoodAngleDegrees: updates.hoodAngleDegrees,
+          flywheelRPM: updates.flywheelRPM,
+          gridRow: pos.row,
+          gridCol: pos.col,
+          alliance: 'Blue'
+        })
+      }
+    }
+
+    saveToStorage()
+  }
+
+  // Bulk remove points by grid positions
+  const bulkRemovePoints = (positions: { row: number; col: number }[]) => {
+    const posSet = new Set(positions.map(p => `${p.row},${p.col}`))
+    points.value = points.value.filter(
+      p => !posSet.has(`${p.gridRow},${p.gridCol}`)
     )
     saveToStorage()
   }
@@ -325,6 +376,8 @@ export const useCalibrationStore = defineStore('calibration', () => {
     maxFlywheelRPM,
     addPoint,
     removePoint,
+    bulkUpdatePoints,
+    bulkRemovePoints,
     clearAllPoints,
     hasPointAt,
     totalCells,

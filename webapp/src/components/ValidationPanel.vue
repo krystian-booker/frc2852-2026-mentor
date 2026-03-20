@@ -76,12 +76,12 @@ const validationWarning = computed(() => {
       </div>
     </div>
 
-    <div v-if="duplicatePointWarning" class="warning-badge">
+    <div class="warning-badge" :class="{ hidden: !duplicatePointWarning }">
       Point already exists at this grid cell - will update existing
     </div>
 
-    <div v-if="validationWarning" class="warning-message">
-      {{ validationWarning }}
+    <div class="warning-message" :class="{ hidden: !validationWarning }">
+      {{ validationWarning || '&nbsp;' }}
     </div>
   </div>
 </template>
@@ -160,6 +160,10 @@ h3 {
   margin-bottom: 8px;
 }
 
+.warning-badge.hidden {
+  visibility: hidden;
+}
+
 .warning-message {
   padding: 8px;
   border-radius: 4px;
@@ -167,5 +171,9 @@ h3 {
   color: #aaa;
   font-size: 12px;
   line-height: 1.4;
+}
+
+.warning-message.hidden {
+  visibility: hidden;
 }
 </style>
