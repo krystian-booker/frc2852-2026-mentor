@@ -82,7 +82,8 @@ public class RobotContainer {
   // QuestNav seeding state
   private boolean isQuestNavSeeded = false;
 
-  // Physical reseed button on the robot (DIO, active-low for normally-open button)
+  // Physical reseed button on the robot (DIO, active-low for normally-open
+  // button)
   private final DigitalInput reseedButtonInput = new DigitalInput(QuestNavConstants.RESEED_BUTTON_DIO_PORT);
   private final Trigger reseedButton = new Trigger(() -> !reseedButtonInput.get());
 
@@ -103,6 +104,7 @@ public class RobotContainer {
     NamedCommands.registerCommand("extendIntake", intakeActuator.extend());
 
     autoChooser = AutoBuilder.buildAutoChooser();
+    autoChooser.addOption("Drive Back & Shoot", buildDriveBackAndShootAuto());
     SmartDashboard.putData("Auto Mode", autoChooser);
 
     // Set turret default command - auto-aim with operator stick override
@@ -151,9 +153,6 @@ public class RobotContainer {
   private void configureDriverBindings() {
     // Auto-extend intake actuator at the start of autonomous and teleop
     RobotModeTriggers.teleop().onTrue(intakeActuator.extend());
-
-    // Hood homing: drive to hard stop and zero encoder on first enable
-    RobotModeTriggers.teleop().onTrue(hood.zeroHoodCommand().onlyIf(() -> !hood.isHomed()));
 
     // LEFT TRIGGER - Intake (held)
     // Runs the intake roller to acquire game pieces
@@ -214,7 +213,8 @@ public class RobotContainer {
   /**
    * Configure QuestNav seeding with LED feedback.
    * LEDs start OFF, turn RED when searching for tags, and GREEN once seeded.
-   * The physical reseed button (DIO) resets to RED and re-seeds when 2+ tags visible.
+   * The physical reseed button (DIO) resets to RED and re-seeds when 2+ tags
+   * visible.
    */
   private void questNavInitialization() {
     // Automatic initial seeding: poll every second while disabled until first seed
@@ -385,6 +385,27 @@ public class RobotContainer {
     double stickMag = Math.hypot(driverController.getLeftX(),
         driverController.getLeftY());
     return stickMag > 0.1 || Math.abs(driverController.getRightX()) > 0.1;
+  }
+
+  private Command buildDriveBackAndShootAuto() {
+    SwerveRequest.RobotCentric driveBack = new SwerveRequest.RobotCentric()
+        .withVelocityX(-1.0) // backwards at 1 m/s
+        .withVelocityY(0)
+        .withRotationalRate(0);
+
+    Pose2d[] startPose = new Pose2d[1];
+
+    return Commands.sequence(
+        // Capture starting pose
+        Commands.runOnce(() -> startPose[0] = drivetrain.getState().Pose),
+        // Drive backwards and extend intake simultaneously
+        Commands.parallel(
+            drivetrain.applyRequest(() -> driveBack)
+                .until(() -> startPose[0].getTranslation()
+                    .getDistance(drivetrain.getState().Pose.getTranslation()) >= 0.5),
+            intakeActuator.extend()),
+        // Shoot (runs until auto period ends)
+        new ShootCommand(flywheel, hood, conveyor, intakeActuator, turret, shooterCalculator));
   }
 
   public Command getAutonomousCommand() {

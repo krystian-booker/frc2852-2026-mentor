@@ -5,9 +5,22 @@
     "data": {
       "commands": [
         {
-          "type": "path",
+          "type": "parallel",
           "data": {
-            "pathName": "ToOutpost"
+            "commands": [
+              {
+                "type": "named",
+                "data": {
+                  "name": "extendIntake"
+                }
+              },
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "ToOutpost"
+                }
+              }
+            ]
           }
         },
         {
