@@ -5,6 +5,7 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
 import frc.robot.Constants.TurretConstants;
 import frc.robot.commands.DumbShootCommand;
+import frc.robot.commands.HoodTestSequenceCommand;
 import frc.robot.commands.ShootCommand;
 import frc.robot.commands.TurretCalibrationCommand;
 import frc.robot.generated.TunerConstants;
@@ -93,6 +94,14 @@ public class RobotContainer {
       "cancoder_position"
   });
 
+  private final DiagnosticLogger hoodDiagLogger = new DiagnosticLogger("hood_diag", new String[] {
+      "timestamp",
+      "hood_setpoint", "hood_actual", "hood_error",
+      "motor_voltage", "stator_current", "velocity_rps",
+      "is_homed",
+      "flywheel_rpm_target", "distance_to_target"
+  });
+
   // QuestNav seeding state
   private boolean isQuestNavSeeded = false;
 
@@ -109,7 +118,9 @@ public class RobotContainer {
 
     // Initialize vision subsystems
     vision = new Vision(drivetrain::addVisionMeasurement);
-    questNav = new QuestNavSubsystem(drivetrain, vision);
+    if (QuestNavConstants.ENABLED) {
+      questNav = new QuestNavSubsystem(drivetrain, vision);
+    }
     shooterCalculator = new TurretAimingCalculator(
         () -> drivetrain.getState().Pose,
         () -> drivetrain.getState().Speeds);
@@ -178,13 +189,32 @@ public class RobotContainer {
             vision.isFeedingEnabled() ? 1.0 : 0.0,
             turret.getCANCoderPositionDegrees());
       }
+
+      // Hood diagnostic CSV logging
+      if (hoodDiagLogger.isOpen()) {
+        double hoodSetpoint = hood.getTargetPositionDegrees();
+        double hoodActual = hood.getCurrentPositionDegrees();
+        hoodDiagLogger.logRow(
+            Timer.getFPGATimestamp(),
+            hoodSetpoint,
+            hoodActual,
+            hoodSetpoint - hoodActual,
+            hood.getMotorVoltage(),
+            hood.getStatorCurrent(),
+            hood.getVelocityRPS(),
+            hood.isHomed() ? 1.0 : 0.0,
+            shooterCalculator.getFlywheelRPM(),
+            shooterCalculator.getLastDistanceMeters());
+      }
     }).withName("TurretAimWithOverride"));
 
     // Configure normal bindings (always available)
     configureDriverBindings();
     configureOperatorBindings();
     configureTestBindings();
-    questNavInitialization();
+    if (QuestNavConstants.ENABLED) {
+      questNavInitialization();
+    }
 
     // Warmup PathPlanner to avoid Java pauses
     CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand());
@@ -262,21 +292,23 @@ public class RobotContainer {
 
     // START - Reseed QuestNav from vision
     // Drive to where 2+ AprilTags are visible, then press start to reseed position
-    operatorController.start().onTrue(Commands.sequence(
-        Commands.runOnce(() -> {
-          isQuestNavSeeded = false;
-          questNav.clearSeeded();
-          vision.setFeedingEnabled(true);
-        }),
-        led.setPatternCommand(LED.Pattern.RED),
-        Commands.waitUntil(() -> vision.getVisibleTagCount() >= 2),
-        Commands.runOnce(() -> {
-          if (questNav.seedPoseFromVision()) {
-            isQuestNavSeeded = true;
-            vision.setFeedingEnabled(false);
-          }
-        }),
-        led.setPatternCommand(LED.Pattern.GREEN)).ignoringDisable(true));
+    if (QuestNavConstants.ENABLED) {
+      operatorController.start().onTrue(Commands.sequence(
+          Commands.runOnce(() -> {
+            isQuestNavSeeded = false;
+            questNav.clearSeeded();
+            vision.setFeedingEnabled(true);
+          }),
+          led.setPatternCommand(LED.Pattern.RED),
+          Commands.waitUntil(() -> vision.getVisibleTagCount() >= 2),
+          Commands.runOnce(() -> {
+            if (questNav.seedPoseFromVision()) {
+              isQuestNavSeeded = true;
+              vision.setFeedingEnabled(false);
+            }
+          }),
+          led.setPatternCommand(LED.Pattern.GREEN)).ignoringDisable(true));
+    }
 
     // Climb manual jog controls for zeroing
     RobotModeTriggers.test().and(operatorController.rightBumper()
@@ -420,9 +452,10 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.y())
     // .onTrue(Commands.runOnce(() -> flywheel.setVelocity(0), flywheel));
 
-    // --- Hood Auto-Tune ---
-    // RobotModeTriggers.test().and(driverController.start()).toggleOnTrue(new
-    // HoodAutoTuneCommand(hood));
+    // --- Hood Test Sequence ---
+    // Operator start button: zeros hood then runs through full range for diagnostic capture
+    RobotModeTriggers.test().and(driverController.start())
+        .onTrue(HoodTestSequenceCommand.create(hood));
 
     // --- Hood ---
     // RobotModeTriggers.test().and(driverController.a())
@@ -488,9 +521,11 @@ public class RobotContainer {
 
   public void startDiagnosticLogging() {
     turretDiagLogger.open();
+    hoodDiagLogger.open();
   }
 
   public void stopDiagnosticLogging() {
     turretDiagLogger.close();
+    hoodDiagLogger.close();
   }
 }

@@ -103,9 +103,9 @@ public class ShootCommand extends Command {
         isFeeding = false;
         wasDriving = false;
         waitingForExtend = false;
-        if (intakeActuator != null) {
-            intakeActuator.resetAgitate();
-        }
+        // if (intakeActuator != null) {
+        // intakeActuator.resetAgitate();
+        // }
     }
 
     @Override
@@ -146,9 +146,9 @@ public class ShootCommand extends Command {
             if (driving) {
                 drivetrain.setControl(driveRequestSupplier.get());
                 // Keep intake extended while driving
-                if (intakeActuator != null) {
-                    intakeActuator.driveExtend();
-                }
+                // if (intakeActuator != null) {
+                // intakeActuator.driveExtend();
+                // }
                 wasDriving = true;
                 waitingForExtend = false;
             } else {
@@ -158,11 +158,11 @@ public class ShootCommand extends Command {
                     wiggleDirectionPositive = true;
                     wasDriving = false;
 
-                    if (intakeActuator != null) {
-                        waitingForExtend = true;
-                        intakeActuator.driveExtend();
-                        intakeActuator.resetAgitate();
-                    }
+                    // if (intakeActuator != null) {
+                    // waitingForExtend = true;
+                    // intakeActuator.driveExtend();
+                    // intakeActuator.resetAgitate();
+                    // }
                 }
 
                 // Wiggle: rotate ±5 degrees from center
@@ -177,16 +177,16 @@ public class ShootCommand extends Command {
                 drivetrain.setControl(wiggleRequest.withRotationalRate(rate));
 
                 // Intake actuator: extend first, then agitate
-                if (intakeActuator != null) {
-                    if (waitingForExtend) {
-                        intakeActuator.driveExtend();
-                        if (intakeActuator.isExtended()) {
-                            waitingForExtend = false;
-                        }
-                    } else {
-                        intakeActuator.runAgitate();
-                    }
-                }
+                // if (intakeActuator != null) {
+                // if (waitingForExtend) {
+                // intakeActuator.driveExtend();
+                // if (intakeActuator.isExtended()) {
+                // waitingForExtend = false;
+                // }
+                // } else {
+                // intakeActuator.runAgitate();
+                // }
+                // }
             }
         }
 
@@ -203,9 +203,9 @@ public class ShootCommand extends Command {
     public void end(boolean interrupted) {
         flywheel.setVelocity(0);
         conveyor.stop();
-        if (intakeActuator != null) {
-            intakeActuator.driveExtend();
-        }
+        // if (intakeActuator != null) {
+        // intakeActuator.driveExtend();
+        // }
         isFeeding = false;
     }
 

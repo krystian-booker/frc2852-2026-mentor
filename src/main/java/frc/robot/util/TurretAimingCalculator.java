@@ -7,6 +7,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.CalibrationConstants;
 import frc.robot.Constants.SOTMConstants;
 import frc.robot.Constants.TurretAimingConstants;
@@ -151,6 +152,7 @@ public class TurretAimingCalculator {
         // Fall back to stationary aiming if SOTM disabled or below speed threshold
         if (!SOTMConstants.ENABLED || speed < SOTMConstants.MIN_SPEED_THRESHOLD) {
             AimingResult basic = calculate();
+            publishSOTMTelemetry(false, 0.0, speed, 0.0, 0.0);
             return new SOTMAimingResult(
                     basic.turretAngleDegrees(), basic.distanceMeters(), basic.isReachable(),
                     getHoodAngle(), getFlywheelRPM(), 0.0, false);
@@ -205,8 +207,24 @@ public class TurretAimingCalculator {
         boolean isReachable = distanceMeters >= TurretAimingConstants.MIN_SHOOTING_DISTANCE_METERS
                 && distanceMeters <= TurretAimingConstants.MAX_SHOOTING_DISTANCE_METERS;
 
+        publishSOTMTelemetry(true, tof, speed, virtualTarget.getX(), virtualTarget.getY());
+
         return new SOTMAimingResult(turretAngleDegrees, distanceMeters, isReachable,
                 hoodAngle, flywheelRPM, tof, true);
+    }
+
+    /**
+     * Publishes SOTM telemetry to SmartDashboard for tuning and debugging.
+     */
+    private void publishSOTMTelemetry(boolean active, double tof, double robotSpeed,
+            double virtualTargetX, double virtualTargetY) {
+        SmartDashboard.putBoolean("SOTM/Active", active);
+        SmartDashboard.putNumber("SOTM/TOF", tof);
+        SmartDashboard.putNumber("SOTM/RobotSpeed", robotSpeed);
+        SmartDashboard.putNumber("SOTM/VirtualTargetX", virtualTargetX);
+        SmartDashboard.putNumber("SOTM/VirtualTargetY", virtualTargetY);
+        SmartDashboard.putNumber("SOTM/FilteredVx", filteredVx);
+        SmartDashboard.putNumber("SOTM/FilteredVy", filteredVy);
     }
 
     /**

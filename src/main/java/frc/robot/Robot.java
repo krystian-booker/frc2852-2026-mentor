@@ -99,6 +99,7 @@ public class Robot extends TimedRobot {
     CommandScheduler.getInstance().cancelAll();
     // Restart the signal logger for SysId characterization
     SignalLogger.start();
+    m_robotContainer.startDiagnosticLogging();
   }
 
   /** This function is called periodically during test mode. */

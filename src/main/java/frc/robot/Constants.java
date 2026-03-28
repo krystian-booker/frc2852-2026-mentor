@@ -14,7 +14,7 @@ import java.util.List;
 
 public final class Constants {
 
-  public static final double SIGNAL_UPDATE_FREQUENCY_HZ = 250.0; // Status signal update rate
+  public static final double SIGNAL_UPDATE_FREQUENCY_HZ = 250.0;
 
   public static class OperatorConstants {
     public static final int DRIVER_CONTROLLER_PORT = 0;
@@ -42,14 +42,11 @@ public final class Constants {
   }
 
   public static class FlywheelConstants {
-    // Mechanical
-    public static final double GEAR_RATIO = 1.2; // Motor rotations per flywheel rotation
+    public static final double GEAR_RATIO = 1.2;
 
-    // RPM Limits
-    public static final double MIN_RPM = 1000.0; // Minimum flywheel RPM for calibration/validation
-    public static final double MAX_RPM = 4700.0; // Maximum flywheel RPM for calibration/validation
+    public static final double MIN_RPM = 1000.0;
+    public static final double MAX_RPM = 4700.0;
 
-    // PID/Feedforward Gains
     public static final double S = 2.1000;
     public static final double V = 0.2203;
     public static final double A = 0.6749;
@@ -57,70 +54,54 @@ public final class Constants {
     public static final double I = 0.0000;
     public static final double D = 0.1600;
 
-    // Current Limits
-    public static final double SUPPLY_CURRENT_LIMIT = 60.0; // Amps - main limit
-    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 40.0; // Amps - reduced limit after time
-    public static final double SUPPLY_CURRENT_LOWER_TIME = 1.0; // Seconds - time before reducing
-    public static final double STATOR_CURRENT_LIMIT = 60.0; // Amps
+    public static final double SUPPLY_CURRENT_LIMIT = 60.0;
+    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 40.0;
+    public static final double SUPPLY_CURRENT_LOWER_TIME = 1.0;
+    public static final double STATOR_CURRENT_LIMIT = 60.0;
 
-    // Velocity Control
-    public static final double VELOCITY_TOLERANCE_RPM = 100.0; // RPM tolerance for atSetpoint()
+    public static final double VELOCITY_TOLERANCE_RPM = 100.0;
   }
 
   public static class HoodConstants {
-    // Mechanical
-    public static final double GEAR_RATIO = 258.0; // Motor rotations per hood rotation
+    public static final double GEAR_RATIO = 51.6;
     public static final double MIN_POSITION_DEGREES = 0.0;
     public static final double MAX_POSITION_DEGREES = 25.0;
 
-    // PID Gains (Slot 0)
-    public static final double S = 0.4338;
-    public static final double V = 19.0191;
+    public static final double S = 3.5;
+    public static final double V = 3.8;
     public static final double A = 0.0;
-    public static final double G = 0.0352;
-    public static final double P = 80.0;
+    public static final double G = 0.18;
+    public static final double P = 150.0;
     public static final double I = 0.0;
-    public static final double D = 0.5;
+    public static final double D = 1.5;
 
-    // Motion Magic - max speed (beyond physical limit, motor-limited)
-    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 36000.0; // deg/s
-    public static final double MOTION_MAGIC_ACCELERATION = 360000.0; // deg/s^2
-    public static final double MOTION_MAGIC_JERK = 3600000.0; // deg/s^3
+    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 100.0;
+    public static final double MOTION_MAGIC_ACCELERATION = 800.0;
+    public static final double MOTION_MAGIC_JERK = 8000.0;
 
-    // Current Limits - reduced for safe testing
-    public static final double SUPPLY_CURRENT_LIMIT = 20.0; // Amps - main limit (was 40)
-    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 15.0; // Amps - reduced limit after time (was 30)
-    public static final double SUPPLY_CURRENT_LOWER_TIME = 0.5; // Seconds - time before reducing
-    public static final double STATOR_CURRENT_LIMIT = 20.0; // Amps (was 80)
+    public static final double SUPPLY_CURRENT_LIMIT = 40.0;
+    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 30.0;
+    public static final double SUPPLY_CURRENT_LOWER_TIME = 0.5;
+    public static final double STATOR_CURRENT_LIMIT = 40.0;
 
-    // Position Control
-    public static final double POSITION_TOLERANCE_DEGREES = 2; // Degrees tolerance for atPosition()
+    public static final double POSITION_TOLERANCE_DEGREES = 2;
 
-    // Homing (drives hood to reverse hard stop, detects stall, zeroes encoder)
-    public static final double HOMING_VOLTAGE = -1.5; // Volts (negative = toward zero stop; exceeds kS=0.4338V)
-    public static final double HOMING_STALL_CURRENT_THRESHOLD_AMPS = 8.0; // Stator amps (well under 20A limit, well
-                                                                          // above ~2-3A running current)
-    public static final double HOMING_STALL_DETECTION_DELAY_SECONDS = 0.25; // Ignore inrush for 250ms after motor start
-    public static final int HOMING_STALL_SAMPLE_COUNT = 5; // 5 consecutive cycles above threshold = 100ms confirmed
-                                                           // stall
-    public static final double HOMING_TIMEOUT_SECONDS = 3.0; // Safety timeout
+    public static final double HOMING_VOLTAGE = -1.5;
+    public static final double HOMING_STALL_CURRENT_THRESHOLD_AMPS = 8.0;
+    public static final double HOMING_STALL_DETECTION_DELAY_SECONDS = 0.25;
+    public static final int HOMING_STALL_SAMPLE_COUNT = 5;
+    public static final double HOMING_TIMEOUT_SECONDS = 3.0;
   }
 
   public static class ClimbConstants {
-    // Mechanical
-    public static final double GEAR_RATIO = 5; // Motor rotations per mechanism rotation - PLACEHOLDER, needs
-                                               // measuring
-
-    // Position setpoints (mechanism rotations)
+    public static final double GEAR_RATIO = 5;
     public static final double FULLY_DOWN = 0.0;
     public static final double FULL_EXTENSION_POSITION = 10.238;
     public static final double CLIMB_LIFT_POSITION = 3.0;
 
-    // Soft limits (mechanism rotations)
     public static final double MIN_POSITION = 0.0;
     public static final double MAX_POSITION = 10.0;
 
-    // PID Gains (Slot 0) - voltage-based
     public static final double S = 0.0; // Static friction (Volts)
     public static final double V = 2.0; // Velocity feedforward (Volts per RPS) - needs tuning
     public static final double A = 0.0; // Acceleration feedforward (Volts per RPS/s)
@@ -193,16 +174,13 @@ public final class Constants {
     public static final boolean ENABLED = true;
 
     /**
-     * Flywheel wheel diameter in meters.
-     * Used to convert flywheel RPM to surface (ball exit) velocity.
+     * Flywheel wheel diameter in meters. Used to convert flywheel RPM to surface (ball exit) velocity.
      */
-    public static final double FLYWHEEL_DIAMETER_METERS = 0.1016; // 4 inches — MEASURE ACTUAL
+    public static final double FLYWHEEL_DIAMETER_METERS = 0.1016; // 4 inches
 
     /**
-     * Effective ball horizontal velocity factor.
-     * ball_horizontal_speed = BALL_VELOCITY_FACTOR * flywheel_surface_speed
-     * Accounts for spin losses, air resistance, and launch angle.
-     * Start at 0.5, tune empirically.
+     * Effective ball horizontal velocity factor. ball_horizontal_speed = BALL_VELOCITY_FACTOR * flywheel_surface_speed
+     * Accounts for spin losses, air resistance, and launch angle. Start at 0.5, tune empirically.
      */
     public static final double BALL_VELOCITY_FACTOR = 0.5;
 
@@ -216,7 +194,7 @@ public final class Constants {
     public static final int TOF_ITERATIONS = 2;
 
     /** Low-pass filter alpha for velocity smoothing (0 = frozen, 1 = no filter). */
-    public static final double VELOCITY_SMOOTHING_ALPHA = 0.3;
+    public static final double VELOCITY_SMOOTHING_ALPHA = 1.0;
   }
 
   public static class TurretAimingConstants {
@@ -324,6 +302,9 @@ public final class Constants {
   }
 
   public static class QuestNavConstants {
+    // Set to false to run on vision-only pose estimation (cameras must see 2+ tags)
+    public static final boolean ENABLED = false;
+
     // Transform from robot center to Quest headset mounting position
     // Measure these values based on where the Quest is mounted on your robot
     public static final double QUEST_OFFSET_X_METERS = -0.14605; // Forward/backward from robot center
