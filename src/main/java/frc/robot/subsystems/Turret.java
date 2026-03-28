@@ -8,6 +8,7 @@ import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
+import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -36,7 +37,8 @@ public class Turret extends SubsystemBase {
     private final CANcoder canCoder;
 
     // Control requests
-    private final MotionMagicVoltage positionRequest;
+    private final PositionVoltage positionRequest;
+    private final MotionMagicVoltage motionMagicRequest;
     private final NeutralOut neutralRequest;
     private final VoltageOut voltageRequest;
 
@@ -54,7 +56,8 @@ public class Turret extends SubsystemBase {
         canCoder = new CANcoder(CANIds.TURRET_CANCODER, canBus);
 
         // Initialize control requests
-        positionRequest = new MotionMagicVoltage(0).withSlot(0);
+        positionRequest = new PositionVoltage(0).withSlot(0);
+        motionMagicRequest = new MotionMagicVoltage(0).withSlot(0);
         neutralRequest = new NeutralOut();
         voltageRequest = new VoltageOut(0);
 
@@ -109,7 +112,7 @@ public class Turret extends SubsystemBase {
         config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
 
         // Use FusedCANcoder for absolute position feedback
-        config.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.FusedCANcoder;
+        config.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.SyncCANcoder;
         config.Feedback.FeedbackRemoteSensorID = CANIds.TURRET_CANCODER;
         config.Feedback.RotorToSensorRatio = TurretConstants.GEAR_RATIO;
         config.Feedback.SensorToMechanismRatio = 1.0; // CANcoder is 1:1 with turret
@@ -273,6 +276,11 @@ public class Turret extends SubsystemBase {
     /** Read applied motor voltage for telemetry. */
     public double getMotorVoltage() {
         return motor.getMotorVoltage().refresh().getValue().in(Volts);
+    }
+
+    /** Read stator current for diagnostics. */
+    public double getStatorCurrent() {
+        return motor.getStatorCurrent().refresh().getValue().in(Amps);
     }
 
     /**

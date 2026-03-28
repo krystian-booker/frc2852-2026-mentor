@@ -164,28 +164,59 @@ public final class Constants {
     public static final double SOFT_LIMIT_BUFFER_DEGREES = 5.0; // Extra degrees beyond app range for overshoot recovery
 
     // PID Gains (Slot 0) - voltage-based, mechanism rotations (50:1 gear ratio)
-    public static final double S = 0.4800;
+    public static final double S = 1.2;
     public static final double V = 4.8862;
     public static final double A = 0.1000;
     public static final double G = 0.0;
     public static final double P = 80.0000;
-    public static final double I = 0.0;
-    public static final double D = 0.0000;
+    public static final double I = 1.0;
+    public static final double D = 1.5;
     public static final double MOTION_MAGIC_CRUISE_VELOCITY = 5.0000;
     public static final double MOTION_MAGIC_ACCELERATION = 25.0000;
     public static final double MOTION_MAGIC_JERK = 200.0000;
 
-    // Current Limits - reduced for safe testing
-    public static final double SUPPLY_CURRENT_LIMIT = 20.0; // Amps - main limit (was 80)
-    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 60; // Amps - reduced limit after time (was 60)
+    // Current Limits
+    public static final double SUPPLY_CURRENT_LIMIT = 60.0; // Amps - main limit
+    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 40.0; // Amps - reduced limit after sustained draw
     public static final double SUPPLY_CURRENT_LOWER_TIME = 0.5; // Seconds - time before reducing
-    public static final double STATOR_CURRENT_LIMIT = 40.0; // Amps (was 80)
+    public static final double STATOR_CURRENT_LIMIT = 60.0; // Amps
 
     // Position Control
     public static final double POSITION_TOLERANCE_DEGREES = 1.0; // Degrees tolerance for isAtPosition()
 
     // CANCoder
     public static final double CANCODER_OFFSET = -0.359131;
+  }
+
+  public static class SOTMConstants {
+    /** Enable/disable shooting-on-the-move compensation. */
+    public static final boolean ENABLED = true;
+
+    /**
+     * Flywheel wheel diameter in meters.
+     * Used to convert flywheel RPM to surface (ball exit) velocity.
+     */
+    public static final double FLYWHEEL_DIAMETER_METERS = 0.1016; // 4 inches — MEASURE ACTUAL
+
+    /**
+     * Effective ball horizontal velocity factor.
+     * ball_horizontal_speed = BALL_VELOCITY_FACTOR * flywheel_surface_speed
+     * Accounts for spin losses, air resistance, and launch angle.
+     * Start at 0.5, tune empirically.
+     */
+    public static final double BALL_VELOCITY_FACTOR = 0.5;
+
+    /** Minimum robot speed (m/s) to apply SOTM correction. */
+    public static final double MIN_SPEED_THRESHOLD = 0.1;
+
+    /** Maximum TOF clamp to prevent runaway corrections. */
+    public static final double MAX_TOF_SECONDS = 1.0;
+
+    /** Number of TOF convergence iterations. */
+    public static final int TOF_ITERATIONS = 2;
+
+    /** Low-pass filter alpha for velocity smoothing (0 = frozen, 1 = no filter). */
+    public static final double VELOCITY_SMOOTHING_ALPHA = 0.3;
   }
 
   public static class TurretAimingConstants {
@@ -351,6 +382,11 @@ public final class Constants {
 
     // Calibration file path on roboRIO
     public static final String CALIBRATION_FILE_PATH = "/home/lvuser/deploy/calibration/turret_calibration_data.csv";
+  }
+
+  public static class DiagnosticConstants {
+    public static final String LOG_DIRECTORY = "/home/lvuser/logs/";
+    public static final boolean TURRET_LOGGING_DEFAULT_ENABLED = true;
   }
 
   public static class AutoConstants {

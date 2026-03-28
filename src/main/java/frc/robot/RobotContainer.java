@@ -17,6 +17,7 @@ import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
 import frc.robot.subsystems.Climb;
 import frc.robot.subsystems.Vision;
+import frc.robot.util.DiagnosticLogger;
 import frc.robot.util.Telemetry;
 import frc.robot.util.TurretAimingCalculator;
 
@@ -34,6 +35,7 @@ import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
 
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.DigitalInput;
@@ -79,6 +81,18 @@ public class RobotContainer {
   // Turret aiming calculator
   private TurretAimingCalculator shooterCalculator = null;
 
+  // Diagnostic logging
+  private final DiagnosticLogger turretDiagLogger = new DiagnosticLogger("turret_diag", new String[] {
+      "timestamp", "pose_x", "pose_y", "pose_heading",
+      "vel_vx", "vel_vy", "vel_omega",
+      "target_x", "target_y", "distance",
+      "raw_turret_angle", "filtered_turret_angle",
+      "turret_setpoint", "turret_actual", "turret_error",
+      "motor_voltage", "stator_current",
+      "sotm_active", "vision_tag_count", "vision_feeding",
+      "cancoder_position"
+  });
+
   // QuestNav seeding state
   private boolean isQuestNavSeeded = false;
 
@@ -96,7 +110,9 @@ public class RobotContainer {
     // Initialize vision subsystems
     vision = new Vision(drivetrain::addVisionMeasurement);
     questNav = new QuestNavSubsystem(drivetrain, vision);
-    shooterCalculator = new TurretAimingCalculator(() -> drivetrain.getState().Pose);
+    shooterCalculator = new TurretAimingCalculator(
+        () -> drivetrain.getState().Pose,
+        () -> drivetrain.getState().Speeds);
 
     // Register named commands before building auto chooser
     NamedCommands.registerCommand("shoot",
@@ -115,6 +131,9 @@ public class RobotContainer {
       double stickY = operatorController.getLeftY();
       double magnitude = Math.hypot(stickX, stickY);
 
+      double turretSetpoint;
+      boolean sotmActive = false;
+
       if (magnitude > 0.15) {
         // Manual field-oriented override
         double fieldAngleRad = Math.atan2(-stickX, -stickY);
@@ -126,11 +145,38 @@ public class RobotContainer {
           turretAngleDeg += 360.0;
         if (turretAngleDeg > TurretConstants.MAX_POSITION_DEGREES)
           turretAngleDeg -= 360.0;
-        turret.setPosition(turretAngleDeg);
+        turretSetpoint = turretAngleDeg;
       } else {
         // Auto-aim at target
-        var result = shooterCalculator.calculate();
-        turret.setPosition(result.turretAngleDegrees());
+        var result = shooterCalculator.calculateSOTM();
+        turretSetpoint = result.turretAngleDegrees();
+        sotmActive = result.sotmActive();
+      }
+
+      turret.setPosition(turretSetpoint);
+
+      // Diagnostic CSV logging
+      if (turretDiagLogger.isOpen()) {
+        var pose = drivetrain.getState().Pose;
+        var speeds = drivetrain.getState().Speeds;
+        var target = shooterCalculator.getLastTargetPosition();
+        turretDiagLogger.logRow(
+            Timer.getFPGATimestamp(),
+            pose.getX(), pose.getY(), pose.getRotation().getDegrees(),
+            speeds.vxMetersPerSecond, speeds.vyMetersPerSecond, speeds.omegaRadiansPerSecond,
+            target.getX(), target.getY(),
+            shooterCalculator.getLastDistanceMeters(),
+            shooterCalculator.getLastRawAngleDegrees(),
+            turretSetpoint,
+            turretSetpoint,
+            turret.getPositionDegrees(),
+            turretSetpoint - turret.getPositionDegrees(),
+            turret.getMotorVoltage(),
+            turret.getStatorCurrent(),
+            sotmActive ? 1.0 : 0.0,
+            vision.getVisibleTagCount(),
+            vision.isFeedingEnabled() ? 1.0 : 0.0,
+            turret.getCANCoderPositionDegrees());
       }
     }).withName("TurretAimWithOverride"));
 
@@ -151,7 +197,7 @@ public class RobotContainer {
 
   private void configureDriverBindings() {
     // Auto-extend intake actuator at the start of autonomous and teleop
-    RobotModeTriggers.teleop().onTrue(intakeActuator.extend());
+    // RobotModeTriggers.teleop().onTrue(intakeActuator.extend());
 
     // LEFT TRIGGER - Intake (held)
     // Runs the intake roller to acquire game pieces
@@ -438,5 +484,13 @@ public class RobotContainer {
 
   public Command getAutonomousCommand() {
     return autoChooser.getSelected();
+  }
+
+  public void startDiagnosticLogging() {
+    turretDiagLogger.open();
+  }
+
+  public void stopDiagnosticLogging() {
+    turretDiagLogger.close();
   }
 }
