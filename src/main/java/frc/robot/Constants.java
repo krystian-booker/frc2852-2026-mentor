@@ -237,7 +237,7 @@ public final class Constants {
 
   public static class IntakeActuatorConstants {
     // Current Limits
-    public static final int SMART_CURRENT_LIMIT = 30; // Amps
+    public static final int SMART_CURRENT_LIMIT = 60; // Amps
     public static final int SECONDARY_CURRENT_LIMIT = 60; // Amps
 
     // Open-loop duty cycles
@@ -248,13 +248,14 @@ public final class Constants {
     public static final int ENCODER_COUNTS_PER_REV = 8192;
     public static final double GEAR_RATIO = 1.0;
     public static final double RETRACTED_POSITION_ROTATIONS = 0.0;
-    public static final double EXTENDED_POSITION_ROTATIONS = 5.0; // PLACEHOLDER - measure on robot
+    public static final double RETRACTED_POSITION_ROTATIONS_AG = 0.5;
+    public static final double EXTENDED_POSITION_ROTATIONS = 2.1;
     public static final double POSITION_TOLERANCE_ROTATIONS = 0.25;
 
     // Closed-loop position PID
-    public static final double KP = 1.0;
+    public static final double KP = 3;
     public static final double KI = 0.0;
-    public static final double KD = 0.05;
+    public static final double KD = 0.0;
     public static final double MAX_OUTPUT = 1.0;
     public static final double MIN_OUTPUT = -1.0;
 
@@ -273,7 +274,7 @@ public final class Constants {
     public static final double OUTTAKE_SPEED = -1.0; // Speed for ejecting game pieces
 
     // Current Limits
-    public static final int SMART_CURRENT_LIMIT = 30; // Amps
+    public static final int SMART_CURRENT_LIMIT = 60; // Amps
     public static final int SECONDARY_CURRENT_LIMIT = 80; // Amps
   }
 
@@ -283,11 +284,11 @@ public final class Constants {
 
     // Preset Speeds (duty cycle -1.0 to 1.0)
     // Running at max speed for 8 balls/second throughput
-    public static final double FEED_SPEED = 0.7; // Full speed for feeding shooter
-    public static final double REVERSE_SPEED = -0.5; // Reverse for clearing jams
+    public static final double FEED_SPEED = 1.0; // Full speed for feeding shooter
+    public static final double REVERSE_SPEED = -1.0; // Reverse for clearing jams
 
     // Current Limits - higher limits for sustained high-speed operation
-    public static final int SMART_CURRENT_LIMIT = 30; // Amps
+    public static final int SMART_CURRENT_LIMIT = 60; // Amps
     public static final int SECONDARY_CURRENT_LIMIT = 80; // Amps
   }
 
@@ -319,12 +320,9 @@ public final class Constants {
    * Constants for the turret calibration system.
    *
    * <p>
-   * The calibration grid maps the field into cells of GRID_CELL_SIZE_METERS. Each
-   * cell stores
-   * a tuned hood angle and flywheel RPM. The webapp records per-cell calibration
-   * data, and
-   * GenerateLookupTables.java processes it into 2D grid arrays for runtime
-   * bilinear interpolation.
+   * The calibration grid maps the field into cells of GRID_CELL_SIZE_METERS. Each cell stores a tuned hood angle and
+   * flywheel RPM. The webapp records per-cell calibration data, and GenerateLookupTables.java processes it into 2D grid
+   * arrays for runtime bilinear interpolation.
    */
   public static class CalibrationConstants {
     // Field dimensions
@@ -332,8 +330,7 @@ public final class Constants {
     public static final double FIELD_WIDTH_METERS = 8.07;
 
     /**
-     * Grid cell size in meters. Used for both UI display and 2D lookup table
-     * generation.
+     * Grid cell size in meters. Used for both UI display and 2D lookup table generation.
      */
     public static final double GRID_CELL_SIZE_METERS = 0.5;
     public static final double CALIBRATION_START_X = 0.0;
@@ -385,7 +382,7 @@ public final class Constants {
             new Rotation3d(Math.toRadians(0), Math.toRadians(0), Math.toRadians(90))));
 
     // All cameras
-    public static final List<CameraConfig> CAMERAS = List.of(LEFT_CAMERA, RIGHT_CAMERA);
+    public static final List<CameraConfig> CAMERAS = List.of(RIGHT_CAMERA);
 
     // The layout of the AprilTags on the field
     public static final AprilTagFieldLayout kTagLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);

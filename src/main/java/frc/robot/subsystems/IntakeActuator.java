@@ -68,12 +68,17 @@ public class IntakeActuator extends SubsystemBase {
 
     public void driveExtend() {
         closedLoopController.setSetpoint(IntakeActuatorConstants.EXTENDED_POSITION_ROTATIONS,
-                SparkBase.ControlType.kPosition, ClosedLoopSlot.kSlot0);
+                SparkBase.ControlType.kPosition);
+    }
+
+    public void driveRetractAg() {
+        closedLoopController.setSetpoint(IntakeActuatorConstants.RETRACTED_POSITION_ROTATIONS_AG,
+                SparkBase.ControlType.kPosition);
     }
 
     public void driveRetract() {
         closedLoopController.setSetpoint(IntakeActuatorConstants.RETRACTED_POSITION_ROTATIONS,
-                SparkBase.ControlType.kPosition, ClosedLoopSlot.kSlot0);
+                SparkBase.ControlType.kPosition);
     }
 
     public void driveExtendOpenLoop() {
@@ -102,6 +107,33 @@ public class IntakeActuator extends SubsystemBase {
         motor.set(0);
     }
 
+    // Imperative agitation API (for use inside execute() loops)
+
+    private boolean agitateRetract;
+    private long agitateTimer;
+
+    /** Resets agitation state. Call once before starting agitation cycles. */
+    public void resetAgitate() {
+        agitateRetract = true;
+        agitateTimer = System.currentTimeMillis();
+    }
+
+    /** Drives one cycle of agitation. Call each execute() iteration. */
+    public void runAgitate() {
+        double timeout = agitateRetract
+                ? IntakeActuatorConstants.AGITATE_RETRACT_SECONDS
+                : IntakeActuatorConstants.AGITATE_EXTEND_SECONDS;
+        if (System.currentTimeMillis() - agitateTimer >= timeout * 1000) {
+            agitateRetract = !agitateRetract;
+            agitateTimer = System.currentTimeMillis();
+        }
+        if (agitateRetract) {
+            driveRetractAg();
+        } else {
+            driveExtend();
+        }
+    }
+
     // Commands
 
     public Command extend() {
@@ -127,13 +159,8 @@ public class IntakeActuator extends SubsystemBase {
     }
 
     public Command agitate() {
-        return Commands.repeatingSequence(
-                runOnce(this::driveRetract)
-                        .andThen(Commands.idle(this).until(this::isRetracted))
-                        .withTimeout(IntakeActuatorConstants.AGITATE_RETRACT_SECONDS),
-                runOnce(this::driveExtend)
-                        .andThen(Commands.idle(this).until(this::isExtended))
-                        .withTimeout(IntakeActuatorConstants.AGITATE_EXTEND_SECONDS))
+        return runOnce(this::resetAgitate)
+                .andThen(run(this::runAgitate))
                 .finallyDo(this::driveExtend)
                 .withName("IntakeActuator.agitate");
     }

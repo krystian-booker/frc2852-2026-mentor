@@ -4,6 +4,7 @@ import frc.robot.Constants.ClimbConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
 import frc.robot.Constants.TurretConstants;
+import frc.robot.commands.DumbShootCommand;
 import frc.robot.commands.ShootCommand;
 import frc.robot.commands.TurretCalibrationCommand;
 import frc.robot.generated.TunerConstants;
@@ -32,7 +33,6 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
 
-import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -100,8 +100,10 @@ public class RobotContainer {
 
     // Register named commands before building auto chooser
     NamedCommands.registerCommand("shoot",
-        new ShootCommand(flywheel, hood, conveyor, intakeActuator, turret, shooterCalculator));
+        new ShootCommand(flywheel, hood, conveyor, turret, shooterCalculator));
     NamedCommands.registerCommand("extendIntake", intakeActuator.extend());
+    NamedCommands.registerCommand("agitateIntake", intakeActuator.agitate());
+    NamedCommands.registerCommand("runIntake", intake.runCommand());
 
     autoChooser = AutoBuilder.buildAutoChooser();
     autoChooser.addOption("Drive Back & Shoot", buildDriveBackAndShootAuto());
@@ -153,18 +155,19 @@ public class RobotContainer {
 
     // LEFT TRIGGER - Intake (held)
     // Runs the intake roller to acquire game pieces
-    driverController.leftTrigger(0.5).whileTrue(intake.run(intake::runIntake));
+    driverController.leftTrigger(0.5).whileTrue(intake.run(intake::runIntake).finallyDo(intake::stop));
 
     // RIGHT TRIGGER - Shoot (held)
     // Spins up flywheel and sets hood from LUT, then feeds when ready
     // Locks wheels in X-brake while shooting unless driver is actively driving
     driverController.rightTrigger(0.5).whileTrue(
-        new ShootCommand(flywheel, hood, conveyor, intakeActuator, turret,
+        new ShootCommand(flywheel, hood, conveyor, turret,
             shooterCalculator,
             drivetrain,
             this::getDriveRequest,
-            this::isDriverActive)
-            .withName("Shoot"));
+            this::isDriverActive,
+            intakeActuator)
+                .withName("Shoot"));
 
     // DEFAULT COMMAND - Field-Centric Drive
     // Note that X is defined as forward according to WPILib convention,
@@ -200,9 +203,34 @@ public class RobotContainer {
     operatorController.povLeft()
         .onTrue(Commands.runOnce(() -> climb.setPosition(ClimbConstants.FULLY_DOWN), climb));
 
+    // RIGHT TRIGGER - Dumb Shot (held)
+    // Fixed hood angle and flywheel RPM, drivetrain holds stationary
+    operatorController.rightTrigger(0.5).whileTrue(
+        new DumbShootCommand(flywheel, hood, conveyor, intakeActuator)
+            .withName("DumbShoot"));
+
     // Intake actuator controls
     operatorController.a().onTrue(intakeActuator.extend());
     operatorController.b().onTrue(intakeActuator.retract());
+    operatorController.x().onTrue(intakeActuator.agitate());
+
+    // START - Reseed QuestNav from vision
+    // Drive to where 2+ AprilTags are visible, then press start to reseed position
+    operatorController.start().onTrue(Commands.sequence(
+        Commands.runOnce(() -> {
+          isQuestNavSeeded = false;
+          questNav.clearSeeded();
+          vision.setFeedingEnabled(true);
+        }),
+        led.setPatternCommand(LED.Pattern.RED),
+        Commands.waitUntil(() -> vision.getVisibleTagCount() >= 2),
+        Commands.runOnce(() -> {
+          if (questNav.seedPoseFromVision()) {
+            isQuestNavSeeded = true;
+            vision.setFeedingEnabled(false);
+          }
+        }),
+        led.setPatternCommand(LED.Pattern.GREEN)).ignoringDisable(true));
 
     // Climb manual jog controls for zeroing
     RobotModeTriggers.test().and(operatorController.rightBumper()
@@ -212,10 +240,8 @@ public class RobotContainer {
   }
 
   /**
-   * Configure QuestNav seeding with LED feedback.
-   * LEDs start OFF, turn RED when searching for tags, and GREEN once seeded.
-   * The physical reseed button (DIO) resets to RED and re-seeds when 2+ tags
-   * visible.
+   * Configure QuestNav seeding with LED feedback. LEDs start OFF, turn RED when searching for tags, and GREEN once
+   * seeded. The physical reseed button (DIO) resets to RED and re-seeds when 2+ tags visible.
    */
   private void questNavInitialization() {
     // Automatic initial seeding: poll every second while disabled until first seed
@@ -258,8 +284,7 @@ public class RobotContainer {
   }
 
   /**
-   * Configure test mode bindings using RobotModeTriggers. These bindings are only
-   * active when the robot is in test
+   * Configure test mode bindings using RobotModeTriggers. These bindings are only active when the robot is in test
    * mode.
    */
   private void configureTestBindings() {
@@ -268,11 +293,11 @@ public class RobotContainer {
     // Right bumper toggles calibration mode - reads NetworkTables inputs
     // applies to hood/flywheel in real-time
     // TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
-    //     hood, flywheel, conveyor, intakeActuator,
-    //     () -> drivetrain.getState().Pose, shooterCalculator,
-    //     drivetrain,
-    //     this::getDriveRequest,
-    //     this::isDriverActive);
+    // hood, flywheel, conveyor, intakeActuator,
+    // () -> drivetrain.getState().Pose, shooterCalculator,
+    // drivetrain,
+    // this::getDriveRequest,
+    // this::isDriverActive);
 
     // // Only allow toggling calibration mode while in test mode
     // RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
@@ -393,20 +418,22 @@ public class RobotContainer {
         .withVelocityX(-1.0) // backwards at 1 m/s
         .withVelocityY(0)
         .withRotationalRate(0);
-
-    Pose2d[] startPose = new Pose2d[1];
+    SwerveRequest.Idle stop = new SwerveRequest.Idle();
 
     return Commands.sequence(
-        // Capture starting pose
-        Commands.runOnce(() -> startPose[0] = drivetrain.getState().Pose),
-        // Drive backwards and extend intake simultaneously
-        Commands.parallel(
+        // Drive backwards for 0.5m (at 1 m/s ≈ 0.6s with acceleration margin) and extend intake
+        // deadline() ends when the first command (drive) finishes, interrupting extend()
+        // The intake motor keeps its setpoint so it continues extending during the shoot phase
+        Commands.deadline(
             drivetrain.applyRequest(() -> driveBack)
-                .until(() -> startPose[0].getTranslation()
-                    .getDistance(drivetrain.getState().Pose.getTranslation()) >= 0.5),
+                .withTimeout(0.6),
             intakeActuator.extend()),
+        // Stop drivetrain before shooting
+        drivetrain.applyRequest(() -> stop).withTimeout(0.02),
         // Shoot (runs until auto period ends)
-        new ShootCommand(flywheel, hood, conveyor, intakeActuator, turret, shooterCalculator));
+        Commands.parallel(new ShootCommand(flywheel, hood, conveyor, turret, shooterCalculator),
+            intakeActuator.agitate(),
+            intake.runCommand()));
   }
 
   public Command getAutonomousCommand() {
