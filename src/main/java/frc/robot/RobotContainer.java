@@ -6,6 +6,7 @@ import frc.robot.Constants.QuestNavConstants;
 import frc.robot.Constants.TurretConstants;
 import frc.robot.commands.DumbShootCommand;
 import frc.robot.commands.FlywheelSysIdCommand;
+import frc.robot.commands.FlywheelTestCommand;
 import frc.robot.commands.HoodTestSequenceCommand;
 import frc.robot.commands.ShootCommand;
 import frc.robot.commands.TurretCalibrationCommand;
@@ -450,12 +451,10 @@ public class RobotContainer {
         .toggleOnTrue(new FlywheelSysIdCommand(flywheel));
 
     // --- Flywheel ---
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(flywheel.run(()
-    // ->
-    // flywheel.setVelocity(2000)));
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(flywheel.run(()
-    // ->
-    // flywheel.setVelocity(3500)));
+    RobotModeTriggers.test().and(driverController.a())
+        .whileTrue(new FlywheelTestCommand(flywheel, false, 4000.0));
+    RobotModeTriggers.test().and(driverController.b())
+        .whileTrue(new FlywheelTestCommand(flywheel, true, 4000.0));
     // RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.run(()
     // -> flywheel.setVelocity(6000)));
     // RobotModeTriggers.test().and(driverController.y())

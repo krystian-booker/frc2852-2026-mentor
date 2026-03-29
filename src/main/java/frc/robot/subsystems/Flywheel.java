@@ -153,6 +153,19 @@ public class Flywheel extends SubsystemBase {
         }
     }
 
+    public void setBangBangVelocity(double rpm) {
+        targetVelocityRPM = Math.max(0, rpm);
+        if (targetVelocityRPM == 0.0) {
+            leaderMotor.setControl(neutralRequest);
+        } else {
+            if (getCurrentVelocityRPM() < targetVelocityRPM) {
+                leaderMotor.setControl(voltageRequest.withOutput(12.0));
+            } else {
+                leaderMotor.setControl(voltageRequest.withOutput(0.0));
+            }
+        }
+    }
+
     public boolean atSetpoint() {
         double currentRPM = getCurrentVelocityRPM();
         if (targetVelocityRPM == 0.0) {

@@ -46,10 +46,8 @@ EXISTING_KI = 0.0000;
 EXISTING_KD = 0.1600;
 
 %% ===================== LOAD DATA =====================
-[filename, pathname] = uigetfile('*.csv', 'Select flywheel SysId CSV file');
-if isequal(filename, 0)
-    error('No file selected.');
-end
+filename = 'flywheel_sysid_20260328_225404.csv';
+pathname = '';
 data = readtable(fullfile(pathname, filename));
 
 % Parse columns
@@ -226,6 +224,7 @@ cs_t   = t(idx_cs);
 cs_vel = vel_rps(idx_cs);
 cs_cmd = cmd_value(idx_cs);
 cs_ct  = cmd_type(idx_cs);
+cs_i   = stator_i(idx_cs);
 
 % Segment into individual step experiments (hold portions only)
 % Each segment where cmd_type == 1 is one experiment
@@ -248,6 +247,7 @@ for k = 1:n_segments
     seg_t   = cs_t(seg_idx);
     seg_vel = cs_vel(seg_idx);
     seg_cmd = cs_cmd(seg_idx);
+    seg_i   = cs_i(seg_idx);
 
     % Resample segment onto uniform time grid
     seg_t_rel = seg_t - seg_t(1);
@@ -256,9 +256,9 @@ for k = 1:n_segments
         continue;
     end
     seg_vel_uni = interp1(seg_t_rel, seg_vel, seg_t_uni, 'linear', 'extrap');
-    seg_cmd_uni = interp1(seg_t_rel, seg_cmd, seg_t_uni, 'previous', 'extrap');
+    seg_i_uni   = interp1(seg_t_rel, seg_i, seg_t_uni, 'linear', 'extrap');
 
-    seg_data = iddata(seg_vel_uni, seg_cmd_uni, Ts);
+    seg_data = iddata(seg_vel_uni, seg_i_uni, Ts);
     seg_data.InputName  = {'Current'};
     seg_data.InputUnit  = {'A'};
     seg_data.OutputName = {'Velocity'};
@@ -439,7 +439,7 @@ vs_i   = stator_i(idx_vs);
 vs_mv  = motor_v(idx_vs);
 
 % Identify voltage-to-velocity plant
-vs_input = vs_cmd;
+vs_input = vs_mv;
 vs_input(vs_ct == 2) = 0;
 
 if length(vs_vel) > 20

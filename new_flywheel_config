@@ -1,0 +1,6 @@
+public static final double S = 1.4934;
+public static final double V = 0.0698;
+public static final double A = 0.8589;
+public static final double P = 12.6325;
+public static final double I = 37.9896;
+public static final double D = 0.0000;
