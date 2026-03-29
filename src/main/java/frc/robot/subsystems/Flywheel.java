@@ -8,6 +8,7 @@ import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.TorqueCurrentFOC;
 import com.ctre.phoenix6.controls.VelocityTorqueCurrentFOC;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -16,6 +17,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
+import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -34,11 +36,13 @@ public class Flywheel extends SubsystemBase {
     // Control requests
     private final VelocityTorqueCurrentFOC velocityRequest;
     private final TorqueCurrentFOC torqueCurrentRequest;
+    private final VoltageOut voltageRequest;
     private final NeutralOut neutralRequest;
 
     // Status signals
     private final StatusSignal<AngularVelocity> leaderVelocity;
     private final StatusSignal<Current> statorCurrent;
+    private final StatusSignal<Voltage> supplyVoltage;
 
     // State
     private double targetVelocityRPM = 0.0;
@@ -52,6 +56,7 @@ public class Flywheel extends SubsystemBase {
         // Initialize control requests
         velocityRequest = new VelocityTorqueCurrentFOC(0).withSlot(0);
         torqueCurrentRequest = new TorqueCurrentFOC(0);
+        voltageRequest = new VoltageOut(0);
         neutralRequest = new NeutralOut();
 
         // Configure motors
@@ -61,11 +66,13 @@ public class Flywheel extends SubsystemBase {
         // Cache status signals
         leaderVelocity = leaderMotor.getVelocity();
         statorCurrent = leaderMotor.getStatorCurrent();
+        supplyVoltage = leaderMotor.getSupplyVoltage();
 
         BaseStatusSignal.setUpdateFrequencyForAll(
                 Constants.SIGNAL_UPDATE_FREQUENCY_HZ,
                 leaderVelocity,
                 statorCurrent,
+                supplyVoltage,
                 leaderMotor.getPosition(),
                 leaderMotor.getMotorVoltage());
 
@@ -174,6 +181,22 @@ public class Flywheel extends SubsystemBase {
     /** Apply raw torque current output for feedforward characterization. */
     public void applyCurrent(double amps) {
         leaderMotor.setControl(torqueCurrentRequest.withOutput(amps));
+    }
+
+    /** Apply raw voltage output for system identification characterization. */
+    public void applyVoltage(double volts) {
+        leaderMotor.setControl(voltageRequest.withOutput(volts));
+    }
+
+    /** Get applied motor voltage in Volts. */
+    public double getMotorVoltage() {
+        return leaderMotor.getMotorVoltage().refresh().getValue().in(Volts);
+    }
+
+    /** Get supply (battery) voltage in Volts. */
+    public double getSupplyVoltage() {
+        BaseStatusSignal.refreshAll(supplyVoltage);
+        return supplyVoltage.getValue().in(Volts);
     }
 
     /** Stop the flywheel and clear target RPM. */

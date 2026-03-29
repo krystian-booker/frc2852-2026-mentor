@@ -5,6 +5,7 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
 import frc.robot.Constants.TurretConstants;
 import frc.robot.commands.DumbShootCommand;
+import frc.robot.commands.FlywheelSysIdCommand;
 import frc.robot.commands.HoodTestSequenceCommand;
 import frc.robot.commands.ShootCommand;
 import frc.robot.commands.TurretCalibrationCommand;
@@ -297,14 +298,12 @@ public class RobotContainer {
           Commands.runOnce(() -> {
             isQuestNavSeeded = false;
             questNav.clearSeeded();
-            vision.setFeedingEnabled(true);
           }),
           led.setPatternCommand(LED.Pattern.RED),
           Commands.waitUntil(() -> vision.getVisibleTagCount() >= 2),
           Commands.runOnce(() -> {
             if (questNav.seedPoseFromVision()) {
               isQuestNavSeeded = true;
-              vision.setFeedingEnabled(false);
             }
           }),
           led.setPatternCommand(LED.Pattern.GREEN)).ignoringDisable(true));
@@ -332,7 +331,6 @@ public class RobotContainer {
               if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
                 if (questNav.seedPoseFromVision()) {
                   isQuestNavSeeded = true;
-                  vision.setFeedingEnabled(false);
                 }
               }
             })).repeatedly().until(() -> isQuestNavSeeded),
@@ -340,12 +338,24 @@ public class RobotContainer {
         led.setPatternCommand(LED.Pattern.GREEN)).ignoringDisable(true);
     RobotModeTriggers.disabled().onTrue(initialSeedingCommand);
 
+    // One-time auto-seed while enabled: seed QuestNav if it hasn't been seeded yet
+    // After seeding, QuestNav feeds drivetrain via addVisionMeasurement (soft correction)
+    // and vision also continues feeding when 2+ tags visible (redundancy)
+    Command enabledAutoSeedCommand = Commands.run(() -> {
+      if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
+        if (questNav.seedPoseFromVision()) {
+          isQuestNavSeeded = true;
+        }
+      }
+    }).ignoringDisable(false);
+    RobotModeTriggers.teleop().whileTrue(enabledAutoSeedCommand);
+    RobotModeTriggers.autonomous().whileTrue(enabledAutoSeedCommand);
+
     // Reseed button: only works while disabled so a mid-match press is ignored
     reseedButton.and(RobotModeTriggers.disabled()).onTrue(Commands.sequence(
         Commands.runOnce(() -> {
           isQuestNavSeeded = false;
           questNav.clearSeeded();
-          vision.setFeedingEnabled(true);
         }),
         // Turn RED while waiting for tags
         led.setPatternCommand(LED.Pattern.RED),
@@ -354,7 +364,6 @@ public class RobotContainer {
         Commands.runOnce(() -> {
           if (questNav.seedPoseFromVision()) {
             isQuestNavSeeded = true;
-            vision.setFeedingEnabled(false);
           }
         }),
         // Turn GREEN once re-seeded
@@ -436,9 +445,9 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop,
     // turret));
 
-    // --- Flywheel Auto-Tune ---
-    // RobotModeTriggers.test().and(driverController.back()).toggleOnTrue(new
-    // FlywheelAutoTuneCommand(flywheel));
+    // --- Flywheel System Identification (for MATLAB) ---
+    RobotModeTriggers.test().and(driverController.back())
+        .toggleOnTrue(new FlywheelSysIdCommand(flywheel));
 
     // --- Flywheel ---
     // RobotModeTriggers.test().and(driverController.a()).whileTrue(flywheel.run(()
