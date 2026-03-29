@@ -121,6 +121,7 @@ public class Vision extends SubsystemBase {
         CameraInstance bestCamera = null;
         double bestStdDevSum = Double.MAX_VALUE;
         EstimatedRobotPose bestEstimate = null;
+        int bestNumTags = 0;
 
         // Process each camera
         for (CameraInstance cam : cameras) {
@@ -157,6 +158,7 @@ public class Vision extends SubsystemBase {
                         bestStdDevSum = stdDevSum;
                         bestCamera = cam;
                         bestEstimate = visionEst.get();
+                        bestNumTags = result.getTargets().size();
                     }
                 }
             }
@@ -177,8 +179,8 @@ public class Vision extends SubsystemBase {
                 getSimDebugField().getObject("VisionEstimation").setPose(latestEstimate);
             }
 
-            // Feed to drivetrain if enabled
-            if (feedingEnabled) {
+            // Feed to drivetrain if enabled and we see multiple tags for better accuracy
+            if (feedingEnabled && bestNumTags >= 2) {
                 estConsumer.accept(latestEstimate, latestEstimateTimestamp, curStdDevs);
             }
         } else if (Robot.isSimulation()) {

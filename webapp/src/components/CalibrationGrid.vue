@@ -11,8 +11,7 @@ const emit = defineEmits<{
 }>()
 
 const props = defineProps<{
-  selectedRow?: number
-  selectedCol?: number
+  selectedCells: Set<string>
 }>()
 
 const store = useCalibrationStore()
@@ -43,7 +42,7 @@ const gridCells = computed(() => {
     for (let col = 0; col < store.gridCols; col++) {
       const hasPoint = store.hasPointAt(row, col)
       const isCurrent = row === currentRow.value && col === currentCol.value
-      const isSelected = row === props.selectedRow && col === props.selectedCol
+      const isSelected = props.selectedCells.has(`${row},${col}`)
       cells.push({ row, col, hasPoint, isCurrent, isSelected })
     }
   }

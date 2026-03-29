@@ -14,7 +14,7 @@ import java.util.List;
 
 public final class Constants {
 
-  public static final double SIGNAL_UPDATE_FREQUENCY_HZ = 250.0; // Status signal update rate
+  public static final double SIGNAL_UPDATE_FREQUENCY_HZ = 250.0;
 
   public static class OperatorConstants {
     public static final int DRIVER_CONTROLLER_PORT = 0;
@@ -42,14 +42,11 @@ public final class Constants {
   }
 
   public static class FlywheelConstants {
-    // Mechanical
-    public static final double GEAR_RATIO = 1.2; // Motor rotations per flywheel rotation
+    public static final double GEAR_RATIO = 1.2;
 
-    // RPM Limits
-    public static final double MIN_RPM = 1000.0; // Minimum flywheel RPM for calibration/validation
-    public static final double MAX_RPM = 4700.0; // Maximum flywheel RPM for calibration/validation
+    public static final double MIN_RPM = 1000.0;
+    public static final double MAX_RPM = 4700.0;
 
-    // PID/Feedforward Gains
     public static final double S = 2.1000;
     public static final double V = 0.2203;
     public static final double A = 0.6749;
@@ -57,70 +54,54 @@ public final class Constants {
     public static final double I = 0.0000;
     public static final double D = 0.1600;
 
-    // Current Limits
-    public static final double SUPPLY_CURRENT_LIMIT = 60.0; // Amps - main limit
-    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 40.0; // Amps - reduced limit after time
-    public static final double SUPPLY_CURRENT_LOWER_TIME = 1.0; // Seconds - time before reducing
-    public static final double STATOR_CURRENT_LIMIT = 60.0; // Amps
+    public static final double SUPPLY_CURRENT_LIMIT = 60.0;
+    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 40.0;
+    public static final double SUPPLY_CURRENT_LOWER_TIME = 1.0;
+    public static final double STATOR_CURRENT_LIMIT = 60.0;
 
-    // Velocity Control
-    public static final double VELOCITY_TOLERANCE_RPM = 100.0; // RPM tolerance for atSetpoint()
+    public static final double VELOCITY_TOLERANCE_RPM = 100.0;
   }
 
   public static class HoodConstants {
-    // Mechanical
-    public static final double GEAR_RATIO = 258.0; // Motor rotations per hood rotation
+    public static final double GEAR_RATIO = 51.6;
     public static final double MIN_POSITION_DEGREES = 0.0;
     public static final double MAX_POSITION_DEGREES = 25.0;
 
-    // PID Gains (Slot 0)
-    public static final double S = 0.4338;
-    public static final double V = 19.0191;
+    public static final double S = 3.5;
+    public static final double V = 3.8;
     public static final double A = 0.0;
-    public static final double G = 0.0352;
-    public static final double P = 80.0;
+    public static final double G = 0.18;
+    public static final double P = 150.0;
     public static final double I = 0.0;
-    public static final double D = 0.5;
+    public static final double D = 1.5;
 
-    // Motion Magic - max speed (beyond physical limit, motor-limited)
-    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 36000.0; // deg/s
-    public static final double MOTION_MAGIC_ACCELERATION = 360000.0; // deg/s^2
-    public static final double MOTION_MAGIC_JERK = 3600000.0; // deg/s^3
+    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 100.0;
+    public static final double MOTION_MAGIC_ACCELERATION = 800.0;
+    public static final double MOTION_MAGIC_JERK = 8000.0;
 
-    // Current Limits - reduced for safe testing
-    public static final double SUPPLY_CURRENT_LIMIT = 20.0; // Amps - main limit (was 40)
-    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 15.0; // Amps - reduced limit after time (was 30)
-    public static final double SUPPLY_CURRENT_LOWER_TIME = 0.5; // Seconds - time before reducing
-    public static final double STATOR_CURRENT_LIMIT = 20.0; // Amps (was 80)
+    public static final double SUPPLY_CURRENT_LIMIT = 40.0;
+    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 30.0;
+    public static final double SUPPLY_CURRENT_LOWER_TIME = 0.5;
+    public static final double STATOR_CURRENT_LIMIT = 40.0;
 
-    // Position Control
-    public static final double POSITION_TOLERANCE_DEGREES = 2; // Degrees tolerance for atPosition()
+    public static final double POSITION_TOLERANCE_DEGREES = 2;
 
-    // Homing (drives hood to reverse hard stop, detects stall, zeroes encoder)
-    public static final double HOMING_VOLTAGE = -1.5; // Volts (negative = toward zero stop; exceeds kS=0.4338V)
-    public static final double HOMING_STALL_CURRENT_THRESHOLD_AMPS = 8.0; // Stator amps (well under 20A limit, well
-                                                                          // above ~2-3A running current)
-    public static final double HOMING_STALL_DETECTION_DELAY_SECONDS = 0.25; // Ignore inrush for 250ms after motor start
-    public static final int HOMING_STALL_SAMPLE_COUNT = 5; // 5 consecutive cycles above threshold = 100ms confirmed
-                                                           // stall
-    public static final double HOMING_TIMEOUT_SECONDS = 3.0; // Safety timeout
+    public static final double HOMING_VOLTAGE = -1.5;
+    public static final double HOMING_STALL_CURRENT_THRESHOLD_AMPS = 8.0;
+    public static final double HOMING_STALL_DETECTION_DELAY_SECONDS = 0.25;
+    public static final int HOMING_STALL_SAMPLE_COUNT = 5;
+    public static final double HOMING_TIMEOUT_SECONDS = 3.0;
   }
 
   public static class ClimbConstants {
-    // Mechanical
-    public static final double GEAR_RATIO = 5; // Motor rotations per mechanism rotation - PLACEHOLDER, needs
-                                               // measuring
-
-    // Position setpoints (mechanism rotations)
+    public static final double GEAR_RATIO = 5;
     public static final double FULLY_DOWN = 0.0;
     public static final double FULL_EXTENSION_POSITION = 10.238;
     public static final double CLIMB_LIFT_POSITION = 3.0;
 
-    // Soft limits (mechanism rotations)
     public static final double MIN_POSITION = 0.0;
     public static final double MAX_POSITION = 10.0;
 
-    // PID Gains (Slot 0) - voltage-based
     public static final double S = 0.0; // Static friction (Volts)
     public static final double V = 2.0; // Velocity feedforward (Volts per RPS) - needs tuning
     public static final double A = 0.0; // Acceleration feedforward (Volts per RPS/s)
@@ -151,33 +132,35 @@ public final class Constants {
     // Forward offset: encoder reading (degrees) when turret points robot-forward.
     public static final double FORWARD_ENCODER_POSITION_DEGREES = 48.5;
 
-    // Physical encoder limits (used for firmware soft limits — do not change without re-verifying travel)
+    // Physical encoder limits (used for firmware soft limits — do not change
+    // without re-verifying travel)
     public static final double ENCODER_MIN_DEGREES = -180.0;
     public static final double ENCODER_MAX_DEGREES = 180.0;
 
-    // Aiming-relative limits (0 = forward): encoder limits shifted by forward offset
+    // Aiming-relative limits (0 = forward): encoder limits shifted by forward
+    // offset
     public static final double MIN_POSITION_DEGREES = ENCODER_MIN_DEGREES - FORWARD_ENCODER_POSITION_DEGREES; // -225
     public static final double MAX_POSITION_DEGREES = ENCODER_MAX_DEGREES - FORWARD_ENCODER_POSITION_DEGREES; // +135
 
     public static final double SOFT_LIMIT_BUFFER_DEGREES = 5.0; // Extra degrees beyond app range for overshoot recovery
 
     // PID Gains (Slot 0) - voltage-based, mechanism rotations (50:1 gear ratio)
-    public static final double S = 0.4800;
+    public static final double S = 1.2;
     public static final double V = 4.8862;
     public static final double A = 0.1000;
     public static final double G = 0.0;
     public static final double P = 80.0000;
-    public static final double I = 0.0;
-    public static final double D = 0.0000;
+    public static final double I = 1.0;
+    public static final double D = 1.5;
     public static final double MOTION_MAGIC_CRUISE_VELOCITY = 5.0000;
     public static final double MOTION_MAGIC_ACCELERATION = 25.0000;
     public static final double MOTION_MAGIC_JERK = 200.0000;
 
-    // Current Limits - reduced for safe testing
-    public static final double SUPPLY_CURRENT_LIMIT = 20.0; // Amps - main limit (was 80)
-    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 60; // Amps - reduced limit after time (was 60)
+    // Current Limits
+    public static final double SUPPLY_CURRENT_LIMIT = 60.0; // Amps - main limit
+    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 40.0; // Amps - reduced limit after sustained draw
     public static final double SUPPLY_CURRENT_LOWER_TIME = 0.5; // Seconds - time before reducing
-    public static final double STATOR_CURRENT_LIMIT = 40.0; // Amps (was 80)
+    public static final double STATOR_CURRENT_LIMIT = 60.0; // Amps
 
     // Position Control
     public static final double POSITION_TOLERANCE_DEGREES = 1.0; // Degrees tolerance for isAtPosition()
@@ -185,6 +168,8 @@ public final class Constants {
     // CANCoder
     public static final double CANCODER_OFFSET = -0.359131;
   }
+
+
 
   public static class TurretAimingConstants {
     // Target positions (meters) - alliance goals
@@ -215,43 +200,52 @@ public final class Constants {
     public static final double MIN_SHOOTING_DISTANCE_METERS = 0;
     public static final double MAX_SHOOTING_DISTANCE_METERS = 99.0;
 
-    // Placeholder lookup tables (distance in meters -> value)
-    // Format: { {distance1, value1}, {distance2, value2}, ... }
-    // Hood angle lookup table (distance -> hood angle in degrees)
-    public static final double[][] HOOD_LOOKUP_TABLE = { { 1.5, 15.0 }, { 3.0, 25.0 }, { 5.0, 35.0 }, { 7.0, 40.0 },
-        { 10.0, 45.0 } };
+    // Fallback 2D grids (used when generated tables are empty / no calibration
+    // data)
+    // Indexed by [row][col] matching CalibrationConstants grid dimensions
+    public static final double[][] HOOD_GRID_FALLBACK;
+    public static final double[][] FLYWHEEL_GRID_FALLBACK;
 
-    // Flywheel RPM lookup table (distance -> RPM)
-    public static final double[][] FLYWHEEL_LOOKUP_TABLE = { { 1.5, 3000.0 }, { 3.0, 3500.0 }, { 5.0, 4000.0 },
-        { 7.0, 4500.0 }, { 10.0, 5000.0 } };
+    static {
+      HOOD_GRID_FALLBACK = new double[CalibrationConstants.GRID_ROWS][CalibrationConstants.GRID_COLS];
+      FLYWHEEL_GRID_FALLBACK = new double[CalibrationConstants.GRID_ROWS][CalibrationConstants.GRID_COLS];
+      for (int r = 0; r < CalibrationConstants.GRID_ROWS; r++) {
+        for (int c = 0; c < CalibrationConstants.GRID_COLS; c++) {
+          HOOD_GRID_FALLBACK[r][c] = CalibrationConstants.DEFAULT_HOOD_ANGLE;
+          FLYWHEEL_GRID_FALLBACK[r][c] = CalibrationConstants.DEFAULT_FLYWHEEL_RPM;
+        }
+      }
+    }
   }
 
   public static class IntakeActuatorConstants {
     // Current Limits
-    public static final int SMART_CURRENT_LIMIT = 30; // Amps
+    public static final int SMART_CURRENT_LIMIT = 60; // Amps
     public static final int SECONDARY_CURRENT_LIMIT = 60; // Amps
 
     // Open-loop duty cycles
-    public static final double EXTEND_DUTY_CYCLE = 0.5;
-    public static final double RETRACT_DUTY_CYCLE = -0.5;
+    public static final double EXTEND_DUTY_CYCLE = 1.0;
+    public static final double RETRACT_DUTY_CYCLE = -1.0;
 
     // Through Bore Encoder (external encoder port on SparkFlex)
     public static final int ENCODER_COUNTS_PER_REV = 8192;
     public static final double GEAR_RATIO = 1.0;
     public static final double RETRACTED_POSITION_ROTATIONS = 0.0;
-    public static final double EXTENDED_POSITION_ROTATIONS = 5.0; // PLACEHOLDER - measure on robot
+    public static final double RETRACTED_POSITION_ROTATIONS_AG = 0.5;
+    public static final double EXTENDED_POSITION_ROTATIONS = 2.1;
     public static final double POSITION_TOLERANCE_ROTATIONS = 0.25;
 
     // Closed-loop position PID
-    public static final double KP = 0.1;
+    public static final double KP = 3;
     public static final double KI = 0.0;
     public static final double KD = 0.0;
-    public static final double MAX_OUTPUT = 0.5;
-    public static final double MIN_OUTPUT = -0.5;
+    public static final double MAX_OUTPUT = 1.0;
+    public static final double MIN_OUTPUT = -1.0;
 
-    // Agitate command (time-based, alternates extend/retract regardless of position reached)
-    public static final double AGITATE_EXTEND_SECONDS = 0.4;
-    public static final double AGITATE_RETRACT_SECONDS = 0.4;
+    // Agitate command (time-based, alternates extend/retract regardless of position
+    // reached)
+    public static final double AGITATE_EXTEND_SECONDS = 0.6;
+    public static final double AGITATE_RETRACT_SECONDS = 0.6;
   }
 
   public static class IntakeConstants {
@@ -263,7 +257,7 @@ public final class Constants {
     public static final double OUTTAKE_SPEED = -1.0; // Speed for ejecting game pieces
 
     // Current Limits
-    public static final int SMART_CURRENT_LIMIT = 30; // Amps
+    public static final int SMART_CURRENT_LIMIT = 60; // Amps
     public static final int SECONDARY_CURRENT_LIMIT = 80; // Amps
   }
 
@@ -273,15 +267,18 @@ public final class Constants {
 
     // Preset Speeds (duty cycle -1.0 to 1.0)
     // Running at max speed for 8 balls/second throughput
-    public static final double FEED_SPEED = 0.7; // Full speed for feeding shooter
-    public static final double REVERSE_SPEED = -0.5; // Reverse for clearing jams
+    public static final double FEED_SPEED = 1.0; // Full speed for feeding shooter
+    public static final double REVERSE_SPEED = -1.0; // Reverse for clearing jams
 
     // Current Limits - higher limits for sustained high-speed operation
-    public static final int SMART_CURRENT_LIMIT = 30; // Amps
+    public static final int SMART_CURRENT_LIMIT = 60; // Amps
     public static final int SECONDARY_CURRENT_LIMIT = 80; // Amps
   }
 
   public static class QuestNavConstants {
+    // Set to false to run on vision-only pose estimation (cameras must see 2+ tags)
+    public static final boolean ENABLED = true;
+
     // Transform from robot center to Quest headset mounting position
     // Measure these values based on where the Quest is mounted on your robot
     public static final double QUEST_OFFSET_X_METERS = -0.14605; // Forward/backward from robot center
@@ -297,12 +294,8 @@ public final class Constants {
     public static final double STD_DEV_Y = 0.02;
     public static final double STD_DEV_THETA = 0.035;
 
-    // Movement threshold for detecting if robot was moved while disabled (meters)
-    // If robot moves more than this distance from seeded position, re-seeding is required
-    public static final double SEEDING_MOVEMENT_THRESHOLD_METERS = 0.1;
-
-    // Polling interval for seeding checks while disabled (seconds)
-    public static final double SEEDING_POLL_INTERVAL_SECONDS = 1.0;
+    // DIO port for the reseed button on the robot
+    public static final int RESEED_BUTTON_DIO_PORT = 0;
   }
 
   public static class BlinkinConstants {
@@ -313,21 +306,9 @@ public final class Constants {
    * Constants for the turret calibration system.
    *
    * <p>
-   * <strong>Grid vs Bucket Spacing Design:</strong> The calibration system uses two different spacing granularities by
-   * design:
-   *
-   * <ul>
-   * <li><strong>UI Grid (0.5m cell size):</strong> Used by the webapp to display robot position and track which cells
-   * have been calibrated. The larger spacing makes the grid visually manageable and provides clear guidance for where
-   * to position the robot.</li>
-   * <li><strong>Build-time Distance Buckets (0.25m):</strong> Used by GenerateLookupTables.java when processing
-   * calibration data. The finer granularity allows multiple samples taken within the same UI grid cell to be grouped
-   * into different distance buckets, providing more precise interpolation data.</li>
-   * </ul>
-   *
-   * <p>
-   * This is intentional: a single UI grid cell may contain multiple calibration points at slightly different distances,
-   * and the build-time processing preserves this detail for better interpolation accuracy.
+   * The calibration grid maps the field into cells of GRID_CELL_SIZE_METERS. Each cell stores a tuned hood angle and
+   * flywheel RPM. The webapp records per-cell calibration data, and GenerateLookupTables.java processes it into 2D grid
+   * arrays for runtime bilinear interpolation.
    */
   public static class CalibrationConstants {
     // Field dimensions
@@ -335,8 +316,7 @@ public final class Constants {
     public static final double FIELD_WIDTH_METERS = 8.07;
 
     /**
-     * Grid cell size for UI display (0.5m). This determines the visual grid shown in the webapp. Note: Build-time
-     * processing uses 0.25m distance buckets for finer granularity. See GenerateLookupTables.java for details.
+     * Grid cell size in meters. Used for both UI display and 2D lookup table generation.
      */
     public static final double GRID_CELL_SIZE_METERS = 0.5;
     public static final double CALIBRATION_START_X = 0.0;
@@ -357,6 +337,11 @@ public final class Constants {
 
     // Calibration file path on roboRIO
     public static final String CALIBRATION_FILE_PATH = "/home/lvuser/deploy/calibration/turret_calibration_data.csv";
+  }
+
+  public static class DiagnosticConstants {
+    public static final String LOG_DIRECTORY = "/home/lvuser/logs/";
+    public static final boolean TURRET_LOGGING_DEFAULT_ENABLED = true;
   }
 
   public static class AutoConstants {
@@ -388,12 +373,13 @@ public final class Constants {
             new Rotation3d(Math.toRadians(0), Math.toRadians(0), Math.toRadians(90))));
 
     // All cameras
-    public static final List<CameraConfig> CAMERAS = List.of(LEFT_CAMERA, RIGHT_CAMERA);
+    public static final List<CameraConfig> CAMERAS = List.of(RIGHT_CAMERA);
 
     // The layout of the AprilTags on the field
     public static final AprilTagFieldLayout kTagLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
 
-    // The standard deviations of our vision estimated poses, which affect correction rate
+    // The standard deviations of our vision estimated poses, which affect
+    // correction rate
     // (Fake values. Experiment and determine estimation noise on an actual robot.)
     public static final Matrix<N3, N1> kSingleTagStdDevs = VecBuilder.fill(4, 4, 8);
     public static final Matrix<N3, N1> kMultiTagStdDevs = VecBuilder.fill(0.5, 0.5, 1);

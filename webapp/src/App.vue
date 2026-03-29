@@ -12,28 +12,46 @@ import ActionsPanel from './components/ActionsPanel.vue'
 import DataTable from './components/DataTable.vue'
 import CalibrationGrid from './components/CalibrationGrid.vue'
 import CellEditPanel from './components/CellEditPanel.vue'
+import BulkEditPanel from './components/BulkEditPanel.vue'
 
 const store = useCalibrationStore()
 
-// Selected cell state for manual editing
-const selectedRow = ref<number | undefined>(undefined)
-const selectedCol = ref<number | undefined>(undefined)
-const hasSelectedCell = computed(() => selectedRow.value !== undefined && selectedCol.value !== undefined)
+// Multi-select cell state
+const selectedCells = ref<Set<string>>(new Set())
+
+const selectedCount = computed(() => selectedCells.value.size)
+
+const singleSelectedCell = computed(() => {
+  if (selectedCells.value.size !== 1) return null
+  const key = [...selectedCells.value][0]
+  const [row, col] = key.split(',').map(Number)
+  return { row, col }
+})
+
+const selectedPositions = computed(() =>
+  [...selectedCells.value].map(k => {
+    const [row, col] = k.split(',').map(Number)
+    return { row, col }
+  })
+)
 
 const handleCellSelect = (row: number, col: number) => {
-  // Toggle selection if clicking the same cell
-  if (selectedRow.value === row && selectedCol.value === col) {
-    selectedRow.value = undefined
-    selectedCol.value = undefined
+  const key = `${row},${col}`
+  const next = new Set(selectedCells.value)
+  if (next.has(key)) {
+    next.delete(key)
   } else {
-    selectedRow.value = row
-    selectedCol.value = col
+    next.add(key)
   }
+  selectedCells.value = next
 }
 
 const handleCellEditClose = () => {
-  selectedRow.value = undefined
-  selectedCol.value = undefined
+  selectedCells.value = new Set()
+}
+
+const handleClearSelection = () => {
+  selectedCells.value = new Set()
 }
 
 // Subscribe to robot state needed for local save
@@ -138,20 +156,24 @@ onUnmounted(() => {
       <div class="center-column">
         <ControlPanel />
         <CalibrationGrid
-          :selected-row="selectedRow"
-          :selected-col="selectedCol"
+          :selected-cells="selectedCells"
           @cell-select="handleCellSelect"
         />
         <CellEditPanel
-          v-if="hasSelectedCell"
-          :row="selectedRow!"
-          :col="selectedCol!"
+          v-if="singleSelectedCell"
+          :row="singleSelectedCell.row"
+          :col="singleSelectedCell.col"
           @close="handleCellEditClose"
+        />
+        <BulkEditPanel
+          v-if="selectedCount > 1"
+          :selected-positions="selectedPositions"
+          @close="handleClearSelection"
         />
       </div>
 
       <div class="right-column">
-        <DataTable />
+        <DataTable :selected-cells="selectedCells" />
       </div>
     </main>
 

@@ -52,6 +52,7 @@ public class Robot extends TimedRobot {
   /** This function is called once each time the robot enters Disabled mode. */
   @Override
   public void disabledInit() {
+    m_robotContainer.stopDiagnosticLogging();
     SignalLogger.stop();
   }
 
@@ -64,6 +65,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousInit() {
+    m_robotContainer.startDiagnosticLogging();
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
     // schedule the autonomous command (example)
@@ -79,13 +81,11 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopInit() {
-    // This makes sure that the autonomous stops running when
-    // teleop starts running. If you want the autonomous to
-    // continue until interrupted by another command, remove
-    // this line or comment it out.
-    if (m_autonomousCommand != null) {
-      m_autonomousCommand.cancel();
-    }
+    // Cancel everything from autonomous (including independently-scheduled
+    // PathPlanner event commands like ShootCommand). Default commands and
+    // teleop-triggered commands restart automatically on the next scheduler run.
+    CommandScheduler.getInstance().cancelAll();
+    m_robotContainer.startDiagnosticLogging();
   }
 
   /** This function is called periodically during operator control. */
@@ -99,6 +99,7 @@ public class Robot extends TimedRobot {
     CommandScheduler.getInstance().cancelAll();
     // Restart the signal logger for SysId characterization
     SignalLogger.start();
+    m_robotContainer.startDiagnosticLogging();
   }
 
   /** This function is called periodically during test mode. */

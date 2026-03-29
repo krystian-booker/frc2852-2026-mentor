@@ -9,6 +9,7 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkFlexConfig;
 
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.Constants.CANIds;
@@ -75,6 +76,12 @@ public class Intake extends SubsystemBase {
 
     public double getVelocityRPS() {
         return encoder.getVelocity();
+    }
+
+    public Command runCommand() {
+        return run(this::runIntake)
+                .finallyDo(this::stop)
+                .withName("Intake.run");
     }
 
     @Override

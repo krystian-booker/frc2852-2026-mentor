@@ -8,8 +8,8 @@ import com.ctre.phoenix6.configs.MotionMagicConfigs;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.SoftwareLimitSwitchConfigs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
+import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.GravityTypeValue;
@@ -35,7 +35,7 @@ public class Hood extends SubsystemBase {
     private final TalonFX motor;
 
     // Control requests
-    private final MotionMagicVoltage positionRequest;
+    private final PositionVoltage positionRequest;
     private final NeutralOut neutralRequest;
     private final VoltageOut voltageRequest;
 
@@ -52,7 +52,7 @@ public class Hood extends SubsystemBase {
         motor = new TalonFX(CANIds.HOOD_MOTOR, canBus);
 
         // Initialize control requests
-        positionRequest = new MotionMagicVoltage(0).withSlot(0);
+        positionRequest = new PositionVoltage(0).withSlot(0);
         neutralRequest = new NeutralOut();
         voltageRequest = new VoltageOut(0);
 
@@ -181,6 +181,16 @@ public class Hood extends SubsystemBase {
     /** Get motor stator current in Amps. */
     public double getStatorCurrent() {
         return motor.getStatorCurrent().refresh().getValue().in(Amps);
+    }
+
+    /** Read applied motor voltage for telemetry. */
+    public double getMotorVoltage() {
+        return motor.getMotorVoltage().refresh().getValue().in(Volts);
+    }
+
+    /** Get the current target position in degrees. */
+    public double getTargetPositionDegrees() {
+        return targetPositionDegrees;
     }
 
     /**

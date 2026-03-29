@@ -3,6 +3,10 @@ import { ref, computed } from 'vue'
 import { useCalibrationStore } from '../stores/calibration'
 import ConfirmModal from './ConfirmModal.vue'
 
+const props = defineProps<{
+  selectedCells: Set<string>
+}>()
+
 const store = useCalibrationStore()
 
 const sortedPoints = computed(() =>
@@ -11,6 +15,8 @@ const sortedPoints = computed(() =>
     return a.gridCol - b.gridCol
   })
 )
+
+const isSelected = (row: number, col: number) => props.selectedCells.has(`${row},${col}`)
 
 // Modal state for delete confirmation
 const showDeleteModal = ref(false)
@@ -57,7 +63,11 @@ const cancelDelete = () => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="point in sortedPoints" :key="`${point.gridRow}-${point.gridCol}`">
+          <tr
+            v-for="point in sortedPoints"
+            :key="`${point.gridRow}-${point.gridCol}`"
+            :class="{ 'row-selected': isSelected(point.gridRow, point.gridCol) }"
+          >
             <td class="cell-grid">[{{ point.gridRow }}, {{ point.gridCol }}]</td>
             <td class="cell-number">{{ point.distanceToTarget.toFixed(2) }}m</td>
             <td class="cell-number">{{ point.hoodAngleDegrees.toFixed(1) }}°</td>
@@ -138,6 +148,10 @@ td {
 
 tr:hover td {
   background: rgba(63, 81, 181, 0.1);
+}
+
+tr.row-selected td {
+  background: rgba(33, 150, 243, 0.15);
 }
 
 .cell-grid {
