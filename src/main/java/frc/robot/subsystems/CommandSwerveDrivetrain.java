@@ -318,4 +318,68 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     public Optional<Pose2d> samplePoseAt(double timestampSeconds) {
         return super.samplePoseAt(Utils.fpgaToCurrentTime(timestampSeconds));
     }
+
+    /** Helper for SysId: Get average absolute velocity of all swerve modules in m/s */
+    public double getAverageDriveVelocity() {
+        double total = 0.0;
+        var states = getState().ModuleStates;
+        for (var state : states) {
+            total += Math.abs(state.speedMetersPerSecond);
+        }
+        return total / states.length;
+    }
+
+    /** Helper for SysId: Get average absolute motor voltage applied to drive motors */
+    public double getAverageDriveVoltage() {
+        double total = 0.0;
+        for (int i = 0; i < 4; i++) {
+            total += Math.abs(getModule(i).getDriveMotor().getMotorVoltage().getValueAsDouble());
+        }
+        return total / 4.0;
+    }
+
+    /** Helper for SysId: Get average absolute stator current of drive motors */
+    public double getAverageStatorCurrent() {
+        double total = 0.0;
+        for (int i = 0; i < 4; i++) {
+            total += Math.abs(getModule(i).getDriveMotor().getStatorCurrent().getValueAsDouble());
+        }
+        return total / 4.0;
+    }
+
+    /** Helper for SysId: Get average absolute velocity of all steer motors in rotations/sec */
+    public double getAverageSteerVelocity() {
+        double total = 0.0;
+        for (int i = 0; i < 4; i++) {
+            total += Math.abs(getModule(i).getSteerMotor().getVelocity().getValueAsDouble());
+        }
+        return total / 4.0;
+    }
+
+    /** Helper for SysId: Get average absolute position of all steer motors in rotations */
+    public double getAverageSteerPosition() {
+        double total = 0.0;
+        for (int i = 0; i < 4; i++) {
+            total += Math.abs(getModule(i).getSteerMotor().getPosition().getValueAsDouble());
+        }
+        return total / 4.0;
+    }
+
+    /** Helper for SysId: Get average absolute motor voltage applied to steer motors */
+    public double getAverageSteerVoltage() {
+        double total = 0.0;
+        for (int i = 0; i < 4; i++) {
+            total += Math.abs(getModule(i).getSteerMotor().getMotorVoltage().getValueAsDouble());
+        }
+        return total / 4.0;
+    }
+
+    /** Helper for SysId: Get average absolute stator current of steer motors */
+    public double getAverageSteerStatorCurrent() {
+        double total = 0.0;
+        for (int i = 0; i < 4; i++) {
+            total += Math.abs(getModule(i).getSteerMotor().getStatorCurrent().getValueAsDouble());
+        }
+        return total / 4.0;
+    }
 }

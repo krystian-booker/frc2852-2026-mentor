@@ -7,6 +7,8 @@ import frc.robot.Constants.TurretConstants;
 import frc.robot.commands.DumbShootCommand;
 import frc.robot.commands.FlywheelSysIdCommand;
 import frc.robot.commands.FlywheelTestCommand;
+import frc.robot.commands.DrivetrainSysIdCommand;
+import frc.robot.commands.SteerSysIdCommand;
 import frc.robot.commands.HoodTestSequenceCommand;
 import frc.robot.commands.ShootCommand;
 import frc.robot.commands.TurretCalibrationCommand;
@@ -391,10 +393,27 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
 
     // Swerve
+    // Old commented WPILib sysId lines:
     // RobotModeTriggers.test().and(driverController.a()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kForward));
     // RobotModeTriggers.test().and(driverController.b()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kReverse));
     // RobotModeTriggers.test().and(driverController.x()).whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
     // RobotModeTriggers.test().and(driverController.y()).whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
+    
+    // --- Drivetrain System Identification (for MATLAB) ---
+    RobotModeTriggers.test().and(driverController.a())
+        .toggleOnTrue(new DrivetrainSysIdCommand(drivetrain, DrivetrainSysIdCommand.Routine.QUASISTATIC));
+    RobotModeTriggers.test().and(driverController.b())
+        .toggleOnTrue(new DrivetrainSysIdCommand(drivetrain, DrivetrainSysIdCommand.Routine.STEPS));
+    RobotModeTriggers.test().and(driverController.y())
+        .toggleOnTrue(new DrivetrainSysIdCommand(drivetrain, DrivetrainSysIdCommand.Routine.COASTDOWN));
+
+    // --- Steer System Identification (for MATLAB) ---
+    RobotModeTriggers.test().and(operatorController.a())
+        .toggleOnTrue(new SteerSysIdCommand(drivetrain, SteerSysIdCommand.Routine.QUASISTATIC));
+    RobotModeTriggers.test().and(operatorController.b())
+        .toggleOnTrue(new SteerSysIdCommand(drivetrain, SteerSysIdCommand.Routine.STEPS));
+    RobotModeTriggers.test().and(operatorController.y())
+        .toggleOnTrue(new SteerSysIdCommand(drivetrain, SteerSysIdCommand.Routine.COASTDOWN));
 
     // --- Conveyor ---
     // RobotModeTriggers.test().and(driverController.rightBumper()).whileTrue(conveyor.run(conveyor::runFeed));
