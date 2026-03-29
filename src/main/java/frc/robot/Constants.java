@@ -169,33 +169,7 @@ public final class Constants {
     public static final double CANCODER_OFFSET = -0.359131;
   }
 
-  public static class SOTMConstants {
-    /** Enable/disable shooting-on-the-move compensation. */
-    public static final boolean ENABLED = true;
 
-    /**
-     * Flywheel wheel diameter in meters. Used to convert flywheel RPM to surface (ball exit) velocity.
-     */
-    public static final double FLYWHEEL_DIAMETER_METERS = 0.1016; // 4 inches
-
-    /**
-     * Effective ball horizontal velocity factor. ball_horizontal_speed = BALL_VELOCITY_FACTOR * flywheel_surface_speed
-     * Accounts for spin losses, air resistance, and launch angle. Start at 0.5, tune empirically.
-     */
-    public static final double BALL_VELOCITY_FACTOR = 0.5;
-
-    /** Minimum robot speed (m/s) to apply SOTM correction. */
-    public static final double MIN_SPEED_THRESHOLD = 0.1;
-
-    /** Maximum TOF clamp to prevent runaway corrections. */
-    public static final double MAX_TOF_SECONDS = 1.0;
-
-    /** Number of TOF convergence iterations. */
-    public static final int TOF_ITERATIONS = 2;
-
-    /** Low-pass filter alpha for velocity smoothing (0 = frozen, 1 = no filter). */
-    public static final double VELOCITY_SMOOTHING_ALPHA = 1.0;
-  }
 
   public static class TurretAimingConstants {
     // Target positions (meters) - alliance goals

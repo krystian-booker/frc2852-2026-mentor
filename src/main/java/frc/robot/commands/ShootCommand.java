@@ -110,17 +110,9 @@ public class ShootCommand extends Command {
 
     @Override
     public void execute() {
-        // Get flywheel RPM and hood angle — SOTM-compensated in teleop, standard in auto
-        double targetRPM;
-        double targetHoodAngle;
-        if (drivetrain != null) {
-            var sotmResult = aimingCalculator.calculateSOTM();
-            targetRPM = sotmResult.flywheelRPM();
-            targetHoodAngle = sotmResult.hoodAngleDegrees();
-        } else {
-            targetRPM = aimingCalculator.getFlywheelRPM();
-            targetHoodAngle = aimingCalculator.getHoodAngle();
-        }
+        // Get flywheel RPM and hood angle from the lookup table
+        double targetRPM = aimingCalculator.getFlywheelRPM();
+        double targetHoodAngle = aimingCalculator.getHoodAngle();
 
         flywheel.setVelocity(targetRPM);
         hood.setPosition(targetHoodAngle);

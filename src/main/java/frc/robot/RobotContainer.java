@@ -126,8 +126,7 @@ public class RobotContainer {
       questNav = new QuestNavSubsystem(drivetrain, vision);
     }
     shooterCalculator = new TurretAimingCalculator(
-        () -> drivetrain.getState().Pose,
-        () -> drivetrain.getState().Speeds);
+        () -> drivetrain.getState().Pose);
 
     // Register named commands before building auto chooser
     NamedCommands.registerCommand("shoot",
@@ -163,9 +162,9 @@ public class RobotContainer {
         turretSetpoint = turretAngleDeg;
       } else {
         // Auto-aim at target
-        var result = shooterCalculator.calculateSOTM();
+        var result = shooterCalculator.calculate();
         turretSetpoint = result.turretAngleDegrees();
-        sotmActive = result.sotmActive();
+        sotmActive = false;
       }
 
       turret.setPosition(turretSetpoint);
