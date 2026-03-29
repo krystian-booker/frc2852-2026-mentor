@@ -303,7 +303,7 @@ public final class Constants {
 
   public static class QuestNavConstants {
     // Set to false to run on vision-only pose estimation (cameras must see 2+ tags)
-    public static final boolean ENABLED = false;
+    public static final boolean ENABLED = true;
 
     // Transform from robot center to Quest headset mounting position
     // Measure these values based on where the Quest is mounted on your robot
