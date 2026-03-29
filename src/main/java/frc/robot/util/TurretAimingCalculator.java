@@ -6,6 +6,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.CalibrationConstants;
 import frc.robot.Constants.TurretAimingConstants;
@@ -22,6 +23,10 @@ import frc.robot.generated.TurretLookupTables;
  */
 public class TurretAimingCalculator {
     private final Supplier<Pose2d> poseSupplier;
+
+    // Alliance cache to prevent expensive DriverStation lookups
+    private Alliance cachedAlliance = Alliance.Blue;
+    private double lastAllianceCheckTime = -10.0;
 
     // Diagnostic state — captures pre-filter angle and target info for logging
     private double lastRawAngleDegrees = Double.NaN;
@@ -92,7 +97,7 @@ public class TurretAimingCalculator {
      * @return Target position in field coordinates (meters)
      */
     public Translation2d getTargetPosition(Pose2d robotPose) {
-        Alliance alliance = DriverStation.getAlliance().orElse(Alliance.Blue);
+        Alliance alliance = getAlliance();
         double robotX = robotPose.getX();
         double robotY = robotPose.getY();
 
@@ -134,7 +139,7 @@ public class TurretAimingCalculator {
      * Returns a human-readable zone name for dashboard telemetry.
      */
     private String getZoneName(Pose2d robotPose) {
-        Alliance alliance = DriverStation.getAlliance().orElse(Alliance.Blue);
+        Alliance alliance = getAlliance();
         double robotX = robotPose.getX();
         double robotY = robotPose.getY();
         String side = robotY < TurretAimingConstants.FIELD_CENTERLINE_Y ? " Left" : " Right";
@@ -269,7 +274,7 @@ public class TurretAimingCalculator {
 
         // Calibration data is recorded for Blue alliance.
         // For Red alliance, mirror the position (field has 180° rotational symmetry).
-        if (DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red) {
+        if (getAlliance() == Alliance.Red) {
             x = CalibrationConstants.FIELD_LENGTH_METERS - x;
             y = CalibrationConstants.FIELD_WIDTH_METERS - y;
         }
@@ -317,5 +322,19 @@ public class TurretAimingCalculator {
                 + v01 * fx * (1 - fy)
                 + v10 * (1 - fx) * fy
                 + v11 * fx * fy;
+    }
+
+    /**
+     * Retrieves the current alliance from the DriverStation, but throttles
+     * queries to only once per second. Calling DriverStation.getAlliance()
+     * frequently is a leading cause of 20ms loop overruns.
+     */
+    private Alliance getAlliance() {
+        double currentTime = Timer.getFPGATimestamp();
+        if (currentTime - lastAllianceCheckTime > 1.0) {
+            cachedAlliance = DriverStation.getAlliance().orElse(cachedAlliance);
+            lastAllianceCheckTime = currentTime;
+        }
+        return cachedAlliance;
     }
 }
