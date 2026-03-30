@@ -419,13 +419,6 @@ public class RobotContainer {
         .withRotationalRate(-driverController.getRightX() * MaxAngularRate);
   }
 
-  /** Returns true when the driver is actively providing joystick input. */
-  private boolean isDriverActive() {
-    double stickMag = Math.hypot(driverController.getLeftX(),
-        driverController.getLeftY());
-    return stickMag > 0.1 || Math.abs(driverController.getRightX()) > 0.1;
-  }
-
   private Command buildDriveBackAndShootAuto() {
     SwerveRequest.RobotCentric driveBack = new SwerveRequest.RobotCentric()
         .withVelocityX(-1.0) // backwards at 1 m/s
