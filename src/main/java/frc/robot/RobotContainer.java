@@ -126,7 +126,8 @@ public class RobotContainer {
       questNav = new QuestNavSubsystem(drivetrain, vision);
     }
     shooterCalculator = new TurretAimingCalculator(
-        () -> drivetrain.getState().Pose);
+        () -> drivetrain.getState().Pose,
+        () -> drivetrain.getState().Speeds);
 
     // Register named commands before building auto chooser
     NamedCommands.registerCommand("shoot",
@@ -141,6 +142,9 @@ public class RobotContainer {
 
     // Set turret default command - auto-aim with operator stick override
     turret.setDefaultCommand(turret.run(() -> {
+      // ALWAYS update solver once per 20ms cycle for Newton predictions
+      shooterCalculator.update();
+
       double stickX = operatorController.getLeftX();
       double stickY = operatorController.getLeftY();
       double magnitude = Math.hypot(stickX, stickY);
@@ -164,7 +168,7 @@ public class RobotContainer {
         // Auto-aim at target
         var result = shooterCalculator.calculate();
         turretSetpoint = result.turretAngleDegrees();
-        sotmActive = false;
+        sotmActive = true;
       }
 
       turret.setPosition(turretSetpoint);
@@ -187,7 +191,7 @@ public class RobotContainer {
             turretSetpoint - turret.getPositionDegrees(),
             turret.getMotorVoltage(),
             turret.getStatorCurrent(),
-            sotmActive ? 1.0 : 0.0,
+            sotmActive ? shooterCalculator.getSotmConfidence() : 0.0,
             vision.getVisibleTagCount(),
             vision.isFeedingEnabled() ? 1.0 : 0.0,
             turret.getCANCoderPositionDegrees());

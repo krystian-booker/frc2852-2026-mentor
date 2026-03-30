@@ -110,7 +110,7 @@ public class ShootCommand extends Command {
 
     @Override
     public void execute() {
-        // Get flywheel RPM and hood angle from the lookup table
+        // Get flywheel RPM and hood angle from the SOTM solver
         double targetRPM = aimingCalculator.getFlywheelRPM();
         double targetHoodAngle = aimingCalculator.getHoodAngle();
 
