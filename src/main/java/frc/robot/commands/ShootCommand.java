@@ -5,10 +5,7 @@ import java.util.function.Supplier;
 
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Conveyor;
 import frc.robot.subsystems.Flywheel;
@@ -18,18 +15,22 @@ import frc.robot.subsystems.Turret;
 import frc.robot.util.TurretAimingCalculator;
 
 /**
- * Shooting command that coordinates flywheel, hood, conveyor, and intake actuator.
+ * Shooting command that coordinates flywheel, hood, conveyor, and intake
+ * actuator.
  *
  * <p>
- * Phase 1 (Spin-up): Sets flywheel RPM and hood angle from the lookup table based on robot position. Continuously
+ * Phase 1 (Spin-up): Sets flywheel RPM and hood angle from the lookup table
+ * based on robot position. Continuously
  * updates as the robot moves. Waits for flywheel to reach setpoint.
  *
  * <p>
- * Phase 2 (Feeding): Once the flywheel is at speed, hood is at position, and turret is aimed, runs the conveyor and
+ * Phase 2 (Feeding): Once the flywheel is at speed, hood is at position, and
+ * turret is aimed, runs the conveyor and
  * agitates the intake actuator to feed game pieces.
  *
  * <p>
- * This command never finishes on its own - it runs until interrupted (button released). The turret is NOT required by
+ * This command never finishes on its own - it runs until interrupted (button
+ * released). The turret is NOT required by
  * this command; its default aim command continues independently.
  */
 public class ShootCommand extends Command {
@@ -37,7 +38,6 @@ public class ShootCommand extends Command {
     private final Flywheel flywheel;
     private final Hood hood;
     private final Conveyor conveyor;
-    private final Turret turret;
     private final TurretAimingCalculator aimingCalculator;
     private final CommandSwerveDrivetrain drivetrain;
     private final Supplier<SwerveRequest> driveRequestSupplier;
@@ -54,7 +54,9 @@ public class ShootCommand extends Command {
     private double wiggleCenterRad;
     private boolean wiggleDirectionPositive;
 
-    /** Teleop constructor - includes drivetrain brake control and intake actuator. */
+    /**
+     * Teleop constructor - includes drivetrain brake control and intake actuator.
+     */
     public ShootCommand(
             Flywheel flywheel,
             Hood hood,
@@ -68,7 +70,6 @@ public class ShootCommand extends Command {
         this.flywheel = flywheel;
         this.hood = hood;
         this.conveyor = conveyor;
-        this.turret = turret;
         this.aimingCalculator = aimingCalculator;
         this.drivetrain = drivetrain;
         this.driveRequestSupplier = driveRequestSupplier;
@@ -88,7 +89,6 @@ public class ShootCommand extends Command {
         this.flywheel = flywheel;
         this.hood = hood;
         this.conveyor = conveyor;
-        this.turret = turret;
         this.aimingCalculator = aimingCalculator;
         this.drivetrain = null;
         this.driveRequestSupplier = null;
@@ -103,9 +103,9 @@ public class ShootCommand extends Command {
         isFeeding = false;
         wasDriving = false;
         waitingForExtend = false;
-        // if (intakeActuator != null) {
-        // intakeActuator.resetAgitate();
-        // }
+        if (intakeActuator != null) {
+            intakeActuator.resetAgitate();
+        }
     }
 
     @Override
@@ -138,9 +138,9 @@ public class ShootCommand extends Command {
             if (driving) {
                 drivetrain.setControl(driveRequestSupplier.get());
                 // Keep intake extended while driving
-                // if (intakeActuator != null) {
-                // intakeActuator.driveExtend();
-                // }
+                if (intakeActuator != null) {
+                    intakeActuator.driveExtend();
+                }
                 wasDriving = true;
                 waitingForExtend = false;
             } else {
@@ -150,11 +150,11 @@ public class ShootCommand extends Command {
                     wiggleDirectionPositive = true;
                     wasDriving = false;
 
-                    // if (intakeActuator != null) {
-                    // waitingForExtend = true;
-                    // intakeActuator.driveExtend();
-                    // intakeActuator.resetAgitate();
-                    // }
+                    if (intakeActuator != null) {
+                        waitingForExtend = true;
+                        intakeActuator.driveExtend();
+                        intakeActuator.resetAgitate();
+                    }
                 }
 
                 // Wiggle: rotate ±5 degrees from center
@@ -169,16 +169,16 @@ public class ShootCommand extends Command {
                 drivetrain.setControl(wiggleRequest.withRotationalRate(rate));
 
                 // Intake actuator: extend first, then agitate
-                // if (intakeActuator != null) {
-                // if (waitingForExtend) {
-                // intakeActuator.driveExtend();
-                // if (intakeActuator.isExtended()) {
-                // waitingForExtend = false;
-                // }
-                // } else {
-                // intakeActuator.runAgitate();
-                // }
-                // }
+                if (intakeActuator != null) {
+                    if (waitingForExtend) {
+                        intakeActuator.driveExtend();
+                        if (intakeActuator.isExtended()) {
+                            waitingForExtend = false;
+                        }
+                    } else {
+                        intakeActuator.runAgitate();
+                    }
+                }
             }
         }
 
@@ -195,9 +195,9 @@ public class ShootCommand extends Command {
     public void end(boolean interrupted) {
         flywheel.setVelocity(0);
         conveyor.stop();
-        // if (intakeActuator != null) {
-        // intakeActuator.driveExtend();
-        // }
+        if (intakeActuator != null) {
+            intakeActuator.driveExtend();
+        }
         isFeeding = false;
     }
 

@@ -11,7 +11,6 @@ import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Robot;
 import frc.robot.Constants.Vision.CameraConfig;
@@ -32,7 +31,8 @@ import org.photonvision.targeting.PhotonTrackedTarget;
 
 public class Vision extends SubsystemBase {
     /**
-     * Inner class representing a single camera instance with its own pose estimator and state.
+     * Inner class representing a single camera instance with its own pose estimator
+     * and state.
      */
     private static class CameraInstance {
         final String name;
@@ -75,8 +75,9 @@ public class Vision extends SubsystemBase {
     private VisionSystemSim visionSim;
 
     /**
-     * @param estConsumer Lambda that will accept a pose estimate and pass it to your desired
-     * {@link edu.wpi.first.math.estimator.SwerveDrivePoseEstimator}
+     * @param estConsumer Lambda that will accept a pose estimate and pass it to
+     *                    your desired
+     *                    {@link edu.wpi.first.math.estimator.SwerveDrivePoseEstimator}
      */
     public Vision(EstimateConsumer estConsumer) {
         this.estConsumer = estConsumer;
@@ -164,8 +165,10 @@ public class Vision extends SubsystemBase {
             }
 
             // Per-camera telemetry
-            // SmartDashboard.putNumber("Vision/" + cam.name + "/TagCount", cam.visibleTagIds.size());
-            // SmartDashboard.putString("Vision/" + cam.name + "/VisibleTags", cam.visibleTagIds.toString());
+            // SmartDashboard.putNumber("Vision/" + cam.name + "/TagCount",
+            // cam.visibleTagIds.size());
+            // SmartDashboard.putString("Vision/" + cam.name + "/VisibleTags",
+            // cam.visibleTagIds.toString());
         }
 
         // Use the best estimate if we have one
@@ -188,14 +191,19 @@ public class Vision extends SubsystemBase {
         }
 
         // Aggregated telemetry (backward compatible)
-        // SmartDashboard.putBoolean("Vision/HasValidPose", hasRecentValidPose(POSE_VALIDITY_TIMEOUT));
-        // SmartDashboard.putString("Vision/VisibleTags", aggregatedVisibleTagIds.toString());
-        // SmartDashboard.putNumber("Vision/TotalVisibleTagCount", aggregatedVisibleTagIds.size());
+        // SmartDashboard.putBoolean("Vision/HasValidPose",
+        // hasRecentValidPose(POSE_VALIDITY_TIMEOUT));
+        // SmartDashboard.putString("Vision/VisibleTags",
+        // aggregatedVisibleTagIds.toString());
+        // SmartDashboard.putNumber("Vision/TotalVisibleTagCount",
+        // aggregatedVisibleTagIds.size());
         // SmartDashboard.putNumber("Vision/PoseX", latestEstimate.getX());
         // SmartDashboard.putNumber("Vision/PoseY", latestEstimate.getY());
-        // SmartDashboard.putNumber("Vision/PoseRotation", latestEstimate.getRotation().getDegrees());
+        // SmartDashboard.putNumber("Vision/PoseRotation",
+        // latestEstimate.getRotation().getDegrees());
         // SmartDashboard.putBoolean("Vision/FeedingEnabled", feedingEnabled);
-        // SmartDashboard.putString("Vision/BestCamera", bestCamera != null ? bestCamera.name : "none");
+        // SmartDashboard.putString("Vision/BestCamera", bestCamera != null ?
+        // bestCamera.name : "none");
     }
 
     /**
@@ -236,9 +244,11 @@ public class Vision extends SubsystemBase {
     }
 
     /**
-     * Returns the latest estimated pose from vision (best estimate across all cameras).
+     * Returns the latest estimated pose from vision (best estimate across all
+     * cameras).
      * 
-     * @return Optional containing the pose if available, empty if no pose has been estimated
+     * @return Optional containing the pose if available, empty if no pose has been
+     *         estimated
      */
     public Optional<Pose2d> getLatestPose2d() {
         if (latestEstimateTimestamp == 0.0) {
@@ -250,7 +260,8 @@ public class Vision extends SubsystemBase {
     /**
      * Checks if there is a recent valid pose estimate.
      * 
-     * @param maxAgeSeconds Maximum age in seconds for the pose to be considered valid
+     * @param maxAgeSeconds Maximum age in seconds for the pose to be considered
+     *                      valid
      * @return true if a valid pose exists within the specified age
      */
     public boolean hasRecentValidPose(double maxAgeSeconds) {
@@ -348,7 +359,8 @@ public class Vision extends SubsystemBase {
 
     /**
      * Returns the latest standard deviations of the estimated pose, for use with
-     * {@link edu.wpi.first.math.estimator.SwerveDrivePoseEstimator SwerveDrivePoseEstimator}. This should only be used
+     * {@link edu.wpi.first.math.estimator.SwerveDrivePoseEstimator
+     * SwerveDrivePoseEstimator}. This should only be used
      * when there are targets visible.
      */
     public Matrix<N3, N1> getEstimationStdDevs() {

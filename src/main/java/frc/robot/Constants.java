@@ -38,7 +38,6 @@ public final class Constants {
     public static final int TURRET_MOTOR = 22;
     public static final int TURRET_CANCODER = 23;
     public static final int HOOD_MOTOR = 24;
-    public static final int CLIMB_MOTOR = 26;
   }
 
   public static class FlywheelConstants {
@@ -91,38 +90,6 @@ public final class Constants {
     public static final double HOMING_STALL_DETECTION_DELAY_SECONDS = 0.25;
     public static final int HOMING_STALL_SAMPLE_COUNT = 5;
     public static final double HOMING_TIMEOUT_SECONDS = 3.0;
-  }
-
-  public static class ClimbConstants {
-    public static final double GEAR_RATIO = 5;
-    public static final double FULLY_DOWN = 0.0;
-    public static final double FULL_EXTENSION_POSITION = 10.238;
-    public static final double CLIMB_LIFT_POSITION = 3.0;
-
-    public static final double MIN_POSITION = 0.0;
-    public static final double MAX_POSITION = 10.0;
-
-    public static final double S = 0.0; // Static friction (Volts)
-    public static final double V = 2.0; // Velocity feedforward (Volts per RPS) - needs tuning
-    public static final double A = 0.0; // Acceleration feedforward (Volts per RPS/s)
-    public static final double G = 0.0; // Gravity feedforward (Volts)
-    public static final double P = 80.0; // Proportional (Volts per rotation error)
-    public static final double I = 0.0;
-    public static final double D = 0.5;
-
-    // Motion Magic - slow for safety
-    public static final double MOTION_MAGIC_CRUISE_VELOCITY = 5.0; // rot/s
-    public static final double MOTION_MAGIC_ACCELERATION = 10.0; // rot/s^2
-    public static final double MOTION_MAGIC_JERK = 100.0; // rot/s^3
-
-    // Current Limits - high for lifting robot weight
-    public static final double SUPPLY_CURRENT_LIMIT = 60.0; // Amps - main limit
-    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 40.0; // Amps - reduced limit after time
-    public static final double SUPPLY_CURRENT_LOWER_TIME = 1.0; // Seconds - time before reducing
-    public static final double STATOR_CURRENT_LIMIT = 120.0; // Amps
-
-    // Position Control
-    public static final double POSITION_TOLERANCE = 0.25; // Rotations tolerance for atPosition()
   }
 
   public static class TurretConstants {
@@ -296,10 +263,6 @@ public final class Constants {
 
     // DIO port for the reseed button on the robot
     public static final int RESEED_BUTTON_DIO_PORT = 0;
-  }
-
-  public static class BlinkinConstants {
-    public static final int PWM_PORT = 0;
   }
 
   /**

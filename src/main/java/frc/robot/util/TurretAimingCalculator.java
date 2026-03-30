@@ -61,29 +61,29 @@ public class TurretAimingCalculator {
         ShotCalculator.Config config = new ShotCalculator.Config();
         config.launcherOffsetX = TurretAimingConstants.TURRET_OFFSET_X_METERS;
         config.launcherOffsetY = TurretAimingConstants.TURRET_OFFSET_Y_METERS;
-        
+
         this.shotCalculator = new ShotCalculator(config);
 
         // Build physics LUT based on 4" flywheel and estimated 2026 specs
         ProjectileSimulator.SimParameters params = new ProjectileSimulator.SimParameters(
-            0.235,    // ballMassKg
-            0.1778,   // ballDiameterM (7 inches)
-            0.47,     // dragCoeff
-            0.2,      // magnusCoeff
-            1.225,    // airDensityKgPerCubicM
-            0.5,      // exitHeightM
-            0.1016,   // flywheelDiameterM (4 inches)
-            2.64,     // targetHeightM (typical high goal)
-            0.6,      // slipFactor
-            45.0,     // baseLaunchAngleDeg
-            0.001,    // simDtSec
-            1500,     // minRPM
-            6000,     // maxRPM
-            25,       // maxIterations
-            5.0       // maxTOFSamples
+                0.235, // ballMassKg
+                0.1778, // ballDiameterM (7 inches)
+                0.47, // dragCoeff
+                0.2, // magnusCoeff
+                1.225, // airDensityKgPerCubicM
+                0.5, // exitHeightM
+                0.1016, // flywheelDiameterM (4 inches)
+                2.64, // targetHeightM (typical high goal)
+                0.6, // slipFactor
+                45.0, // baseLaunchAngleDeg
+                0.001, // simDtSec
+                1500, // minRPM
+                6000, // maxRPM
+                25, // maxIterations
+                5.0 // maxTOFSamples
         );
         ProjectileSimulator sim = new ProjectileSimulator(params);
-        
+
         // Sweep angles from 0 to 25 degrees
         ShotLUT lut = sim.generateVariableAngleShotLUT(0.0, 25.0, 1.0);
         shotCalculator.loadShotLUT(lut);
@@ -91,7 +91,8 @@ public class TurretAimingCalculator {
 
     /**
      * Updates the SOTM solver. Because the Newton solver tracks velocity histories,
-     * this MUST be called exactly once per robot cycle (20ms) from a periodic block.
+     * this MUST be called exactly once per robot cycle (20ms) from a periodic
+     * block.
      */
     public void update() {
         Pose2d robotPose = poseSupplier.get();
@@ -100,7 +101,8 @@ public class TurretAimingCalculator {
         }
 
         ChassisSpeeds robotSpeeds = speedsSupplier.get();
-        if (robotSpeeds == null) return;
+        if (robotSpeeds == null)
+            return;
 
         // Convert robot-relative speeds to field-relative
         ChassisSpeeds fieldSpeeds = ChassisSpeeds.fromRobotRelativeSpeeds(robotSpeeds, robotPose.getRotation());
@@ -115,12 +117,12 @@ public class TurretAimingCalculator {
         Translation2d hubForward = displacement.div(dist);
 
         ShotCalculator.ShotInputs inputs = new ShotCalculator.ShotInputs(
-            robotPose,
-            fieldSpeeds,
-            robotSpeeds,
-            targetPosition,
-            hubForward,
-            1.0 // Vision confidence placeholder
+                robotPose,
+                fieldSpeeds,
+                robotSpeeds,
+                targetPosition,
+                hubForward,
+                1.0 // Vision confidence placeholder
         );
 
         ShotCalculator.LaunchParameters shot = shotCalculator.calculate(inputs);
@@ -129,7 +131,7 @@ public class TurretAimingCalculator {
         lastSotmConfidence = shot.confidence();
 
         isReachable = lastDistanceMeters >= TurretAimingConstants.MIN_SHOOTING_DISTANCE_METERS
-                   && lastDistanceMeters <= TurretAimingConstants.MAX_SHOOTING_DISTANCE_METERS;
+                && lastDistanceMeters <= TurretAimingConstants.MAX_SHOOTING_DISTANCE_METERS;
 
         if (shot.isValid() && shot.confidence() > 0) {
             lastTargetRPM = shot.rpm();
@@ -138,9 +140,11 @@ public class TurretAimingCalculator {
             // Convert absolute field drive angle to a robot-relative turret angle
             double robotRelativeRadians = shot.driveAngle().getRadians() - robotPose.getRotation().getRadians();
             double turretAngleDegrees = Math.toDegrees(robotRelativeRadians) % 360.0;
-            
-            if (turretAngleDegrees > 180.0) turretAngleDegrees -= 360.0;
-            else if (turretAngleDegrees <= -180.0) turretAngleDegrees += 360.0;
+
+            if (turretAngleDegrees > 180.0)
+                turretAngleDegrees -= 360.0;
+            else if (turretAngleDegrees <= -180.0)
+                turretAngleDegrees += 360.0;
 
             if (turretAngleDegrees > TurretConstants.MAX_POSITION_DEGREES) {
                 turretAngleDegrees -= 360.0;
@@ -193,7 +197,7 @@ public class TurretAimingCalculator {
     public double getLastDistanceMeters() {
         return lastDistanceMeters;
     }
-    
+
     public double getSotmConfidence() {
         return lastSotmConfidence;
     }
@@ -215,4 +219,3 @@ public class TurretAimingCalculator {
         return cachedAlliance;
     }
 }
-

@@ -18,7 +18,6 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -146,7 +145,8 @@ public class Hood extends SubsystemBase {
     }
 
     /**
-     * Applies a small positive voltage to test motor direction. Watch the dashboard: if position INCREASES, direction
+     * Applies a small positive voltage to test motor direction. Watch the
+     * dashboard: if position INCREASES, direction
      * is correct. If position DECREASES, flip motor inversion.
      */
     public void testDirectionPositive() {
@@ -194,8 +194,10 @@ public class Hood extends SubsystemBase {
     }
 
     /**
-     * Hot-reload only Slot0 and MotionMagic gains. Uses per-group config objects so gear ratio, soft limits, and
-     * current limits are never touched. Motion Magic params are in deg/s (matching HoodConstants convention), divided
+     * Hot-reload only Slot0 and MotionMagic gains. Uses per-group config objects so
+     * gear ratio, soft limits, and
+     * current limits are never touched. Motion Magic params are in deg/s (matching
+     * HoodConstants convention), divided
      * by 360 internally.
      */
     public void applyTuningConfig(double kS, double kV, double kA, double kG,
@@ -253,7 +255,10 @@ public class Hood extends SubsystemBase {
         motor.getConfigurator().apply(softLimits);
     }
 
-    /** Drives hood to reverse hard stop, detects stall via stator current, then zeroes encoder. */
+    /**
+     * Drives hood to reverse hard stop, detects stall via stator current, then
+     * zeroes encoder.
+     */
     public Command zeroHoodCommand() {
         Timer homingTimer = new Timer();
         int[] stallCount = { 0 };
@@ -308,10 +313,12 @@ public class Hood extends SubsystemBase {
         // double position = getCurrentPositionDegrees();
         // SmartDashboard.putNumber("Hood/Position Degrees", position);
         // SmartDashboard.putNumber("Hood/Target Degrees", targetPositionDegrees);
-        // SmartDashboard.putNumber("Hood/Motor Raw Rotations", motorPosition.refresh().getValue().in(Rotations));
+        // SmartDashboard.putNumber("Hood/Motor Raw Rotations",
+        // motorPosition.refresh().getValue().in(Rotations));
         // SmartDashboard.putNumber("Hood/Motor Stator Current",
         // motor.getStatorCurrent().refresh().getValue().in(Amps));
-        // SmartDashboard.putNumber("Hood/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
+        // SmartDashboard.putNumber("Hood/Motor Voltage",
+        // motor.getMotorVoltage().refresh().getValue().in(Volts));
         // SmartDashboard.putBoolean("Hood/At Position", atPosition());
         // SmartDashboard.putBoolean("Hood/Is Homed", isHomed);
     }

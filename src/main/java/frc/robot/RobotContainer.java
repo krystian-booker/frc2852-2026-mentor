@@ -1,26 +1,16 @@
 package frc.robot;
 
-import frc.robot.Constants.ClimbConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
 import frc.robot.Constants.TurretConstants;
-import frc.robot.commands.DumbShootCommand;
-import frc.robot.commands.FlywheelSysIdCommand;
-import frc.robot.commands.FlywheelTestCommand;
-import frc.robot.commands.DrivetrainSysIdCommand;
-import frc.robot.commands.SteerSysIdCommand;
-import frc.robot.commands.HoodTestSequenceCommand;
 import frc.robot.commands.ShootCommand;
-import frc.robot.commands.TurretCalibrationCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Conveyor;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Intake;
-import frc.robot.subsystems.LED;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
-import frc.robot.subsystems.Climb;
 import frc.robot.subsystems.Vision;
 import frc.robot.util.DiagnosticLogger;
 import frc.robot.util.Telemetry;
@@ -58,8 +48,6 @@ public class RobotContainer {
   private final Intake intake = new Intake();
   private final IntakeActuator intakeActuator = new IntakeActuator();
   private final Turret turret = new Turret();
-  private final Climb climb = new Climb();
-  private final LED led = new LED();
 
   // Controllers
   private final CommandXboxController driverController = new CommandXboxController(
@@ -225,7 +213,6 @@ public class RobotContainer {
 
     // Warmup PathPlanner to avoid Java pauses
     CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand());
-    // CommandScheduler.getInstance().schedule(PathfindingCommand.warmupCommand());
 
     // Telemetry setup
     drivetrain.registerTelemetry(logger::telemeterize);
@@ -234,15 +221,13 @@ public class RobotContainer {
 
   private void configureDriverBindings() {
     // Auto-extend intake actuator at the start of autonomous and teleop
-    // RobotModeTriggers.teleop().onTrue(intakeActuator.extend());
+    RobotModeTriggers.teleop().onTrue(intakeActuator.extend());
 
     // LEFT TRIGGER - Intake (held)
     // Runs the intake roller to acquire game pieces
     driverController.leftTrigger(0.5).whileTrue(intake.run(intake::runIntake).finallyDo(intake::stop));
 
     // RIGHT TRIGGER - Shoot (held)
-    // Spins up flywheel and sets hood from LUT, then feeds when ready
-    // Locks wheels in X-brake while shooting unless driver is actively driving
     driverController.rightTrigger(0.5).whileTrue(
         new ShootCommand(flywheel, hood, conveyor, turret,
             shooterCalculator,
@@ -250,87 +235,30 @@ public class RobotContainer {
             this::getDriveRequest,
             this::isDriverActive,
             intakeActuator)
-                .withName("Shoot"));
+            .withName("Shoot"));
 
     // DEFAULT COMMAND - Field-Centric Drive
-    // Note that X is defined as forward according to WPILib convention,
-    // and Y is defined as to the left according to WPILib convention.
-    // Left Stick: Controls translation (forward/backward and left/right)
-    // Right Stick X: Controls rotation (counterclockwise is positive)
-    // The negatives account for controller axis inversion
     drivetrain.setDefaultCommand(
         drivetrain.applyRequest(this::getDriveRequest));
 
     // DISABLED MODE - Idle Request
-    // Ensures the configured neutral mode (coast) is applied to
-    // drive motors while the robot is disabled
     final var idle = new SwerveRequest.Idle();
     RobotModeTriggers.disabled().whileTrue(
         drivetrain.applyRequest(() -> idle).ignoringDisable(true));
-
-    // LEFT BUMPER - Reset Field-Centric Heading
-    // Resets the gyro's "forward" direction to the robot's current facing direction
-    // Use this when the gyro drifts or after manually repositioning the robot
-    // driverController.leftBumper().onTrue(drivetrain.runOnce(drivetrain::seedFieldCentric));
   }
 
   private void configureOperatorBindings() {
-    // D-pad controls for climb positions
-    operatorController.povUp()
-        .onTrue(Commands.runOnce(
-            () -> climb.setPosition(ClimbConstants.FULL_EXTENSION_POSITION),
-            climb));
-    operatorController.povDown()
-        .onTrue(Commands.runOnce(() -> climb.setPosition(ClimbConstants.CLIMB_LIFT_POSITION),
-            climb));
-    operatorController.povLeft()
-        .onTrue(Commands.runOnce(() -> climb.setPosition(ClimbConstants.FULLY_DOWN), climb));
 
-    // RIGHT TRIGGER - Dumb Shot (held)
-    // Fixed hood angle and flywheel RPM, drivetrain holds stationary
-    operatorController.rightTrigger(0.5).whileTrue(
-        new DumbShootCommand(flywheel, hood, conveyor, intakeActuator)
-            .withName("DumbShoot"));
-
-    // Intake actuator controls
-    operatorController.a().onTrue(intakeActuator.extend());
-    operatorController.b().onTrue(intakeActuator.retract());
-    operatorController.x().onTrue(intakeActuator.agitate());
-
-    // START - Reseed QuestNav from vision
-    // Drive to where 2+ AprilTags are visible, then press start to reseed position
-    if (QuestNavConstants.ENABLED) {
-      operatorController.start().onTrue(Commands.sequence(
-          Commands.runOnce(() -> {
-            isQuestNavSeeded = false;
-            questNav.clearSeeded();
-          }),
-          led.setPatternCommand(LED.Pattern.RED),
-          Commands.waitUntil(() -> vision.getVisibleTagCount() >= 2),
-          Commands.runOnce(() -> {
-            if (questNav.seedPoseFromVision()) {
-              isQuestNavSeeded = true;
-            }
-          }),
-          led.setPatternCommand(LED.Pattern.GREEN)).ignoringDisable(true));
-    }
-
-    // Climb manual jog controls for zeroing
-    RobotModeTriggers.test().and(operatorController.rightBumper()
-        .whileTrue(climb.run(() -> climb.manualMove(12.0)).finallyDo(() -> climb.stop())));
-    RobotModeTriggers.test().and(operatorController.leftBumper()
-        .whileTrue(climb.run(() -> climb.manualMove(-12.0)).finallyDo(() -> climb.stop())));
   }
 
   /**
-   * Configure QuestNav seeding with LED feedback. LEDs start OFF, turn RED when searching for tags, and GREEN once
-   * seeded. The physical reseed button (DIO) resets to RED and re-seeds when 2+ tags visible.
+   * Configure QuestNav seeding. Polls for 2+ visible AprilTags while disabled,
+   * then seeds QuestNav pose.
+   * The physical reseed button (DIO) resets and re-seeds when 2+ tags visible.
    */
   private void questNavInitialization() {
     // Automatic initial seeding: poll every second while disabled until first seed
     Command initialSeedingCommand = Commands.sequence(
-        // Turn RED to indicate searching for tags
-        led.setPatternCommand(LED.Pattern.RED),
         Commands.sequence(
             Commands.waitSeconds(1.0),
             Commands.runOnce(() -> {
@@ -339,13 +267,13 @@ public class RobotContainer {
                   isQuestNavSeeded = true;
                 }
               }
-            })).repeatedly().until(() -> isQuestNavSeeded),
-        // Turn GREEN once seeded
-        led.setPatternCommand(LED.Pattern.GREEN)).ignoringDisable(true);
+            })).repeatedly().until(() -> isQuestNavSeeded))
+        .ignoringDisable(true);
     RobotModeTriggers.disabled().onTrue(initialSeedingCommand);
 
     // One-time auto-seed while enabled: seed QuestNav if it hasn't been seeded yet
-    // After seeding, QuestNav feeds drivetrain via addVisionMeasurement (soft correction)
+    // After seeding, QuestNav feeds drivetrain via addVisionMeasurement (soft
+    // correction)
     // and vision also continues feeding when 2+ tags visible (redundancy)
     Command enabledAutoSeedCommand = Commands.run(() -> {
       if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
@@ -363,25 +291,21 @@ public class RobotContainer {
           isQuestNavSeeded = false;
           questNav.clearSeeded();
         }),
-        // Turn RED while waiting for tags
-        led.setPatternCommand(LED.Pattern.RED),
         // Wait for 2+ visible tags, then reseed
         Commands.waitUntil(() -> vision.getVisibleTagCount() >= 2),
         Commands.runOnce(() -> {
           if (questNav.seedPoseFromVision()) {
             isQuestNavSeeded = true;
           }
-        }),
-        // Turn GREEN once re-seeded
-        led.setPatternCommand(LED.Pattern.GREEN)).ignoringDisable(true));
+        })).ignoringDisable(true));
   }
 
   /**
-   * Configure test mode bindings using RobotModeTriggers. These bindings are only active when the robot is in test
+   * Configure test mode bindings using RobotModeTriggers. These bindings are only
+   * active when the robot is in test
    * mode.
    */
   private void configureTestBindings() {
-
     // Turret Calibration Mode
     // Right bumper toggles calibration mode - reads NetworkTables inputs
     // applies to hood/flywheel in real-time
@@ -401,22 +325,28 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.b()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kReverse));
     // RobotModeTriggers.test().and(driverController.x()).whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
     // RobotModeTriggers.test().and(driverController.y()).whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
-    
+
     // --- Drivetrain System Identification (for MATLAB) ---
-    RobotModeTriggers.test().and(driverController.a())
-        .toggleOnTrue(new DrivetrainSysIdCommand(drivetrain, DrivetrainSysIdCommand.Routine.QUASISTATIC));
-    RobotModeTriggers.test().and(driverController.b())
-        .toggleOnTrue(new DrivetrainSysIdCommand(drivetrain, DrivetrainSysIdCommand.Routine.STEPS));
-    RobotModeTriggers.test().and(driverController.y())
-        .toggleOnTrue(new DrivetrainSysIdCommand(drivetrain, DrivetrainSysIdCommand.Routine.COASTDOWN));
+    // RobotModeTriggers.test().and(driverController.a())
+    // .toggleOnTrue(new DrivetrainSysIdCommand(drivetrain,
+    // DrivetrainSysIdCommand.Routine.QUASISTATIC));
+    // RobotModeTriggers.test().and(driverController.b())
+    // .toggleOnTrue(new DrivetrainSysIdCommand(drivetrain,
+    // DrivetrainSysIdCommand.Routine.STEPS));
+    // RobotModeTriggers.test().and(driverController.y())
+    // .toggleOnTrue(new DrivetrainSysIdCommand(drivetrain,
+    // DrivetrainSysIdCommand.Routine.COASTDOWN));
 
     // --- Steer System Identification (for MATLAB) ---
-    RobotModeTriggers.test().and(operatorController.a())
-        .toggleOnTrue(new SteerSysIdCommand(drivetrain, SteerSysIdCommand.Routine.QUASISTATIC));
-    RobotModeTriggers.test().and(operatorController.b())
-        .toggleOnTrue(new SteerSysIdCommand(drivetrain, SteerSysIdCommand.Routine.STEPS));
-    RobotModeTriggers.test().and(operatorController.y())
-        .toggleOnTrue(new SteerSysIdCommand(drivetrain, SteerSysIdCommand.Routine.COASTDOWN));
+    // RobotModeTriggers.test().and(operatorController.a())
+    // .toggleOnTrue(new SteerSysIdCommand(drivetrain,
+    // SteerSysIdCommand.Routine.QUASISTATIC));
+    // RobotModeTriggers.test().and(operatorController.b())
+    // .toggleOnTrue(new SteerSysIdCommand(drivetrain,
+    // SteerSysIdCommand.Routine.STEPS));
+    // RobotModeTriggers.test().and(operatorController.y())
+    // .toggleOnTrue(new SteerSysIdCommand(drivetrain,
+    // SteerSysIdCommand.Routine.COASTDOWN));
 
     // --- Conveyor ---
     // RobotModeTriggers.test().and(driverController.rightBumper()).whileTrue(conveyor.run(conveyor::runFeed));
@@ -432,20 +362,6 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.leftBumper()).whileTrue(intake.run(intake::runIntake));
     // RobotModeTriggers.test().and(driverController.x()).onTrue(Commands.runOnce(intake::stop,
     // intake));
-
-    // --- Climb ---
-    // RobotModeTriggers.test().and(driverController.a())
-    // .whileTrue(climb.run(climb::testDirectionPositive).finallyDo(() ->
-    // climb.stop()));
-    // RobotModeTriggers.test().and(driverController.b())
-    // .whileTrue(climb.run(climb::testDirectionNegative).finallyDo(() ->
-    // climb.stop()));
-    // RobotModeTriggers.test().and(driverController.x())
-    // .onTrue(Commands.runOnce(() -> climb.nudge(1.0), climb));
-    // RobotModeTriggers.test().and(driverController.y())
-    // .onTrue(Commands.runOnce(() -> climb.nudge(-1.0), climb));
-    // RobotModeTriggers.test().and(driverController.leftBumper())
-    // .onTrue(Commands.runOnce(climb::stop, climb));
 
     // --- Turret Manual Test ---
     // driverController.a()
@@ -469,23 +385,24 @@ public class RobotContainer {
     // turret));
 
     // --- Flywheel System Identification (for MATLAB) ---
-    RobotModeTriggers.test().and(driverController.back())
-        .toggleOnTrue(new FlywheelSysIdCommand(flywheel));
+    // RobotModeTriggers.test().and(driverController.back())
+    // .toggleOnTrue(new FlywheelSysIdCommand(flywheel));
 
     // --- Flywheel ---
-    RobotModeTriggers.test().and(driverController.a())
-        .whileTrue(new FlywheelTestCommand(flywheel, false, 4000.0));
-    RobotModeTriggers.test().and(driverController.b())
-        .whileTrue(new FlywheelTestCommand(flywheel, true, 4000.0));
+    // RobotModeTriggers.test().and(driverController.a())
+    // .whileTrue(new FlywheelTestCommand(flywheel, false, 4000.0));
+    // RobotModeTriggers.test().and(driverController.b())
+    // .whileTrue(new FlywheelTestCommand(flywheel, true, 4000.0));
     // RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.run(()
     // -> flywheel.setVelocity(6000)));
     // RobotModeTriggers.test().and(driverController.y())
     // .onTrue(Commands.runOnce(() -> flywheel.setVelocity(0), flywheel));
 
     // --- Hood Test Sequence ---
-    // Operator start button: zeros hood then runs through full range for diagnostic capture
-    RobotModeTriggers.test().and(driverController.start())
-        .onTrue(HoodTestSequenceCommand.create(hood));
+    // Operator start button: zeros hood then runs through full range for diagnostic
+    // capture
+    // RobotModeTriggers.test().and(driverController.start())
+    // .onTrue(HoodTestSequenceCommand.create(hood));
 
     // --- Hood ---
     // RobotModeTriggers.test().and(driverController.a())
@@ -530,16 +447,11 @@ public class RobotContainer {
     SwerveRequest.Idle stop = new SwerveRequest.Idle();
 
     return Commands.sequence(
-        // Drive backwards for 0.5m (at 1 m/s ≈ 0.6s with acceleration margin) and extend intake
-        // deadline() ends when the first command (drive) finishes, interrupting extend()
-        // The intake motor keeps its setpoint so it continues extending during the shoot phase
         Commands.deadline(
             drivetrain.applyRequest(() -> driveBack)
                 .withTimeout(0.6),
             intakeActuator.extend()),
-        // Stop drivetrain before shooting
         drivetrain.applyRequest(() -> stop).withTimeout(0.02),
-        // Shoot (runs until auto period ends)
         Commands.parallel(new ShootCommand(flywheel, hood, conveyor, turret, shooterCalculator),
             intakeActuator.agitate(),
             intake.runCommand()));

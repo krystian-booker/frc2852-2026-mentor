@@ -1,4 +1,4 @@
-package frc.robot.commands;
+package frc.robot.commands.tuning;
 
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
@@ -10,12 +10,11 @@ import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.util.DiagnosticLogger;
 
 /**
- * Steer system identification command for MATLAB. Refactored into isolated test routines
- * so that each can be executed manually. This exclusively spins the steer (azimuth)
- * wheels to profile their position/velocity mechanics for PID tuning.
+ * Drivetrain system identification command for MATLAB. Refactored into isolated test routines
+ * so that each can be executed manually to fit securely in a 7-meter space.
  * All data is logged to CSV via DiagnosticLogger for import into MATLAB.
  */
-public class SteerSysIdCommand extends Command {
+public class DrivetrainSysIdCommand extends Command {
 
     public enum Routine {
         QUASISTATIC,
@@ -23,9 +22,9 @@ public class SteerSysIdCommand extends Command {
         COASTDOWN
     }
 
-    // Safety limits for steer motor
-    private static final double MAX_VELOCITY_RPS = 100.0; // Rotations per sec
-    private static final double STATOR_CURRENT_ABORT = 80.0;
+    // Safety limits for drivetrain (shortened for 7m constraint)
+    private static final double MAX_VELOCITY_MPS = 4.0;
+    private static final double STATOR_CURRENT_ABORT = 120.0;
     private static final int MAX_STATOR_VIOLATIONS = 20;
 
     // Quasistatic ramp parameters
@@ -33,21 +32,21 @@ public class SteerSysIdCommand extends Command {
     private static final double QS_MAX_VOLTAGE = 4.0;
 
     // Voltage step test parameters
-    private static final double[] VOLTAGE_STEPS = { 2.0, 4.0, 6.0 };
+    private static final double[] VOLTAGE_STEPS = { 2.0, 3.0, 4.0 };
     private static final double VOLTAGE_STEP_HOLD_SECONDS = 1.5;
     private static final double VOLTAGE_STEP_SETTLE_SECONDS = 1.0;
 
     // Coast-down parameters
-    private static final double COASTDOWN_SPINUP_VOLTAGE = 6.0;
+    private static final double COASTDOWN_SPINUP_VOLTAGE = 4.0;
     private static final double COASTDOWN_SPINUP_SECONDS = 1.5;
-    private static final double COASTDOWN_MIN_VELOCITY_RPS = 0.1;
-    private static final double COASTDOWN_TIMEOUT_SECONDS = 5.0;
+    private static final double COASTDOWN_MIN_VELOCITY_MPS = 0.05;
+    private static final double COASTDOWN_TIMEOUT_SECONDS = 8.0;
 
     // Settle parameters
-    private static final double SETTLE_VELOCITY_THRESHOLD_RPS = 0.05;
+    private static final double SETTLE_VELOCITY_THRESHOLD_MPS = 0.05;
     private static final double SETTLE_TIMEOUT_SECONDS = 5.0;
 
-    // Phase IDs for CSV
+    // Phase IDs for CSV (matches MATLAB script)
     private static final double PHASE_ID_QUASISTATIC = 0.0;
     private static final double PHASE_ID_VOLTAGE_STEPS = 1.0;
     private static final double PHASE_ID_COASTDOWN = 2.0;
@@ -56,14 +55,14 @@ public class SteerSysIdCommand extends Command {
     private static final double CMD_VOLTAGE = 0.0;
     private static final double CMD_NONE = 2.0;
 
-    private static final String PREFIX = "SteerSysId/";
+    private static final String PREFIX = "DrivetrainSysId/";
 
     private final CommandSwerveDrivetrain drivetrain;
     private final DiagnosticLogger logger;
     private final Routine routineToRun;
 
-    // Characterization request specific to Phoenix 6 Steer
-    private final SwerveRequest.SysIdSwerveSteerGains steerCharacterization = new SwerveRequest.SysIdSwerveSteerGains();
+    // Characterization request specific to Phoenix 6 Swerve
+    private final SwerveRequest.SysIdSwerveTranslation translationCharacterization = new SwerveRequest.SysIdSwerveTranslation();
     private final SwerveRequest.SwerveDriveBrake brakeRequest = new SwerveRequest.SwerveDriveBrake();
 
     private enum Phase {
@@ -81,11 +80,11 @@ public class SteerSysIdCommand extends Command {
     private double phaseStartTime;
     private int consecutiveStatorViolations;
 
-    public SteerSysIdCommand(CommandSwerveDrivetrain drivetrain, Routine routine) {
+    public DrivetrainSysIdCommand(CommandSwerveDrivetrain drivetrain, Routine routine) {
         this.drivetrain = drivetrain;
         this.routineToRun = routine;
         
-        String logPrefix = "steer_sysid_";
+        String logPrefix = "drivetrain_sysid_";
         switch(routine) {
             case QUASISTATIC: logPrefix += "quasistatic"; break;
             case STEPS: logPrefix += "steps"; break;
@@ -97,10 +96,10 @@ public class SteerSysIdCommand extends Command {
                 "test_phase",
                 "command_type",
                 "command_value",
-                "steer_velocity_rps",
-                "steer_position_rot",
-                "steer_voltage",
-                "steer_stator_current",
+                "velocity_mps",
+                "distance_m",
+                "drive_voltage",
+                "drive_stator_current",
                 "supply_voltage"
         });
         addRequirements(drivetrain);
@@ -108,7 +107,7 @@ public class SteerSysIdCommand extends Command {
 
     @Override
     public void initialize() {
-        System.out.println("=== STEER SYSID STARTING (" + routineToRun.name() + ") ===");
+        System.out.println("=== DRIVETRAIN SYSID STARTING (" + routineToRun.name() + ") ===");
         logger.open();
         
         switch(routineToRun) {
@@ -157,8 +156,6 @@ public class SteerSysIdCommand extends Command {
                 break;
         }
     }
-
-    // --- Phase implementations ---
 
     private void executeQuasistaticForward() {
         double elapsed = Timer.getFPGATimestamp() - phaseStartTime;
@@ -209,18 +206,18 @@ public class SteerSysIdCommand extends Command {
         logDataPoint(PHASE_ID_COASTDOWN, CMD_VOLTAGE, COASTDOWN_SPINUP_VOLTAGE);
 
         if (elapsed >= COASTDOWN_SPINUP_SECONDS) {
-            applyNeutral();
+            applyNeutral(); // Let it coast instead of braking
             transitionTo(Phase.COASTDOWN, "Coast-down recording");
         }
     }
 
     private void executeCoastdown() {
         double elapsed = Timer.getFPGATimestamp() - phaseStartTime;
-        double velocityRPS = Math.abs(drivetrain.getAverageSteerVelocity());
+        double velocityMPS = Math.abs(drivetrain.getAverageDriveVelocity());
 
         logDataPoint(PHASE_ID_COASTDOWN, CMD_NONE, 0.0);
 
-        if (velocityRPS < COASTDOWN_MIN_VELOCITY_RPS || elapsed >= COASTDOWN_TIMEOUT_SECONDS) {
+        if (velocityMPS < COASTDOWN_MIN_VELOCITY_MPS || elapsed >= COASTDOWN_TIMEOUT_SECONDS) {
             transitionTo(Phase.SETTLING, "Settling after coast-down");
             stopDrivetrain();
         }
@@ -228,23 +225,23 @@ public class SteerSysIdCommand extends Command {
 
     private void executeSettle() {
         double elapsed = Timer.getFPGATimestamp() - phaseStartTime;
-        double velocityRPS = Math.abs(drivetrain.getAverageSteerVelocity());
+        double velocityMPS = Math.abs(drivetrain.getAverageDriveVelocity());
 
         double currentPhaseId = 0;
         if (routineToRun == Routine.QUASISTATIC) currentPhaseId = PHASE_ID_QUASISTATIC;
         else if (routineToRun == Routine.STEPS) currentPhaseId = PHASE_ID_VOLTAGE_STEPS;
         else if (routineToRun == Routine.COASTDOWN) currentPhaseId = PHASE_ID_COASTDOWN;
         
-        logDataPoint(currentPhaseId, CMD_NONE, 0.0);
+        logDataPoint(currentPhaseId, CMD_NONE, 0.0); // Stop logging or log zero? Keep logging for full trace.
 
-        if (velocityRPS < SETTLE_VELOCITY_THRESHOLD_RPS || elapsed >= SETTLE_TIMEOUT_SECONDS) {
+        if (velocityMPS < SETTLE_VELOCITY_THRESHOLD_MPS || elapsed >= SETTLE_TIMEOUT_SECONDS) {
             transitionTo(Phase.DONE, "Done");
         }
     }
 
     // --- Helpers ---
     private void applyVoltage(double voltage) {
-        drivetrain.setControl(steerCharacterization.withVolts(voltage));
+        drivetrain.setControl(translationCharacterization.withVolts(voltage));
     }
 
     private void stopDrivetrain() {
@@ -252,15 +249,15 @@ public class SteerSysIdCommand extends Command {
     }
     
     private void applyNeutral() {
-        drivetrain.setControl(steerCharacterization.withVolts(0.0));
+        drivetrain.setControl(translationCharacterization.withVolts(0.0));
     }
 
     private boolean safetyCheck() {
-        double velocityRPS = Math.abs(drivetrain.getAverageSteerVelocity());
-        double statorCurrent = Math.abs(drivetrain.getAverageSteerStatorCurrent());
+        double velocityMPS = Math.abs(drivetrain.getAverageDriveVelocity());
+        double statorCurrent = Math.abs(drivetrain.getAverageStatorCurrent());
 
-        if (velocityRPS > MAX_VELOCITY_RPS) {
-            System.err.println("STEER SYSID: Velocity exceeded " + MAX_VELOCITY_RPS + " rps. Aborting.");
+        if (velocityMPS > MAX_VELOCITY_MPS) {
+            System.err.println("DRIVETRAIN SYSID: Velocity exceeded " + MAX_VELOCITY_MPS + " m/s. Aborting.");
             cancel();
             return false;
         }
@@ -268,7 +265,7 @@ public class SteerSysIdCommand extends Command {
         if (statorCurrent > STATOR_CURRENT_ABORT) {
             consecutiveStatorViolations++;
             if (consecutiveStatorViolations >= MAX_STATOR_VIOLATIONS) {
-                System.err.println("STEER SYSID: Stator current exceeded " + STATOR_CURRENT_ABORT + "A. Aborting.");
+                System.err.println("DRIVETRAIN SYSID: Stator current exceeded " + STATOR_CURRENT_ABORT + "A. Aborting.");
                 cancel();
                 return false;
             }
@@ -281,11 +278,11 @@ public class SteerSysIdCommand extends Command {
 
     private void logDataPoint(double phaseId, double commandType, double commandValue) {
         double timestamp = Timer.getFPGATimestamp();
-        double velocityRPS = drivetrain.getAverageSteerVelocity();
-        double positionRot = drivetrain.getAverageSteerPosition();
+        double velocityMPS = drivetrain.getAverageDriveVelocity();
+        double distanceM = drivetrain.getState().Pose.getTranslation().getNorm(); 
         
-        double motorVoltage = drivetrain.getAverageSteerVoltage();
-        double statorCurrent = drivetrain.getAverageSteerStatorCurrent();
+        double motorVoltage = drivetrain.getAverageDriveVoltage();
+        double statorCurrent = drivetrain.getAverageStatorCurrent();
         double supplyVoltage = RobotController.getBatteryVoltage();
 
         logger.logRow(
@@ -293,8 +290,8 @@ public class SteerSysIdCommand extends Command {
                 phaseId,
                 commandType,
                 commandValue,
-                velocityRPS,
-                positionRot,
+                velocityMPS,
+                distanceM,
                 motorVoltage,
                 statorCurrent,
                 supplyVoltage);
@@ -304,7 +301,7 @@ public class SteerSysIdCommand extends Command {
         currentPhase = phase;
         phaseStartTime = Timer.getFPGATimestamp();
         publishStatus(description);
-        System.out.println("SteerSysId: " + description);
+        System.out.println("DrivetrainSysId: " + description);
     }
 
     private void publishStatus(String status) {
@@ -320,10 +317,10 @@ public class SteerSysIdCommand extends Command {
         logger.close();
         if (interrupted) {
             publishStatus("CANCELLED - partial data saved");
-            System.out.println("=== STEER SYSID CANCELLED ===");
+            System.out.println("=== DRIVETRAIN SYSID CANCELLED ===");
         } else {
             publishStatus("COMPLETE - data saved");
-            System.out.println("=== STEER SYSID COMPLETE ===");
+            System.out.println("=== DRIVETRAIN SYSID COMPLETE ===");
         }
     }
 

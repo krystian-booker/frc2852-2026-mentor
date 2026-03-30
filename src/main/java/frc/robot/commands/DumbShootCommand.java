@@ -8,7 +8,8 @@ import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.IntakeActuator;
 
 /**
- * Fixed-parameter shoot command that uses hardcoded hood angle and flywheel RPM instead of the aiming calculator. The
+ * Fixed-parameter shoot command that uses hardcoded hood angle and flywheel RPM
+ * instead of the aiming calculator. The
  * drivetrain is held stationary (no wiggle). Runs until interrupted.
  */
 public class DumbShootCommand extends Command {
