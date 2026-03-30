@@ -23,8 +23,8 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
 import frc.robot.Constants.TurretConstants;
-import frc.robot.util.TurretAimingCalculator;
-import frc.robot.util.TurretAimingCalculator.AimingResult;
+import frc.robot.util.AimingCalculator;
+import frc.robot.util.AimingCalculator.AimingResult;
 
 import static edu.wpi.first.units.Units.*;
 
@@ -212,7 +212,7 @@ public class Turret extends SubsystemBase {
      * @param calculator The TurretAimingCalculator to use for calculations
      * @return A command that continuously updates the turret position
      */
-    public Command aimAtTargetCommand(TurretAimingCalculator calculator) {
+    public Command aimAtTargetCommand(AimingCalculator calculator) {
         return run(() -> {
             AimingResult result = calculator.calculate();
             if (result.isReachable()) {

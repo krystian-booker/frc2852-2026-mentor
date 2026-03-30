@@ -14,7 +14,7 @@ import frc.robot.subsystems.Turret;
 import frc.robot.subsystems.Vision;
 import frc.robot.util.DiagnosticLogger;
 import frc.robot.util.Telemetry;
-import frc.robot.util.TurretAimingCalculator;
+import frc.robot.util.AimingCalculator;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -72,7 +72,7 @@ public class RobotContainer {
   private QuestNavSubsystem questNav = null;
 
   // Turret aiming calculator
-  private TurretAimingCalculator shooterCalculator = null;
+  private AimingCalculator shooterCalculator = null;
 
   // Diagnostic logging
   private final DiagnosticLogger turretDiagLogger = new DiagnosticLogger("turret_diag", new String[] {
@@ -113,7 +113,7 @@ public class RobotContainer {
     if (QuestNavConstants.ENABLED) {
       questNav = new QuestNavSubsystem(drivetrain, vision);
     }
-    shooterCalculator = new TurretAimingCalculator(
+    shooterCalculator = new AimingCalculator(
         () -> drivetrain.getState().Pose,
         () -> drivetrain.getState().Speeds);
 
@@ -231,9 +231,6 @@ public class RobotContainer {
     driverController.rightTrigger(0.5).whileTrue(
         new ShootCommand(flywheel, hood, conveyor, turret,
             shooterCalculator,
-            drivetrain,
-            this::getDriveRequest,
-            this::isDriverActive,
             intakeActuator)
             .withName("Shoot"));
 
@@ -306,16 +303,6 @@ public class RobotContainer {
    * mode.
    */
   private void configureTestBindings() {
-    // Turret Calibration Mode
-    // Right bumper toggles calibration mode - reads NetworkTables inputs
-    // applies to hood/flywheel in real-time
-    // TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
-    // hood, flywheel, conveyor, intakeActuator,
-    // () -> drivetrain.getState().Pose, shooterCalculator,
-    // drivetrain,
-    // this::getDriveRequest,
-    // this::isDriverActive);
-
     // // Only allow toggling calibration mode while in test mode
     // RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
 

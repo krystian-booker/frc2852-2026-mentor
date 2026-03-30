@@ -22,7 +22,7 @@ import frc.robot.util.firecontrol.ShotLUT;
  * <p>
  * This implementation uses the frc-fire-control physics-based SOTM solver.
  */
-public class TurretAimingCalculator {
+public class AimingCalculator {
     private final Supplier<Pose2d> poseSupplier;
     private final Supplier<ChassisSpeeds> speedsSupplier;
     private final ShotCalculator shotCalculator;
@@ -54,7 +54,7 @@ public class TurretAimingCalculator {
             boolean isReachable) {
     }
 
-    public TurretAimingCalculator(Supplier<Pose2d> poseSupplier, Supplier<ChassisSpeeds> speedsSupplier) {
+    public AimingCalculator(Supplier<Pose2d> poseSupplier, Supplier<ChassisSpeeds> speedsSupplier) {
         this.poseSupplier = poseSupplier;
         this.speedsSupplier = speedsSupplier;
 

@@ -1,18 +1,12 @@
 package frc.robot.commands;
 
-import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
-
-import com.ctre.phoenix6.swerve.SwerveRequest;
-
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Conveyor;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
-import frc.robot.util.TurretAimingCalculator;
+import frc.robot.util.AimingCalculator;
 
 /**
  * Shooting command that coordinates flywheel, hood, conveyor, and intake
@@ -38,61 +32,42 @@ public class ShootCommand extends Command {
     private final Flywheel flywheel;
     private final Hood hood;
     private final Conveyor conveyor;
-    private final TurretAimingCalculator aimingCalculator;
-    private final CommandSwerveDrivetrain drivetrain;
-    private final Supplier<SwerveRequest> driveRequestSupplier;
-    private final BooleanSupplier driverActive;
+    private final AimingCalculator aimingCalculator;
     private final IntakeActuator intakeActuator;
-    private final SwerveRequest.RobotCentric wiggleRequest = new SwerveRequest.RobotCentric();
-
-    private static final double WIGGLE_AMPLITUDE_RAD = Math.toRadians(5.0);
-    private static final double WIGGLE_ROTATIONAL_RATE = Math.toRadians(40.0); // rad/s
 
     private boolean isFeeding;
-    private boolean wasDriving;
     private boolean waitingForExtend;
-    private double wiggleCenterRad;
-    private boolean wiggleDirectionPositive;
 
     /**
-     * Teleop constructor - includes drivetrain brake control and intake actuator.
+     * Teleop constructor - includes intake actuator.
      */
     public ShootCommand(
             Flywheel flywheel,
             Hood hood,
             Conveyor conveyor,
             Turret turret,
-            TurretAimingCalculator aimingCalculator,
-            CommandSwerveDrivetrain drivetrain,
-            Supplier<SwerveRequest> driveRequestSupplier,
-            BooleanSupplier driverActive,
+            AimingCalculator aimingCalculator,
             IntakeActuator intakeActuator) {
         this.flywheel = flywheel;
         this.hood = hood;
         this.conveyor = conveyor;
         this.aimingCalculator = aimingCalculator;
-        this.drivetrain = drivetrain;
-        this.driveRequestSupplier = driveRequestSupplier;
-        this.driverActive = driverActive;
         this.intakeActuator = intakeActuator;
 
-        addRequirements(flywheel, hood, conveyor, drivetrain, intakeActuator);
+        addRequirements(flywheel, hood, conveyor, intakeActuator);
     }
 
-    /** Auto constructor - no drivetrain brake control. */
+    /** Auto constructor - no intake actuator. */
     public ShootCommand(
             Flywheel flywheel,
             Hood hood,
             Conveyor conveyor,
             Turret turret,
-            TurretAimingCalculator aimingCalculator) {
+            AimingCalculator aimingCalculator) {
         this.flywheel = flywheel;
         this.hood = hood;
         this.conveyor = conveyor;
         this.aimingCalculator = aimingCalculator;
-        this.drivetrain = null;
-        this.driveRequestSupplier = null;
-        this.driverActive = null;
         this.intakeActuator = null;
 
         addRequirements(flywheel, hood, conveyor);
@@ -101,7 +76,6 @@ public class ShootCommand extends Command {
     @Override
     public void initialize() {
         isFeeding = false;
-        wasDriving = false;
         waitingForExtend = false;
         if (intakeActuator != null) {
             intakeActuator.resetAgitate();
@@ -132,53 +106,15 @@ public class ShootCommand extends Command {
             isFeeding = false;
         }
 
-        // Wiggle spin or driver control (teleop only)
-        if (drivetrain != null) {
-            boolean driving = driverActive.getAsBoolean();
-            if (driving) {
-                drivetrain.setControl(driveRequestSupplier.get());
-                // Keep intake extended while driving
-                if (intakeActuator != null) {
-                    intakeActuator.driveExtend();
+        // Intake actuator control (teleop only)
+        if (intakeActuator != null) {
+            if (waitingForExtend) {
+                intakeActuator.driveExtend();
+                if (intakeActuator.isExtended()) {
+                    waitingForExtend = false;
                 }
-                wasDriving = true;
-                waitingForExtend = false;
             } else {
-                // Just stopped driving - capture heading as wiggle center
-                if (wasDriving) {
-                    wiggleCenterRad = drivetrain.getState().Pose.getRotation().getRadians();
-                    wiggleDirectionPositive = true;
-                    wasDriving = false;
-
-                    if (intakeActuator != null) {
-                        waitingForExtend = true;
-                        intakeActuator.driveExtend();
-                        intakeActuator.resetAgitate();
-                    }
-                }
-
-                // Wiggle: rotate ±5 degrees from center
-                double currentRad = drivetrain.getState().Pose.getRotation().getRadians();
-                double error = currentRad - wiggleCenterRad;
-                if (wiggleDirectionPositive && error >= WIGGLE_AMPLITUDE_RAD) {
-                    wiggleDirectionPositive = false;
-                } else if (!wiggleDirectionPositive && error <= -WIGGLE_AMPLITUDE_RAD) {
-                    wiggleDirectionPositive = true;
-                }
-                double rate = wiggleDirectionPositive ? WIGGLE_ROTATIONAL_RATE : -WIGGLE_ROTATIONAL_RATE;
-                drivetrain.setControl(wiggleRequest.withRotationalRate(rate));
-
-                // Intake actuator: extend first, then agitate
-                if (intakeActuator != null) {
-                    if (waitingForExtend) {
-                        intakeActuator.driveExtend();
-                        if (intakeActuator.isExtended()) {
-                            waitingForExtend = false;
-                        }
-                    } else {
-                        intakeActuator.runAgitate();
-                    }
-                }
+                intakeActuator.runAgitate();
             }
         }
 
