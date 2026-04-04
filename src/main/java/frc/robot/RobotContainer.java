@@ -5,7 +5,7 @@ import frc.robot.Constants.QuestNavConstants;
 import frc.robot.Constants.TurretConstants;
 import frc.robot.commands.ShootCommand;
 import frc.robot.generated.TunerConstants;
-import frc.robot.subsystems.Conveyor;
+import frc.robot.subsystems.Indexer;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Intake;
@@ -42,7 +42,7 @@ import frc.robot.subsystems.QuestNavSubsystem;
 public class RobotContainer {
 
   // Subsystems
-  private final Conveyor conveyor = new Conveyor();
+  private final Indexer indexer = new Indexer();
   private final Flywheel flywheel = new Flywheel();
   private final Hood hood = new Hood();
   private final Intake intake = new Intake();
@@ -119,7 +119,7 @@ public class RobotContainer {
 
     // Register named commands before building auto chooser
     NamedCommands.registerCommand("shoot",
-        new ShootCommand(flywheel, hood, conveyor, turret, shooterCalculator));
+        new ShootCommand(flywheel, hood, indexer, turret, shooterCalculator));
     NamedCommands.registerCommand("extendIntake", intakeActuator.extend());
     NamedCommands.registerCommand("agitateIntake", intakeActuator.agitate());
     NamedCommands.registerCommand("runIntake", intake.runCommand());
@@ -229,7 +229,7 @@ public class RobotContainer {
 
     // RIGHT TRIGGER - Shoot (held)
     driverController.rightTrigger(0.5).whileTrue(
-        new ShootCommand(flywheel, hood, conveyor, turret,
+        new ShootCommand(flywheel, hood, indexer, turret,
             shooterCalculator,
             intakeActuator)
             .withName("Shoot"));
@@ -335,10 +335,10 @@ public class RobotContainer {
     // .toggleOnTrue(new SteerSysIdCommand(drivetrain,
     // SteerSysIdCommand.Routine.COASTDOWN));
 
-    // --- Conveyor ---
-    // RobotModeTriggers.test().and(driverController.rightBumper()).whileTrue(conveyor.run(conveyor::runFeed));
-    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(conveyor::stop,
-    // conveyor));
+    // --- Indexer ---
+    // RobotModeTriggers.test().and(driverController.rightBumper()).whileTrue(indexer.run(indexer::runFeed));
+    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(indexer::stop,
+    // indexer));
 
     // --- Intake Actuator ---
     // RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
@@ -432,7 +432,7 @@ public class RobotContainer {
                 .withTimeout(0.6),
             intakeActuator.extend()),
         drivetrain.applyRequest(() -> stop).withTimeout(0.02),
-        Commands.parallel(new ShootCommand(flywheel, hood, conveyor, turret, shooterCalculator),
+        Commands.parallel(new ShootCommand(flywheel, hood, indexer, turret, shooterCalculator),
             intakeActuator.agitate(),
             intake.runCommand()));
   }

@@ -28,11 +28,13 @@ public final class Constants {
 
     // Intake
     public static final int INTAKE_ACTUATOR_MOTOR = 13;
-    public static final int INTAKE_ROLLER_MOTOR = 14;
+    public static final int INTAKE_LEADER_MOTOR = 14;
+    public static final int INTAKE_FOLLOWER_MOTOR = 15;
 
-    // Conveyor
-    public static final int CONVEYOR_FLOOR_MOTOR = 17;
-    public static final int CONVEYOR_TAKE_UP_MOTOR = 18;
+    // Indexer
+    public static final int INDEXER_LEADER_MOTOR = 17;
+    public static final int INDEXER_FOLLOWER_ONE_MOTOR = 18;
+    public static final int INDEXER_FOLLOWER_TWO_MOTOR = 19;
 
     // Shooter
     public static final int FLYWHEEL_LEADER_MOTOR = 20;
@@ -185,13 +187,15 @@ public final class Constants {
 
   public static class IntakeConstants {
     public static final double GEAR_RATIO = 1.0;
-    public static final double INTAKE_SPEED = 1.0;
-    public static final double OUTTAKE_SPEED = -1.0;
-    public static final int SMART_CURRENT_LIMIT = 60;
-    public static final int SECONDARY_CURRENT_LIMIT = 80;
+    public static final double INTAKE_VOLTAGE = 12.0;
+    public static final double OUTTAKE_VOLTAGE = -12.0;
+    public static final double STATOR_CURRENT_LIMIT = 60.0;
+    public static final double SUPPLY_CURRENT_LIMIT = 40.0;
+    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 30.0;
+    public static final double SUPPLY_CURRENT_LOWER_TIME = 1.0;
   }
 
-  public static class ConveyorConstants {
+  public static class IndexerConstants {
     public static final double GEAR_RATIO = 1.0;
     public static final double FEED_SPEED = 1.0;
     public static final double REVERSE_SPEED = -1.0;

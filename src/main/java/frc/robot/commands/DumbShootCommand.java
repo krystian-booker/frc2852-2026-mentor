@@ -2,7 +2,7 @@ package frc.robot.commands;
 
 import edu.wpi.first.wpilibj2.command.Command;
 
-import frc.robot.subsystems.Conveyor;
+import frc.robot.subsystems.Indexer;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.IntakeActuator;
@@ -19,7 +19,7 @@ public class DumbShootCommand extends Command {
 
     private final Flywheel flywheel;
     private final Hood hood;
-    private final Conveyor conveyor;
+    private final Indexer indexer;
     private final IntakeActuator intakeActuator;
 
     private boolean isFeeding;
@@ -28,14 +28,14 @@ public class DumbShootCommand extends Command {
     public DumbShootCommand(
             Flywheel flywheel,
             Hood hood,
-            Conveyor conveyor,
+            Indexer indexer,
             IntakeActuator intakeActuator) {
         this.flywheel = flywheel;
         this.hood = hood;
-        this.conveyor = conveyor;
+        this.indexer = indexer;
         this.intakeActuator = intakeActuator;
 
-        addRequirements(flywheel, hood, conveyor, intakeActuator);
+        addRequirements(flywheel, hood, indexer, intakeActuator);
     }
 
     @Override
@@ -56,10 +56,10 @@ public class DumbShootCommand extends Command {
 
         if (flywheelReady && hoodReady) {
             isFeeding = true;
-            conveyor.runFeed();
+            indexer.runFeed();
         } else {
             if (isFeeding) {
-                conveyor.stop();
+                indexer.stop();
             }
             isFeeding = false;
         }
@@ -78,7 +78,7 @@ public class DumbShootCommand extends Command {
     @Override
     public void end(boolean interrupted) {
         flywheel.setVelocity(0);
-        conveyor.stop();
+        indexer.stop();
         intakeActuator.driveExtend();
         isFeeding = false;
     }

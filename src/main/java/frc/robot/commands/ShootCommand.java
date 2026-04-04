@@ -1,7 +1,7 @@
 package frc.robot.commands;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.Conveyor;
+import frc.robot.subsystems.Indexer;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.IntakeActuator;
@@ -9,7 +9,7 @@ import frc.robot.subsystems.Turret;
 import frc.robot.util.AimingCalculator;
 
 /**
- * Shooting command that coordinates flywheel, hood, conveyor, and intake
+ * Shooting command that coordinates flywheel, hood, indexer, and intake
  * actuator.
  *
  * <p>
@@ -19,7 +19,7 @@ import frc.robot.util.AimingCalculator;
  *
  * <p>
  * Phase 2 (Feeding): Once the flywheel is at speed, hood is at position, and
- * turret is aimed, runs the conveyor and
+ * turret is aimed, runs the indexer and
  * agitates the intake actuator to feed game pieces.
  *
  * <p>
@@ -31,7 +31,7 @@ public class ShootCommand extends Command {
 
     private final Flywheel flywheel;
     private final Hood hood;
-    private final Conveyor conveyor;
+    private final Indexer indexer;
     private final AimingCalculator aimingCalculator;
     private final IntakeActuator intakeActuator;
 
@@ -44,33 +44,33 @@ public class ShootCommand extends Command {
     public ShootCommand(
             Flywheel flywheel,
             Hood hood,
-            Conveyor conveyor,
+            Indexer indexer,
             Turret turret,
             AimingCalculator aimingCalculator,
             IntakeActuator intakeActuator) {
         this.flywheel = flywheel;
         this.hood = hood;
-        this.conveyor = conveyor;
+        this.indexer = indexer;
         this.aimingCalculator = aimingCalculator;
         this.intakeActuator = intakeActuator;
 
-        addRequirements(flywheel, hood, conveyor, intakeActuator);
+        addRequirements(flywheel, hood, indexer, intakeActuator);
     }
 
     /** Auto constructor - no intake actuator. */
     public ShootCommand(
             Flywheel flywheel,
             Hood hood,
-            Conveyor conveyor,
+            Indexer indexer,
             Turret turret,
             AimingCalculator aimingCalculator) {
         this.flywheel = flywheel;
         this.hood = hood;
-        this.conveyor = conveyor;
+        this.indexer = indexer;
         this.aimingCalculator = aimingCalculator;
         this.intakeActuator = null;
 
-        addRequirements(flywheel, hood, conveyor);
+        addRequirements(flywheel, hood, indexer);
     }
 
     @Override
@@ -98,10 +98,10 @@ public class ShootCommand extends Command {
 
         if (flywheelReady && hoodReady && turretReady) {
             isFeeding = true;
-            conveyor.runFeed();
+            indexer.runFeed();
         } else {
             if (isFeeding) {
-                conveyor.stop();
+                indexer.stop();
             }
             isFeeding = false;
         }
@@ -130,7 +130,7 @@ public class ShootCommand extends Command {
     @Override
     public void end(boolean interrupted) {
         flywheel.setVelocity(0);
-        conveyor.stop();
+        indexer.stop();
         if (intakeActuator != null) {
             intakeActuator.driveExtend();
         }
