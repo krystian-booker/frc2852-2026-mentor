@@ -4,6 +4,7 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
 import frc.robot.Constants.TurretConstants;
 import frc.robot.commands.ShootCommand;
+import frc.robot.commands.tuning.TurretSysIdCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.Indexer;
 import frc.robot.subsystems.Flywheel;
@@ -370,6 +371,15 @@ public class RobotContainer {
     // drivetrain.getState().Pose.getRotation().getDegrees()));
     // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop,
     // turret));
+
+    // --- Turret System Identification (for MATLAB) ---
+    // Operator D-pad: Up=Quasistatic, Right=Steps, Down=Coastdown
+    RobotModeTriggers.test().and(operatorController.povUp())
+        .toggleOnTrue(new TurretSysIdCommand(turret, TurretSysIdCommand.Routine.QUASISTATIC));
+    RobotModeTriggers.test().and(operatorController.povRight())
+        .toggleOnTrue(new TurretSysIdCommand(turret, TurretSysIdCommand.Routine.STEPS));
+    RobotModeTriggers.test().and(operatorController.povDown())
+        .toggleOnTrue(new TurretSysIdCommand(turret, TurretSysIdCommand.Routine.COASTDOWN));
 
     // --- Flywheel System Identification (for MATLAB) ---
     // RobotModeTriggers.test().and(driverController.back())
