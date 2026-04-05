@@ -40,7 +40,7 @@ public class Indexer extends SubsystemBase {
     private void configureLeaderMotor() {
         SparkFlexConfig config = new SparkFlexConfig();
 
-        config.idleMode(IdleMode.kCoast);
+        config.idleMode(IdleMode.kBrake);
         config.inverted(false);
 
         config.smartCurrentLimit(IndexerConstants.SMART_CURRENT_LIMIT);
@@ -64,8 +64,8 @@ public class Indexer extends SubsystemBase {
     private void configureFollowerMotor(SparkFlex motor, String name) {
         SparkFlexConfig config = new SparkFlexConfig();
 
-        config.idleMode(IdleMode.kCoast);
-        config.follow(CANIds.INDEXER_LEADER_MOTOR);
+        config.idleMode(IdleMode.kBrake);
+        config.follow(CANIds.INDEXER_LEADER_MOTOR, true);
 
         config.smartCurrentLimit(IndexerConstants.SMART_CURRENT_LIMIT);
         config.secondaryCurrentLimit(IndexerConstants.SECONDARY_CURRENT_LIMIT);

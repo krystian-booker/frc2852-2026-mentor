@@ -1,5 +1,6 @@
 package frc.robot;
 
+import frc.robot.Constants.IntakeActuatorConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
 import frc.robot.Constants.TurretConstants;
@@ -44,8 +45,8 @@ public class RobotContainer {
 
   // Subsystems
   private final Indexer indexer = new Indexer();
-  private final Flywheel flywheel = new Flywheel();
-  private final Hood hood = new Hood();
+  // private final Flywheel flywheel = new Flywheel();
+  // private final Hood hood = new Hood();
   private final Intake intake = new Intake();
   private final IntakeActuator intakeActuator = new IntakeActuator();
   private final Turret turret = new Turret();
@@ -69,7 +70,7 @@ public class RobotContainer {
   public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
   // Vision
-  private Vision vision = null;
+  // private Vision vision = null;
   private QuestNavSubsystem questNav = null;
 
   // Turret aiming calculator
@@ -110,17 +111,17 @@ public class RobotContainer {
     DriverStation.silenceJoystickConnectionWarning(true);
 
     // Initialize vision subsystems
-    vision = new Vision(drivetrain::addVisionMeasurement);
-    if (QuestNavConstants.ENABLED) {
-      questNav = new QuestNavSubsystem(drivetrain, vision);
-    }
+    // vision = new Vision(drivetrain::addVisionMeasurement);
+    // if (QuestNavConstants.ENABLED) {
+    // questNav = new QuestNavSubsystem(drivetrain, vision);
+    // }
     shooterCalculator = new AimingCalculator(
         () -> drivetrain.getState().Pose,
         () -> drivetrain.getState().Speeds);
 
     // Register named commands before building auto chooser
-    NamedCommands.registerCommand("shoot",
-        new ShootCommand(flywheel, hood, indexer, turret, shooterCalculator));
+    // NamedCommands.registerCommand("shoot",
+    // new ShootCommand(flywheel, hood, indexer, turret, shooterCalculator));
     NamedCommands.registerCommand("extendIntake", intakeActuator.extend());
     NamedCommands.registerCommand("agitateIntake", intakeActuator.agitate());
     NamedCommands.registerCommand("runIntake", intake.runCommand());
@@ -128,6 +129,7 @@ public class RobotContainer {
     autoChooser = AutoBuilder.buildAutoChooser();
     autoChooser.addOption("Drive Back & Shoot", buildDriveBackAndShootAuto());
     SmartDashboard.putData("Auto Mode", autoChooser);
+    SmartDashboard.putNumber("IntakeActuator/StepTestDutyCycle", IntakeActuatorConstants.STEP_TEST_DUTY_CYCLE);
 
     // Set turret default command - auto-aim with operator stick override
     turret.setDefaultCommand(turret.run(() -> {
@@ -181,27 +183,27 @@ public class RobotContainer {
             turret.getMotorVoltage(),
             turret.getStatorCurrent(),
             sotmActive ? shooterCalculator.getSotmConfidence() : 0.0,
-            vision.getVisibleTagCount(),
-            vision.isFeedingEnabled() ? 1.0 : 0.0,
+            0, // vision.getVisibleTagCount(),
+            0.0, // vision.isFeedingEnabled() ? 1.0 : 0.0,
             turret.getCANCoderPositionDegrees());
       }
 
       // Hood diagnostic CSV logging
-      if (hoodDiagLogger.isOpen()) {
-        double hoodSetpoint = hood.getTargetPositionDegrees();
-        double hoodActual = hood.getCurrentPositionDegrees();
-        hoodDiagLogger.logRow(
-            Timer.getFPGATimestamp(),
-            hoodSetpoint,
-            hoodActual,
-            hoodSetpoint - hoodActual,
-            hood.getMotorVoltage(),
-            hood.getStatorCurrent(),
-            hood.getVelocityRPS(),
-            hood.isHomed() ? 1.0 : 0.0,
-            shooterCalculator.getFlywheelRPM(),
-            shooterCalculator.getLastDistanceMeters());
-      }
+      // if (hoodDiagLogger.isOpen()) {
+      // double hoodSetpoint = hood.getTargetPositionDegrees();
+      // double hoodActual = hood.getCurrentPositionDegrees();
+      // hoodDiagLogger.logRow(
+      // Timer.getFPGATimestamp(),
+      // hoodSetpoint,
+      // hoodActual,
+      // hoodSetpoint - hoodActual,
+      // hood.getMotorVoltage(),
+      // hood.getStatorCurrent(),
+      // hood.getVelocityRPS(),
+      // hood.isHomed() ? 1.0 : 0.0,
+      // shooterCalculator.getFlywheelRPM(),
+      // shooterCalculator.getLastDistanceMeters());
+      // }
     }).withName("TurretAimWithOverride"));
 
     // Configure normal bindings (always available)
@@ -209,7 +211,7 @@ public class RobotContainer {
     configureOperatorBindings();
     configureTestBindings();
     if (QuestNavConstants.ENABLED) {
-      questNavInitialization();
+      // questNavInitialization();
     }
 
     // Warmup PathPlanner to avoid Java pauses
@@ -229,11 +231,11 @@ public class RobotContainer {
     driverController.leftTrigger(0.5).whileTrue(intake.run(intake::runIntake).finallyDo(intake::stop));
 
     // RIGHT TRIGGER - Shoot (held)
-    driverController.rightTrigger(0.5).whileTrue(
-        new ShootCommand(flywheel, hood, indexer, turret,
-            shooterCalculator,
-            intakeActuator)
-            .withName("Shoot"));
+    // driverController.rightTrigger(0.5).whileTrue(
+    // new ShootCommand(flywheel, hood, indexer, turret,
+    // shooterCalculator,
+    // intakeActuator)
+    // .withName("Shoot"));
 
     // DEFAULT COMMAND - Field-Centric Drive
     drivetrain.setDefaultCommand(
@@ -250,57 +252,55 @@ public class RobotContainer {
   }
 
   /**
-   * Configure QuestNav seeding. Polls for 2+ visible AprilTags while disabled,
-   * then seeds QuestNav pose.
-   * The physical reseed button (DIO) resets and re-seeds when 2+ tags visible.
+   * Configure QuestNav seeding. Polls for 2+ visible AprilTags while disabled, then seeds QuestNav pose. The physical
+   * reseed button (DIO) resets and re-seeds when 2+ tags visible.
    */
-  private void questNavInitialization() {
-    // Automatic initial seeding: poll every second while disabled until first seed
-    Command initialSeedingCommand = Commands.sequence(
-        Commands.sequence(
-            Commands.waitSeconds(1.0),
-            Commands.runOnce(() -> {
-              if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
-                if (questNav.seedPoseFromVision()) {
-                  isQuestNavSeeded = true;
-                }
-              }
-            })).repeatedly().until(() -> isQuestNavSeeded))
-        .ignoringDisable(true);
-    RobotModeTriggers.disabled().onTrue(initialSeedingCommand);
+  // private void questNavInitialization() {
+  // // Automatic initial seeding: poll every second while disabled until first seed
+  // Command initialSeedingCommand = Commands.sequence(
+  // Commands.sequence(
+  // Commands.waitSeconds(1.0),
+  // Commands.runOnce(() -> {
+  // if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
+  // if (questNav.seedPoseFromVision()) {
+  // isQuestNavSeeded = true;
+  // }
+  // }
+  // })).repeatedly().until(() -> isQuestNavSeeded))
+  // .ignoringDisable(true);
+  // RobotModeTriggers.disabled().onTrue(initialSeedingCommand);
 
-    // One-time auto-seed while enabled: seed QuestNav if it hasn't been seeded yet
-    // After seeding, QuestNav feeds drivetrain via addVisionMeasurement (soft
-    // correction)
-    // and vision also continues feeding when 2+ tags visible (redundancy)
-    Command enabledAutoSeedCommand = Commands.run(() -> {
-      if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
-        if (questNav.seedPoseFromVision()) {
-          isQuestNavSeeded = true;
-        }
-      }
-    }).ignoringDisable(false);
-    RobotModeTriggers.teleop().whileTrue(enabledAutoSeedCommand);
-    RobotModeTriggers.autonomous().whileTrue(enabledAutoSeedCommand);
+  // // One-time auto-seed while enabled: seed QuestNav if it hasn't been seeded yet
+  // // After seeding, QuestNav feeds drivetrain via addVisionMeasurement (soft
+  // // correction)
+  // // and vision also continues feeding when 2+ tags visible (redundancy)
+  // Command enabledAutoSeedCommand = Commands.run(() -> {
+  // if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
+  // if (questNav.seedPoseFromVision()) {
+  // isQuestNavSeeded = true;
+  // }
+  // }
+  // }).ignoringDisable(false);
+  // RobotModeTriggers.teleop().whileTrue(enabledAutoSeedCommand);
+  // RobotModeTriggers.autonomous().whileTrue(enabledAutoSeedCommand);
 
-    // Reseed button: only works while disabled so a mid-match press is ignored
-    reseedButton.and(RobotModeTriggers.disabled()).onTrue(Commands.sequence(
-        Commands.runOnce(() -> {
-          isQuestNavSeeded = false;
-          questNav.clearSeeded();
-        }),
-        // Wait for 2+ visible tags, then reseed
-        Commands.waitUntil(() -> vision.getVisibleTagCount() >= 2),
-        Commands.runOnce(() -> {
-          if (questNav.seedPoseFromVision()) {
-            isQuestNavSeeded = true;
-          }
-        })).ignoringDisable(true));
-  }
+  // // Reseed button: only works while disabled so a mid-match press is ignored
+  // reseedButton.and(RobotModeTriggers.disabled()).onTrue(Commands.sequence(
+  // Commands.runOnce(() -> {
+  // isQuestNavSeeded = false;
+  // questNav.clearSeeded();
+  // }),
+  // // Wait for 2+ visible tags, then reseed
+  // Commands.waitUntil(() -> vision.getVisibleTagCount() >= 2),
+  // Commands.runOnce(() -> {
+  // if (questNav.seedPoseFromVision()) {
+  // isQuestNavSeeded = true;
+  // }
+  // })).ignoringDisable(true));
+  // }
 
   /**
-   * Configure test mode bindings using RobotModeTriggers. These bindings are only
-   * active when the robot is in test
+   * Configure test mode bindings using RobotModeTriggers. These bindings are only active when the robot is in test
    * mode.
    */
   private void configureTestBindings() {
@@ -337,19 +337,19 @@ public class RobotContainer {
     // SteerSysIdCommand.Routine.COASTDOWN));
 
     // --- Indexer ---
-    // RobotModeTriggers.test().and(driverController.rightBumper()).whileTrue(indexer.run(indexer::runFeed));
-    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(indexer::stop,
-    // indexer));
+    RobotModeTriggers.test().and(driverController.povUp()).whileTrue(indexer.run(indexer::runFeed));
+    RobotModeTriggers.test().and(driverController.povDown()).onTrue(Commands.runOnce(indexer::stop,
+        indexer));
 
     // --- Intake Actuator ---
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
+    RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
+    RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
+    RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
 
     // --- Intake ---
-    // RobotModeTriggers.test().and(driverController.leftBumper()).whileTrue(intake.run(intake::runIntake));
-    // RobotModeTriggers.test().and(driverController.x()).onTrue(Commands.runOnce(intake::stop,
-    // intake));
+    RobotModeTriggers.test().and(driverController.leftBumper()).whileTrue(intake.run(intake::runIntake));
+    RobotModeTriggers.test().and(driverController.y()).onTrue(Commands.runOnce(intake::stop,
+        intake));
 
     // --- Turret Manual Test ---
     // driverController.a()
@@ -374,12 +374,12 @@ public class RobotContainer {
 
     // --- Turret System Identification (for MATLAB) ---
     // Operator D-pad: Up=Quasistatic, Right=Steps, Down=Coastdown
-    RobotModeTriggers.test().and(operatorController.povUp())
-        .toggleOnTrue(new TurretSysIdCommand(turret, TurretSysIdCommand.Routine.QUASISTATIC));
-    RobotModeTriggers.test().and(operatorController.povRight())
-        .toggleOnTrue(new TurretSysIdCommand(turret, TurretSysIdCommand.Routine.STEPS));
-    RobotModeTriggers.test().and(operatorController.povDown())
-        .toggleOnTrue(new TurretSysIdCommand(turret, TurretSysIdCommand.Routine.COASTDOWN));
+    // RobotModeTriggers.test().and(operatorController.povUp())
+    // .toggleOnTrue(new TurretSysIdCommand(turret, TurretSysIdCommand.Routine.QUASISTATIC));
+    // RobotModeTriggers.test().and(operatorController.povRight())
+    // .toggleOnTrue(new TurretSysIdCommand(turret, TurretSysIdCommand.Routine.STEPS));
+    // RobotModeTriggers.test().and(operatorController.povDown())
+    // .toggleOnTrue(new TurretSysIdCommand(turret, TurretSysIdCommand.Routine.COASTDOWN));
 
     // --- Flywheel System Identification (for MATLAB) ---
     // RobotModeTriggers.test().and(driverController.back())
@@ -436,15 +436,16 @@ public class RobotContainer {
         .withRotationalRate(0);
     SwerveRequest.Idle stop = new SwerveRequest.Idle();
 
-    return Commands.sequence(
-        Commands.deadline(
-            drivetrain.applyRequest(() -> driveBack)
-                .withTimeout(0.6),
-            intakeActuator.extend()),
-        drivetrain.applyRequest(() -> stop).withTimeout(0.02),
-        Commands.parallel(new ShootCommand(flywheel, hood, indexer, turret, shooterCalculator),
-            intakeActuator.agitate(),
-            intake.runCommand()));
+    return null;
+    // return Commands.sequence(
+    // Commands.deadline(
+    // drivetrain.applyRequest(() -> driveBack)
+    // .withTimeout(0.6),
+    // intakeActuator.extend()),
+    // drivetrain.applyRequest(() -> stop).withTimeout(0.02),
+    // Commands.parallel(new ShootCommand(flywheel, hood, indexer, turret, shooterCalculator),
+    // intakeActuator.agitate(),
+    // intake.runCommand()));
   }
 
   public Command getAutonomousCommand() {

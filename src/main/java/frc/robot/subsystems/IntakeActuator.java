@@ -12,6 +12,7 @@ import com.revrobotics.spark.FeedbackSensor;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkFlexConfig;
 
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -28,7 +29,7 @@ public class IntakeActuator extends SubsystemBase {
 
     public IntakeActuator() {
         motor = new SparkFlex(CANIds.INTAKE_ACTUATOR_MOTOR, MotorType.kBrushless);
-        encoder = motor.getExternalEncoder();
+        encoder = motor.getEncoder();
         closedLoopController = motor.getClosedLoopController();
         configureMotor();
     }
@@ -42,11 +43,10 @@ public class IntakeActuator extends SubsystemBase {
         config.smartCurrentLimit(IntakeActuatorConstants.SMART_CURRENT_LIMIT);
         config.secondaryCurrentLimit(IntakeActuatorConstants.SECONDARY_CURRENT_LIMIT);
 
-        config.externalEncoder.countsPerRevolution(IntakeActuatorConstants.ENCODER_COUNTS_PER_REV);
-        config.externalEncoder.positionConversionFactor(1.0 / IntakeActuatorConstants.GEAR_RATIO);
-        config.externalEncoder.velocityConversionFactor(1.0 / IntakeActuatorConstants.GEAR_RATIO / 60.0);
+        config.encoder.positionConversionFactor(1.0 / IntakeActuatorConstants.GEAR_RATIO);
+        config.encoder.velocityConversionFactor(1.0 / IntakeActuatorConstants.GEAR_RATIO / 60.0);
 
-        config.closedLoop.feedbackSensor(FeedbackSensor.kAlternateOrExternalEncoder);
+        config.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
         config.closedLoop.pid(IntakeActuatorConstants.KP, IntakeActuatorConstants.KI, IntakeActuatorConstants.KD);
         config.closedLoop.outputRange(IntakeActuatorConstants.MIN_OUTPUT, IntakeActuatorConstants.MAX_OUTPUT);
 
@@ -65,17 +65,17 @@ public class IntakeActuator extends SubsystemBase {
     }
 
     public void driveExtend() {
-        closedLoopController.setSetpoint(IntakeActuatorConstants.EXTENDED_POSITION_ROTATIONS,
+        closedLoopController.setSetpoint(IntakeActuatorConstants.EXTENDED_POSITION,
                 SparkBase.ControlType.kPosition);
     }
 
     public void driveRetractAg() {
-        closedLoopController.setSetpoint(IntakeActuatorConstants.RETRACTED_POSITION_ROTATIONS_AG,
+        closedLoopController.setSetpoint(IntakeActuatorConstants.RETRACTED_POSITION_AG,
                 SparkBase.ControlType.kPosition);
     }
 
     public void driveRetract() {
-        closedLoopController.setSetpoint(IntakeActuatorConstants.RETRACTED_POSITION_ROTATIONS,
+        closedLoopController.setSetpoint(IntakeActuatorConstants.RETRACTED_POSITION,
                 SparkBase.ControlType.kPosition);
     }
 
@@ -89,12 +89,12 @@ public class IntakeActuator extends SubsystemBase {
 
     public boolean isExtended() {
         return Math.abs(encoder.getPosition()
-                - IntakeActuatorConstants.EXTENDED_POSITION_ROTATIONS) <= IntakeActuatorConstants.POSITION_TOLERANCE_ROTATIONS;
+                - IntakeActuatorConstants.EXTENDED_POSITION) <= IntakeActuatorConstants.POSITION_TOLERANCE_ROTATIONS;
     }
 
     public boolean isRetracted() {
         return Math.abs(encoder.getPosition()
-                - IntakeActuatorConstants.RETRACTED_POSITION_ROTATIONS) <= IntakeActuatorConstants.POSITION_TOLERANCE_ROTATIONS;
+                - IntakeActuatorConstants.RETRACTED_POSITION) <= IntakeActuatorConstants.POSITION_TOLERANCE_ROTATIONS;
     }
 
     public double getPosition() {
@@ -136,23 +136,11 @@ public class IntakeActuator extends SubsystemBase {
 
     public Command extend() {
         return runOnce(this::driveExtend)
-                .andThen(Commands.idle(this).until(this::isExtended).withTimeout(2.0))
-                .finallyDo(() -> {
-                    if (!isExtended()) {
-                        stop();
-                    }
-                })
                 .withName("IntakeActuator.extend");
     }
 
     public Command retract() {
         return runOnce(this::driveRetract)
-                .andThen(Commands.idle(this).until(this::isRetracted).withTimeout(2.0))
-                .finallyDo(() -> {
-                    if (!isRetracted()) {
-                        stop();
-                    }
-                })
                 .withName("IntakeActuator.retract");
     }
 
@@ -163,8 +151,17 @@ public class IntakeActuator extends SubsystemBase {
                 .withName("IntakeActuator.agitate");
     }
 
+    public Command stepTest() {
+        return run(() -> motor.set(SmartDashboard.getNumber("IntakeActuator/StepTestDutyCycle",
+                IntakeActuatorConstants.STEP_TEST_DUTY_CYCLE)))
+                        .finallyDo(this::stop)
+                        .withName("IntakeActuator.stepTest");
+    }
+
     @Override
     public void periodic() {
-        // SmartDashboard.putNumber("IntakeActuator/Position", encoder.getPosition());
+        SmartDashboard.putNumber("IntakeActuator/Position", encoder.getPosition());
+        SmartDashboard.putNumber("IntakeActuator/Velocity", encoder.getVelocity());
+        SmartDashboard.putNumber("IntakeActuator/AppliedOutput", motor.getAppliedOutput());
     }
 }

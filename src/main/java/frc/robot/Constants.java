@@ -28,8 +28,8 @@ public final class Constants {
 
     // Intake
     public static final int INTAKE_ACTUATOR_MOTOR = 13;
-    public static final int INTAKE_LEADER_MOTOR = 14;
-    public static final int INTAKE_FOLLOWER_MOTOR = 15;
+    public static final int INTAKE_RIGHT_MOTOR = 14;
+    public static final int INTAKE_LEFT_MOTOR = 15;
 
     // Indexer
     public static final int INDEXER_LEADER_MOTOR = 17;
@@ -42,6 +42,9 @@ public final class Constants {
     public static final int TURRET_MOTOR = 22;
     public static final int TURRET_CANCODER = 23;
     public static final int HOOD_MOTOR = 24;
+
+    // PDP
+    public static final int PDB = 40;
   }
 
   public static class FlywheelConstants {
@@ -168,11 +171,10 @@ public final class Constants {
     public static final double EXTEND_DUTY_CYCLE = 1.0;
     public static final double RETRACT_DUTY_CYCLE = -1.0;
 
-    public static final int ENCODER_COUNTS_PER_REV = 8192;
     public static final double GEAR_RATIO = 1.0;
-    public static final double RETRACTED_POSITION_ROTATIONS = 0.0;
-    public static final double RETRACTED_POSITION_ROTATIONS_AG = 0.5;
-    public static final double EXTENDED_POSITION_ROTATIONS = 2.1;
+    public static final double RETRACTED_POSITION = 0.0;
+    public static final double EXTENDED_POSITION = 25.5;
+    public static final double RETRACTED_POSITION_AG = 10;
     public static final double POSITION_TOLERANCE_ROTATIONS = 0.25;
 
     public static final double KP = 3;
@@ -183,6 +185,8 @@ public final class Constants {
 
     public static final double AGITATE_EXTEND_SECONDS = 0.6;
     public static final double AGITATE_RETRACT_SECONDS = 0.6;
+
+    public static final double STEP_TEST_DUTY_CYCLE = 0.15;
   }
 
   public static class IntakeConstants {
