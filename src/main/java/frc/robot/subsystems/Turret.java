@@ -269,6 +269,26 @@ public class Turret extends SubsystemBase {
         motor.setControl(voltageRequest.withOutput(volts));
     }
 
+    /** Disable CTRE soft limits for sysid (free rotation with wires removed). */
+    public void disableSoftLimits() {
+        var config = new com.ctre.phoenix6.configs.SoftwareLimitSwitchConfigs();
+        config.ForwardSoftLimitEnable = false;
+        config.ReverseSoftLimitEnable = false;
+        motor.getConfigurator().apply(config);
+    }
+
+    /** Re-enable CTRE soft limits after sysid. */
+    public void enableSoftLimits() {
+        var config = new com.ctre.phoenix6.configs.SoftwareLimitSwitchConfigs();
+        config.ForwardSoftLimitEnable = true;
+        config.ForwardSoftLimitThreshold = (TurretConstants.ENCODER_MAX_DEGREES
+                + TurretConstants.SOFT_LIMIT_BUFFER_DEGREES) / 360.0;
+        config.ReverseSoftLimitEnable = true;
+        config.ReverseSoftLimitThreshold = (TurretConstants.ENCODER_MIN_DEGREES
+                - TurretConstants.SOFT_LIMIT_BUFFER_DEGREES) / 360.0;
+        motor.getConfigurator().apply(config);
+    }
+
     /** Get mechanism velocity in rotations per second (signal already at 250Hz). */
     public double getVelocityRPS() {
         return motor.getVelocity().refresh().getValue().in(RotationsPerSecond);

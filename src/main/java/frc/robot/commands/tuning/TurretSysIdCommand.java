@@ -21,7 +21,8 @@ public class TurretSysIdCommand extends Command {
     public enum Routine {
         QUASISTATIC,
         STEPS,
-        COASTDOWN
+        COASTDOWN,
+        ALL
     }
 
     // Safety limits
@@ -63,6 +64,7 @@ public class TurretSysIdCommand extends Command {
     private final Turret turret;
     private final DiagnosticLogger logger;
     private final Routine routineToRun;
+    private Routine currentSubRoutine;
 
     private enum Phase {
         QUASISTATIC_FORWARD,
@@ -90,6 +92,7 @@ public class TurretSysIdCommand extends Command {
             case QUASISTATIC: logPrefix += "quasistatic"; break;
             case STEPS:       logPrefix += "steps"; break;
             case COASTDOWN:   logPrefix += "coast"; break;
+            case ALL:         logPrefix += "all"; break;
         }
 
         this.logger = new DiagnosticLogger(logPrefix, new String[] {
@@ -110,18 +113,26 @@ public class TurretSysIdCommand extends Command {
     public void initialize() {
         System.out.println("=== TURRET SYSID STARTING (" + routineToRun.name() + ") ===");
         System.out.println("  Encoder position: " + String.format("%.1f", turret.getEncoderDegrees()) + " deg");
-        System.out.println("  Position limit guard: +/-" + POSITION_LIMIT_DEGREES + " deg");
+        System.out.println("  Disabling CTRE soft limits for sysid");
+        turret.disableSoftLimits();
         logger.open();
 
         switch (routineToRun) {
             case QUASISTATIC:
+                currentSubRoutine = Routine.QUASISTATIC;
                 currentPhase = Phase.QUASISTATIC_FORWARD;
                 break;
             case STEPS:
+                currentSubRoutine = Routine.STEPS;
                 currentPhase = Phase.VOLTAGE_STEPS_POS_HOLD;
                 break;
             case COASTDOWN:
+                currentSubRoutine = Routine.COASTDOWN;
                 currentPhase = Phase.COASTDOWN_SPINUP;
+                break;
+            case ALL:
+                currentSubRoutine = Routine.QUASISTATIC;
+                currentPhase = Phase.QUASISTATIC_FORWARD;
                 break;
         }
 
@@ -290,14 +301,36 @@ public class TurretSysIdCommand extends Command {
         double velocityRPS = Math.abs(turret.getVelocityRPS());
 
         double currentPhaseId = 0;
-        if (routineToRun == Routine.QUASISTATIC) currentPhaseId = PHASE_ID_QUASISTATIC;
-        else if (routineToRun == Routine.STEPS) currentPhaseId = PHASE_ID_VOLTAGE_STEPS;
-        else if (routineToRun == Routine.COASTDOWN) currentPhaseId = PHASE_ID_COASTDOWN;
+        if (currentSubRoutine == Routine.QUASISTATIC) currentPhaseId = PHASE_ID_QUASISTATIC;
+        else if (currentSubRoutine == Routine.STEPS) currentPhaseId = PHASE_ID_VOLTAGE_STEPS;
+        else if (currentSubRoutine == Routine.COASTDOWN) currentPhaseId = PHASE_ID_COASTDOWN;
 
         logDataPoint(currentPhaseId, CMD_NONE, 0.0);
 
         if (velocityRPS < SETTLE_VELOCITY_THRESHOLD_RPS || elapsed >= SETTLE_TIMEOUT_SECONDS) {
-            transitionTo(Phase.DONE, "Done");
+            if (routineToRun == Routine.ALL) {
+                advanceToNextRoutine();
+            } else {
+                transitionTo(Phase.DONE, "Done");
+            }
+        }
+    }
+
+    private void advanceToNextRoutine() {
+        switch (currentSubRoutine) {
+            case QUASISTATIC:
+                currentSubRoutine = Routine.STEPS;
+                stepIndex = 0;
+                transitionTo(Phase.VOLTAGE_STEPS_POS_HOLD, "Starting STEPS routine");
+                break;
+            case STEPS:
+                currentSubRoutine = Routine.COASTDOWN;
+                transitionTo(Phase.COASTDOWN_SPINUP, "Starting COASTDOWN routine");
+                break;
+            case COASTDOWN:
+            default:
+                transitionTo(Phase.DONE, "All routines complete");
+                break;
         }
     }
 
@@ -308,8 +341,11 @@ public class TurretSysIdCommand extends Command {
     }
 
     private boolean positionInRange() {
-        double encoderDeg = turret.getEncoderDegrees();
-        return Math.abs(encoderDeg) < POSITION_LIMIT_DEGREES;
+        // Position guard disabled — turret has free 360° rotation with wires removed.
+        // Re-enable when wires are reconnected:
+        // double encoderDeg = turret.getEncoderDegrees();
+        // return Math.abs(encoderDeg) < POSITION_LIMIT_DEGREES;
+        return true;
     }
 
     private boolean safetyCheck() {
@@ -372,6 +408,7 @@ public class TurretSysIdCommand extends Command {
     @Override
     public void end(boolean interrupted) {
         turret.stop();
+        turret.enableSoftLimits();
         logger.close();
         if (interrupted) {
             publishStatus("CANCELLED - partial data saved");

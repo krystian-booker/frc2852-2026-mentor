@@ -132,79 +132,79 @@ public class RobotContainer {
     SmartDashboard.putNumber("IntakeActuator/StepTestDutyCycle", IntakeActuatorConstants.STEP_TEST_DUTY_CYCLE);
 
     // Set turret default command - auto-aim with operator stick override
-    turret.setDefaultCommand(turret.run(() -> {
-      // ALWAYS update solver once per 20ms cycle for Newton predictions
-      shooterCalculator.update();
+    // turret.setDefaultCommand(turret.run(() -> {
+    // // ALWAYS update solver once per 20ms cycle for Newton predictions
+    // shooterCalculator.update();
 
-      double stickX = operatorController.getLeftX();
-      double stickY = operatorController.getLeftY();
-      double magnitude = Math.hypot(stickX, stickY);
+    // double stickX = operatorController.getLeftX();
+    // double stickY = operatorController.getLeftY();
+    // double magnitude = Math.hypot(stickX, stickY);
 
-      double turretSetpoint;
-      boolean sotmActive = false;
+    // double turretSetpoint;
+    // boolean sotmActive = false;
 
-      if (magnitude > 0.15) {
-        // Manual field-oriented override
-        double fieldAngleRad = Math.atan2(-stickX, -stickY);
-        double robotHeadingRad = drivetrain.getState().Pose.getRotation().getRadians();
-        double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) % 360.0;
-        if (turretAngleDeg > 180.0)
-          turretAngleDeg -= 360.0;
-        else if (turretAngleDeg <= -180.0)
-          turretAngleDeg += 360.0;
-        if (turretAngleDeg > TurretConstants.MAX_POSITION_DEGREES)
-          turretAngleDeg -= 360.0;
-        turretSetpoint = turretAngleDeg;
-      } else {
-        // Auto-aim at target
-        var result = shooterCalculator.calculate();
-        turretSetpoint = result.turretAngleDegrees();
-        sotmActive = true;
-      }
+    // if (magnitude > 0.15) {
+    // // Manual field-oriented override
+    // double fieldAngleRad = Math.atan2(-stickX, -stickY);
+    // double robotHeadingRad = drivetrain.getState().Pose.getRotation().getRadians();
+    // double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) % 360.0;
+    // if (turretAngleDeg > 180.0)
+    // turretAngleDeg -= 360.0;
+    // else if (turretAngleDeg <= -180.0)
+    // turretAngleDeg += 360.0;
+    // if (turretAngleDeg > TurretConstants.MAX_POSITION_DEGREES)
+    // turretAngleDeg -= 360.0;
+    // turretSetpoint = turretAngleDeg;
+    // } else {
+    // // Auto-aim at target
+    // var result = shooterCalculator.calculate();
+    // turretSetpoint = result.turretAngleDegrees();
+    // sotmActive = true;
+    // }
 
-      turret.setPosition(turretSetpoint);
+    // turret.setPosition(turretSetpoint);
 
-      // Diagnostic CSV logging
-      if (turretDiagLogger.isOpen()) {
-        var pose = drivetrain.getState().Pose;
-        var speeds = drivetrain.getState().Speeds;
-        var target = shooterCalculator.getLastTargetPosition();
-        turretDiagLogger.logRow(
-            Timer.getFPGATimestamp(),
-            pose.getX(), pose.getY(), pose.getRotation().getDegrees(),
-            speeds.vxMetersPerSecond, speeds.vyMetersPerSecond, speeds.omegaRadiansPerSecond,
-            target.getX(), target.getY(),
-            shooterCalculator.getLastDistanceMeters(),
-            shooterCalculator.getLastRawAngleDegrees(),
-            turretSetpoint,
-            turretSetpoint,
-            turret.getPositionDegrees(),
-            turretSetpoint - turret.getPositionDegrees(),
-            turret.getMotorVoltage(),
-            turret.getStatorCurrent(),
-            sotmActive ? shooterCalculator.getSotmConfidence() : 0.0,
-            0, // vision.getVisibleTagCount(),
-            0.0, // vision.isFeedingEnabled() ? 1.0 : 0.0,
-            turret.getCANCoderPositionDegrees());
-      }
+    // // Diagnostic CSV logging
+    // if (turretDiagLogger.isOpen()) {
+    // var pose = drivetrain.getState().Pose;
+    // var speeds = drivetrain.getState().Speeds;
+    // var target = shooterCalculator.getLastTargetPosition();
+    // turretDiagLogger.logRow(
+    // Timer.getFPGATimestamp(),
+    // pose.getX(), pose.getY(), pose.getRotation().getDegrees(),
+    // speeds.vxMetersPerSecond, speeds.vyMetersPerSecond, speeds.omegaRadiansPerSecond,
+    // target.getX(), target.getY(),
+    // shooterCalculator.getLastDistanceMeters(),
+    // shooterCalculator.getLastRawAngleDegrees(),
+    // turretSetpoint,
+    // turretSetpoint,
+    // turret.getPositionDegrees(),
+    // turretSetpoint - turret.getPositionDegrees(),
+    // turret.getMotorVoltage(),
+    // turret.getStatorCurrent(),
+    // sotmActive ? shooterCalculator.getSotmConfidence() : 0.0,
+    // 0, // vision.getVisibleTagCount(),
+    // 0.0, // vision.isFeedingEnabled() ? 1.0 : 0.0,
+    // turret.getCANCoderPositionDegrees());
+    // }
 
-      // Hood diagnostic CSV logging
-      // if (hoodDiagLogger.isOpen()) {
-      // double hoodSetpoint = hood.getTargetPositionDegrees();
-      // double hoodActual = hood.getCurrentPositionDegrees();
-      // hoodDiagLogger.logRow(
-      // Timer.getFPGATimestamp(),
-      // hoodSetpoint,
-      // hoodActual,
-      // hoodSetpoint - hoodActual,
-      // hood.getMotorVoltage(),
-      // hood.getStatorCurrent(),
-      // hood.getVelocityRPS(),
-      // hood.isHomed() ? 1.0 : 0.0,
-      // shooterCalculator.getFlywheelRPM(),
-      // shooterCalculator.getLastDistanceMeters());
-      // }
-    }).withName("TurretAimWithOverride"));
+    // // Hood diagnostic CSV logging
+    // // if (hoodDiagLogger.isOpen()) {
+    // // double hoodSetpoint = hood.getTargetPositionDegrees();
+    // // double hoodActual = hood.getCurrentPositionDegrees();
+    // // hoodDiagLogger.logRow(
+    // // Timer.getFPGATimestamp(),
+    // // hoodSetpoint,
+    // // hoodActual,
+    // // hoodSetpoint - hoodActual,
+    // // hood.getMotorVoltage(),
+    // // hood.getStatorCurrent(),
+    // // hood.getVelocityRPS(),
+    // // hood.isHomed() ? 1.0 : 0.0,
+    // // shooterCalculator.getFlywheelRPM(),
+    // // shooterCalculator.getLastDistanceMeters());
+    // // }
+    // }).withName("TurretAimWithOverride"));
 
     // Configure normal bindings (always available)
     configureDriverBindings();
@@ -337,19 +337,19 @@ public class RobotContainer {
     // SteerSysIdCommand.Routine.COASTDOWN));
 
     // --- Indexer ---
-    RobotModeTriggers.test().and(driverController.povUp()).whileTrue(indexer.feedCommand());
-    RobotModeTriggers.test().and(driverController.povDown()).onTrue(Commands.runOnce(indexer::stop,
-        indexer));
+    // RobotModeTriggers.test().and(driverController.povUp()).whileTrue(indexer.feedCommand());
+    // RobotModeTriggers.test().and(driverController.povDown()).onTrue(Commands.runOnce(indexer::stop,
+    // indexer));
 
-    // --- Intake Actuator ---
-    RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
-    RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
-    RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
+    // // --- Intake Actuator ---
+    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
+    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
+    // RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
 
-    // --- Intake ---
-    RobotModeTriggers.test().and(driverController.leftBumper()).whileTrue(intake.run(intake::runIntake));
-    RobotModeTriggers.test().and(driverController.y()).onTrue(Commands.runOnce(intake::stop,
-        intake));
+    // // --- Intake ---
+    // RobotModeTriggers.test().and(driverController.leftBumper()).whileTrue(intake.run(intake::runIntake));
+    // RobotModeTriggers.test().and(driverController.y()).onTrue(Commands.runOnce(intake::stop,
+    // intake));
 
     // --- Turret Manual Test ---
     // driverController.a()
@@ -373,13 +373,9 @@ public class RobotContainer {
     // turret));
 
     // --- Turret System Identification (for MATLAB) ---
-    // Operator D-pad: Up=Quasistatic, Right=Steps, Down=Coastdown
-    // RobotModeTriggers.test().and(operatorController.povUp())
-    // .toggleOnTrue(new TurretSysIdCommand(turret, TurretSysIdCommand.Routine.QUASISTATIC));
-    // RobotModeTriggers.test().and(operatorController.povRight())
-    // .toggleOnTrue(new TurretSysIdCommand(turret, TurretSysIdCommand.Routine.STEPS));
-    // RobotModeTriggers.test().and(operatorController.povDown())
-    // .toggleOnTrue(new TurretSysIdCommand(turret, TurretSysIdCommand.Routine.COASTDOWN));
+    // Operator D-pad Up: runs all routines (Quasistatic → Steps → Coastdown)
+    RobotModeTriggers.test().and(operatorController.povUp())
+        .toggleOnTrue(new TurretSysIdCommand(turret, TurretSysIdCommand.Routine.ALL));
 
     // --- Flywheel System Identification (for MATLAB) ---
     // RobotModeTriggers.test().and(driverController.back())
