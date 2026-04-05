@@ -337,7 +337,7 @@ public class RobotContainer {
     // SteerSysIdCommand.Routine.COASTDOWN));
 
     // --- Indexer ---
-    RobotModeTriggers.test().and(driverController.povUp()).whileTrue(indexer.run(indexer::runFeed));
+    RobotModeTriggers.test().and(driverController.povUp()).whileTrue(indexer.feedCommand());
     RobotModeTriggers.test().and(driverController.povDown()).onTrue(Commands.runOnce(indexer::stop,
         indexer));
 

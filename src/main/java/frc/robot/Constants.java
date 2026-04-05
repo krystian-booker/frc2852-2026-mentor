@@ -205,6 +205,11 @@ public final class Constants {
     public static final double REVERSE_SPEED = -1.0;
     public static final int SMART_CURRENT_LIMIT = 60;
     public static final int SECONDARY_CURRENT_LIMIT = 80;
+
+    // Jam detection
+    public static final double JAM_CURRENT_THRESHOLD_AMPS = 55;
+    public static final double JAM_REVERSE_DURATION_SECONDS = 0.5;
+    public static final double JAM_COOLDOWN_SECONDS = 1.0;
   }
 
   public static class QuestNavConstants {

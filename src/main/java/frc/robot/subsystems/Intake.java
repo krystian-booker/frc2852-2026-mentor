@@ -1,17 +1,13 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.BaseStatusSignal;
-import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.DutyCycleOut;
-import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.NeutralOut;
-import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
-import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.units.measure.AngularVelocity;
@@ -35,38 +31,32 @@ public class Intake extends SubsystemBase {
     private final NeutralOut neutralRequest;
 
     // Status signals
-    private final StatusSignal<AngularVelocity> leaderVelocity;
+    private final StatusSignal<AngularVelocity> leftVelocity;
 
     public Intake() {
-        // Initialize motors
         leftMotor = new TalonFX(CANIds.INTAKE_LEFT_MOTOR);
         rightMotor = new TalonFX(CANIds.INTAKE_RIGHT_MOTOR);
 
-        // Initialize control requests
-        dutyRequest = new DutyCycleOut(1);
+        dutyRequest = new DutyCycleOut(0);
         neutralRequest = new NeutralOut();
 
-        // Configure motors
-        configureLeftMotor();
-        configureRightMotor();
+        configureMotor(leftMotor, InvertedValue.CounterClockwise_Positive, "left");
+        configureMotor(rightMotor, InvertedValue.Clockwise_Positive, "right");
 
-        // Cache status signals
-        leaderVelocity = leftMotor.getVelocity();
-
+        leftVelocity = leftMotor.getVelocity();
         BaseStatusSignal.setUpdateFrequencyForAll(
                 Constants.SIGNAL_UPDATE_FREQUENCY_HZ,
-                leaderVelocity);
+                leftVelocity);
 
-        // Optimize CAN bus utilization
         leftMotor.optimizeBusUtilization();
         rightMotor.optimizeBusUtilization();
     }
 
-    private void configureLeftMotor() {
+    private void configureMotor(TalonFX motor, InvertedValue inversion, String name) {
         TalonFXConfiguration config = new TalonFXConfiguration();
 
         config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+        config.MotorOutput.Inverted = inversion;
         config.Feedback.SensorToMechanismRatio = IntakeConstants.GEAR_RATIO;
 
         config.CurrentLimits.StatorCurrentLimitEnable = true;
@@ -76,43 +66,15 @@ public class Intake extends SubsystemBase {
         config.CurrentLimits.SupplyCurrentLowerLimit = IntakeConstants.SUPPLY_CURRENT_LOWER_LIMIT;
         config.CurrentLimits.SupplyCurrentLowerTime = IntakeConstants.SUPPLY_CURRENT_LOWER_TIME;
 
-        // Apply with retry
         StatusCode status = StatusCode.StatusCodeNotInitialized;
         for (int i = 0; i < 5; i++) {
-            status = leftMotor.getConfigurator().apply(config);
+            status = motor.getConfigurator().apply(config);
             if (status.isOK()) {
                 break;
             }
         }
         if (!status.isOK()) {
-            System.err.println("Failed to configure intake right motor: " + status);
-        }
-    }
-
-    private void configureRightMotor() {
-        TalonFXConfiguration config = new TalonFXConfiguration();
-
-        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
-        config.Feedback.SensorToMechanismRatio = IntakeConstants.GEAR_RATIO;
-
-        config.CurrentLimits.StatorCurrentLimitEnable = true;
-        config.CurrentLimits.StatorCurrentLimit = IntakeConstants.STATOR_CURRENT_LIMIT;
-        config.CurrentLimits.SupplyCurrentLimitEnable = true;
-        config.CurrentLimits.SupplyCurrentLimit = IntakeConstants.SUPPLY_CURRENT_LIMIT;
-        config.CurrentLimits.SupplyCurrentLowerLimit = IntakeConstants.SUPPLY_CURRENT_LOWER_LIMIT;
-        config.CurrentLimits.SupplyCurrentLowerTime = IntakeConstants.SUPPLY_CURRENT_LOWER_TIME;
-
-        // Apply with retry
-        StatusCode status = StatusCode.StatusCodeNotInitialized;
-        for (int i = 0; i < 5; i++) {
-            status = rightMotor.getConfigurator().apply(config);
-            if (status.isOK()) {
-                break;
-            }
-        }
-        if (!status.isOK()) {
-            System.err.println("Failed to configure intake left motor: " + status);
+            System.err.println("Failed to configure intake " + name + " motor: " + status);
         }
     }
 
@@ -132,8 +94,8 @@ public class Intake extends SubsystemBase {
     }
 
     public double getVelocityRPS() {
-        BaseStatusSignal.refreshAll(leaderVelocity);
-        return leaderVelocity.getValue().in(RotationsPerSecond);
+        BaseStatusSignal.refreshAll(leftVelocity);
+        return leftVelocity.getValue().in(RotationsPerSecond);
     }
 
     public Command runCommand() {

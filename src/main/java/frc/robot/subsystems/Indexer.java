@@ -9,6 +9,8 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkFlexConfig;
 
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.Constants.CANIds;
@@ -16,28 +18,27 @@ import frc.robot.Constants.IndexerConstants;
 
 public class Indexer extends SubsystemBase {
 
-    // Hardware
-    private final SparkFlex leaderMotor;
-    private final SparkFlex followerOneMotor;
-    private final SparkFlex followerTwoMotor;
+    // Independent motor (CAN 17) - reverses on jam to clear it
+    private final SparkFlex independentMotor;
+    // Group motors (CAN 18 leader, CAN 19 follower) - keep feeding during jam
+    private final SparkFlex groupLeaderMotor;
+    private final SparkFlex groupFollowerMotor;
 
-    private final RelativeEncoder leaderEncoder;
+    private final RelativeEncoder independentEncoder;
 
     public Indexer() {
-        // Initialize hardware
-        leaderMotor = new SparkFlex(CANIds.INDEXER_LEADER_MOTOR, MotorType.kBrushless);
-        followerOneMotor = new SparkFlex(CANIds.INDEXER_FOLLOWER_ONE_MOTOR, MotorType.kBrushless);
-        followerTwoMotor = new SparkFlex(CANIds.INDEXER_FOLLOWER_TWO_MOTOR, MotorType.kBrushless);
+        independentMotor = new SparkFlex(CANIds.INDEXER_LEADER_MOTOR, MotorType.kBrushless);
+        groupLeaderMotor = new SparkFlex(CANIds.INDEXER_FOLLOWER_ONE_MOTOR, MotorType.kBrushless);
+        groupFollowerMotor = new SparkFlex(CANIds.INDEXER_FOLLOWER_TWO_MOTOR, MotorType.kBrushless);
 
-        leaderEncoder = leaderMotor.getEncoder();
+        independentEncoder = independentMotor.getEncoder();
 
-        // Configure motors
-        configureLeaderMotor();
-        configureFollowerMotor(followerOneMotor, "FollowerOne");
-        configureFollowerMotor(followerTwoMotor, "FollowerTwo");
+        configureIndependentMotor();
+        configureGroupLeaderMotor();
+        configureGroupFollowerMotor();
     }
 
-    private void configureLeaderMotor() {
+    private void configureIndependentMotor() {
         SparkFlexConfig config = new SparkFlexConfig();
 
         config.idleMode(IdleMode.kBrake);
@@ -51,65 +52,115 @@ public class Indexer extends SubsystemBase {
 
         REVLibError error = REVLibError.kError;
         for (int i = 0; i < 5; i++) {
-            error = leaderMotor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+            error = independentMotor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
             if (error == REVLibError.kOk) {
                 break;
             }
         }
         if (error != REVLibError.kOk) {
-            System.err.println("Failed to configure Indexer Leader motor: " + error);
+            System.err.println("Failed to configure Indexer Independent motor: " + error);
         }
     }
 
-    private void configureFollowerMotor(SparkFlex motor, String name) {
+    private void configureGroupLeaderMotor() {
         SparkFlexConfig config = new SparkFlexConfig();
 
         config.idleMode(IdleMode.kBrake);
-        config.follow(CANIds.INDEXER_LEADER_MOTOR, true);
+        config.inverted(true); // Inverted to match previous follower direction
 
         config.smartCurrentLimit(IndexerConstants.SMART_CURRENT_LIMIT);
         config.secondaryCurrentLimit(IndexerConstants.SECONDARY_CURRENT_LIMIT);
 
         REVLibError error = REVLibError.kError;
         for (int i = 0; i < 5; i++) {
-            error = motor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+            error = groupLeaderMotor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
             if (error == REVLibError.kOk) {
                 break;
             }
         }
         if (error != REVLibError.kOk) {
-            System.err.println("Failed to configure Indexer " + name + " motor: " + error);
+            System.err.println("Failed to configure Indexer Group Leader motor: " + error);
+        }
+    }
+
+    private void configureGroupFollowerMotor() {
+        SparkFlexConfig config = new SparkFlexConfig();
+
+        config.idleMode(IdleMode.kBrake);
+        config.follow(CANIds.INDEXER_FOLLOWER_ONE_MOTOR, false); // Same direction as group leader
+
+        config.smartCurrentLimit(IndexerConstants.SMART_CURRENT_LIMIT);
+        config.secondaryCurrentLimit(IndexerConstants.SECONDARY_CURRENT_LIMIT);
+
+        REVLibError error = REVLibError.kError;
+        for (int i = 0; i < 5; i++) {
+            error = groupFollowerMotor.configure(config, ResetMode.kResetSafeParameters,
+                    PersistMode.kPersistParameters);
+            if (error == REVLibError.kOk) {
+                break;
+            }
+        }
+        if (error != REVLibError.kOk) {
+            System.err.println("Failed to configure Indexer Group Follower motor: " + error);
         }
     }
 
     /**
-     * Run all indexer motors at feed speed to move balls to the shooter.
+     * Command that feeds game pieces, automatically reversing only the
+     * independent motor on a current spike to clear jams.
      */
-    public void runFeed() {
-        leaderMotor.set(IndexerConstants.FEED_SPEED);
+    public Command feedCommand() {
+        return run(() -> {
+            independentMotor.set(IndexerConstants.FEED_SPEED);
+            groupLeaderMotor.set(IndexerConstants.FEED_SPEED);
+        })
+                .until(() -> independentMotor.getOutputCurrent() >= IndexerConstants.JAM_CURRENT_THRESHOLD_AMPS)
+                .andThen(run(() -> independentMotor.set(IndexerConstants.REVERSE_SPEED))
+                        .withTimeout(IndexerConstants.JAM_REVERSE_DURATION_SECONDS))
+                .andThen(run(() -> {
+                    independentMotor.set(IndexerConstants.FEED_SPEED);
+                    groupLeaderMotor.set(IndexerConstants.FEED_SPEED);
+                }).withTimeout(IndexerConstants.JAM_COOLDOWN_SECONDS))
+                .repeatedly()
+                .finallyDo(this::stop);
     }
 
     /**
-     * Reverse all indexer motors to clear jams.
+     * Run all indexer motors at feed speed (no jam detection).
+     */
+    public void runFeed() {
+        independentMotor.set(IndexerConstants.FEED_SPEED);
+        groupLeaderMotor.set(IndexerConstants.FEED_SPEED);
+    }
+
+    /**
+     * Reverse all indexer motors.
      */
     public void runReverse() {
-        leaderMotor.set(IndexerConstants.REVERSE_SPEED);
+        independentMotor.set(IndexerConstants.REVERSE_SPEED);
+        groupLeaderMotor.set(IndexerConstants.REVERSE_SPEED);
     }
 
     /**
      * Stop all indexer motors.
      */
     public void stop() {
-        leaderMotor.setVoltage(0);
+        independentMotor.setVoltage(0);
+        groupLeaderMotor.setVoltage(0);
     }
 
     public double getVelocityRPS() {
-        return leaderEncoder.getVelocity();
+        return independentEncoder.getVelocity();
+    }
+
+    public double getOutputCurrent() {
+        return independentMotor.getOutputCurrent();
     }
 
     @Override
     public void periodic() {
-        // SmartDashboard.putNumber("Indexer/Velocity RPS", getVelocityRPS());
-        // SmartDashboard.putNumber("Indexer/Applied Output", leaderMotor.getAppliedOutput());
+        SmartDashboard.putNumber("Indexer/OutputCurrent", independentMotor.getOutputCurrent());
+        SmartDashboard.putNumber("Indexer/AppliedOutput", independentMotor.getAppliedOutput());
+        SmartDashboard.putNumber("Indexer/Velocity RPS", getVelocityRPS());
     }
 }
