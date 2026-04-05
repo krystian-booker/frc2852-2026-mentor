@@ -24,14 +24,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Simulates a ball flying through the air with drag and Magnus lift. Uses RK4 integration
- * in the vertical plane (x, z). For each distance, binary searches RPM until the ball arrives
- * at the target height. Then generates a 91-point lookup table from 0.50m to 5.00m.
+ * Simulates a ball flying through the air with drag and Magnus lift. Uses RK4 integration in the
+ * vertical plane (x, z). For each distance, binary searches RPM until the ball arrives at the
+ * target height. Then generates a 91-point lookup table from 0.50m to 5.00m.
  *
- * <p>Basically, you plug in your robot's measurements from CAD, run generateLUT(), and it gives
- * you a complete shooter table. No more hand-tuning RPM values from match videos.
+ * <p>Basically, you plug in your robot's measurements from CAD, run generateLUT(), and it gives you
+ * a complete shooter table. No more hand-tuning RPM values from match videos.
  *
  * <p>Usage:
+ *
  * <pre>
  *   SimParameters params = new SimParameters(
  *       0.215,   // ball mass kg
@@ -111,9 +112,8 @@ public class ProjectileSimulator {
   }
 
   /**
-   * @param magnusSign +1.0 for topspin (lift), -1.0 for backspin (downward push).
-   *     Most top-contact flywheels impart topspin. Drum shooters that contact the
-   *     bottom often impart backspin.
+   * @param magnusSign +1.0 for topspin (lift), -1.0 for backspin (downward push). Most top-contact
+   *     flywheels impart topspin. Drum shooters that contact the bottom often impart backspin.
    */
   public ProjectileSimulator(SimParameters params, double magnusSign) {
     this(params);
@@ -124,7 +124,10 @@ public class ProjectileSimulator {
     this.magnusSign = sign;
   }
 
-  /** RPM to ball exit speed. slipFactor (0-1) = how much surface speed transfers to ball. Calibrate on robot. */
+  /**
+   * RPM to ball exit speed. slipFactor (0-1) = how much surface speed transfers to ball. Calibrate
+   * on robot.
+   */
   public double exitVelocity(double rpm) {
     return params.slipFactor() * rpm * Math.PI * params.wheelDiameterM() / 60.0;
   }
@@ -221,7 +224,9 @@ public class ProjectileSimulator {
     return findRPMForDistance(distanceM, params.fixedLaunchAngleDeg());
   }
 
-  /** Binary search for the RPM at a specific launch angle that puts the ball at the target height. */
+  /**
+   * Binary search for the RPM at a specific launch angle that puts the ball at the target height.
+   */
   public LUTEntry findRPMForDistance(double distanceM, double launchAngleDeg) {
     double heightTolerance = 0.02; // 2cm
     double lo = params.rpmMin();
@@ -310,7 +315,8 @@ public class ProjectileSimulator {
     ShotLUT lut = new ShotLUT();
     for (LUTEntry entry : gen.entries()) {
       if (entry.reachable()) {
-        lut.put(entry.distanceM(),
+        lut.put(
+            entry.distanceM(),
             new ShotParameters(entry.rpm(), params.fixedLaunchAngleDeg(), entry.tof()));
       }
     }
@@ -318,11 +324,11 @@ public class ProjectileSimulator {
   }
 
   /**
-   * Sweep both launch angle and RPM at each distance, picking the angle that needs the
-   * lowest RPM (fastest flywheel recovery between shots). For adjustable hood mechanisms.
+   * Sweep both launch angle and RPM at each distance, picking the angle that needs the lowest RPM
+   * (fastest flywheel recovery between shots). For adjustable hood mechanisms.
    *
-   * <p>Slower than generateLUT() since it searches across the angle range at every distance.
-   * Still runs in a few seconds for typical ranges.
+   * <p>Slower than generateLUT() since it searches across the angle range at every distance. Still
+   * runs in a few seconds for typical ranges.
    */
   public ShotLUT generateVariableAngleShotLUT(
       double minAngleDeg, double maxAngleDeg, double angleStepDeg) {
@@ -354,17 +360,20 @@ public class ProjectileSimulator {
   }
 
   /**
-   * Sweep stored angles and simulate with mapped physics angles. The storedToPhysics
-   * function converts the angle stored in ShotParameters (returned to callers) into the
-   * actual launch elevation used by the physics simulation.
+   * Sweep stored angles and simulate with mapped physics angles. The storedToPhysics function
+   * converts the angle stored in ShotParameters (returned to callers) into the actual launch
+   * elevation used by the physics simulation.
    *
-   * <p>Use when the mechanism's angle reference frame differs from the physical launch
-   * angle (e.g., an adjustable hood where position 0 = 70 deg elevation).
+   * <p>Use when the mechanism's angle reference frame differs from the physical launch angle (e.g.,
+   * an adjustable hood where position 0 = 70 deg elevation).
    */
   public ShotLUT generateVariableAngleShotLUT(
-      double minStoredAngleDeg, double maxStoredAngleDeg, double angleStepDeg,
+      double minStoredAngleDeg,
+      double maxStoredAngleDeg,
+      double angleStepDeg,
       java.util.function.DoubleUnaryOperator storedToPhysics,
-      double minDistM, double maxDistM) {
+      double minDistM,
+      double maxDistM) {
     ShotLUT lut = new ShotLUT();
 
     for (double distance = minDistM; distance <= maxDistM + 0.001; distance += 0.05) {
@@ -375,7 +384,8 @@ public class ProjectileSimulator {
       double bestTOF = 0;
       boolean found = false;
 
-      for (double stored = minStoredAngleDeg; stored <= maxStoredAngleDeg + 0.001;
+      for (double stored = minStoredAngleDeg;
+          stored <= maxStoredAngleDeg + 0.001;
           stored += angleStepDeg) {
         double physicsAngle = storedToPhysics.applyAsDouble(stored);
         LUTEntry entry = findRPMForDistance(distance, physicsAngle);

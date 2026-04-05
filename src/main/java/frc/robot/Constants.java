@@ -11,12 +11,26 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
-
+import edu.wpi.first.wpilibj.RobotBase;
 import java.util.List;
 
 public final class Constants {
 
   public static final double SIGNAL_UPDATE_FREQUENCY_HZ = 250.0;
+
+  public static final Mode simMode = Mode.SIM;
+  public static final Mode currentMode = RobotBase.isReal() ? Mode.REAL : simMode;
+
+  public static enum Mode {
+    /** Running on a real robot. */
+    REAL,
+
+    /** Running a physics simulator. */
+    SIM,
+
+    /** Replaying from a log file. */
+    REPLAY
+  }
 
   public static class OperatorConstants {
     public static final int DRIVER_CONTROLLER_PORT = 0;
@@ -131,8 +145,10 @@ public final class Constants {
     public static final double GEAR_RATIO = 50.0;
     public static final double ENCODER_MIN_DEGREES = -180.0;
     public static final double ENCODER_MAX_DEGREES = 180.0;
-    public static final double MIN_POSITION_DEGREES = ENCODER_MIN_DEGREES - FORWARD_ENCODER_POSITION_DEGREES; // -225
-    public static final double MAX_POSITION_DEGREES = ENCODER_MAX_DEGREES - FORWARD_ENCODER_POSITION_DEGREES; // +135
+    public static final double MIN_POSITION_DEGREES =
+        ENCODER_MIN_DEGREES - FORWARD_ENCODER_POSITION_DEGREES; // -225
+    public static final double MAX_POSITION_DEGREES =
+        ENCODER_MAX_DEGREES - FORWARD_ENCODER_POSITION_DEGREES; // +135
     public static final double SOFT_LIMIT_BUFFER_DEGREES = 5.0;
 
     public static final double S = 1.2;
@@ -231,7 +247,8 @@ public final class Constants {
     public static final boolean ENABLED = true;
 
     // Transform from robot center to Quest headset mounting position
-    public static final double QUEST_OFFSET_X_METERS = -0.14605; // Forward/backward from robot center
+    public static final double QUEST_OFFSET_X_METERS =
+        -0.14605; // Forward/backward from robot center
     public static final double QUEST_OFFSET_Y_METERS = 0.2099564; // Left/right from robot center
     public static final double QUEST_OFFSET_Z_METERS = 0.4172712; // Up/down from robot center
     public static final double QUEST_YAW_OFFSET_DEGREES = 90.0; // Rotation around vertical axis
@@ -251,29 +268,38 @@ public final class Constants {
 
   public static class Vision {
     // Camera configuration record for multi-camera support
-    public record CameraConfig(String name, Transform3d robotToCam) {
-    }
+    public record CameraConfig(String name, Transform3d robotToCam) {}
 
     // Left camera
-    public static final CameraConfig LEFT_CAMERA = new CameraConfig("LEFT_CAMERA",
-        new Transform3d(new Translation3d(0.0244348, 0.2737866, 0.6747256),
-            new Rotation3d(Math.toRadians(0), Math.toRadians(-30), Math.toRadians(-45))));
+    public static final CameraConfig LEFT_CAMERA =
+        new CameraConfig(
+            "LEFT_CAMERA",
+            new Transform3d(
+                new Translation3d(0.0244348, 0.2737866, 0.6747256),
+                new Rotation3d(Math.toRadians(0), Math.toRadians(-30), Math.toRadians(-45))));
 
     // Right camera
-    public static final CameraConfig RIGHT_CAMERA = new CameraConfig("RIGHT_CAMERA",
-        new Transform3d(new Translation3d(0.0394716, -0.263906, 0.6851142),
-            new Rotation3d(Math.toRadians(0), Math.toRadians(-30), Math.toRadians(45))));
+    public static final CameraConfig RIGHT_CAMERA =
+        new CameraConfig(
+            "RIGHT_CAMERA",
+            new Transform3d(
+                new Translation3d(0.0394716, -0.263906, 0.6851142),
+                new Rotation3d(Math.toRadians(0), Math.toRadians(-30), Math.toRadians(45))));
 
     // Limelight 4
-    public static final CameraConfig LIMELIGHT = new CameraConfig("LIMELIGHT",
-        new Transform3d(new Translation3d(-0.1651, 0.2421636, 0.5263896),
-            new Rotation3d(Math.toRadians(0), Math.toRadians(0), Math.toRadians(90))));
+    public static final CameraConfig LIMELIGHT =
+        new CameraConfig(
+            "LIMELIGHT",
+            new Transform3d(
+                new Translation3d(-0.1651, 0.2421636, 0.5263896),
+                new Rotation3d(Math.toRadians(0), Math.toRadians(0), Math.toRadians(90))));
 
     // All cameras
     public static final List<CameraConfig> CAMERAS = List.of();
 
     // The layout of the AprilTags on the field
-    public static final AprilTagFieldLayout kTagLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
+    public static final AprilTagFieldLayout kTagLayout =
+        AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
 
     // The standard deviations of our vision estimated poses, which affect
     // correction rate
@@ -282,7 +308,5 @@ public final class Constants {
 
     // Pose validity timeout - max age in seconds for a pose to be considered valid
     public static final double POSE_VALIDITY_TIMEOUT = 0.5;
-
   }
-
 }

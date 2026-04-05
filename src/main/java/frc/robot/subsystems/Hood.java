@@ -1,7 +1,8 @@
 package frc.robot.subsystems;
 
+import static edu.wpi.first.units.Units.*;
+
 import com.ctre.phoenix6.BaseStatusSignal;
-import frc.robot.generated.TunerConstants;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.MotionMagicConfigs;
@@ -15,310 +16,317 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.GravityTypeValue;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-
 import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
 import frc.robot.Constants.HoodConstants;
-
-import static edu.wpi.first.units.Units.*;
+import frc.robot.generated.TunerConstants;
 
 public class Hood extends SubsystemBase {
 
-    // Hardware
-    private final TalonFX motor;
+  // Hardware
+  private final TalonFX motor;
 
-    // Control requests
-    private final PositionVoltage positionRequest;
-    private final NeutralOut neutralRequest;
-    private final VoltageOut voltageRequest;
+  // Control requests
+  private final PositionVoltage positionRequest;
+  private final NeutralOut neutralRequest;
+  private final VoltageOut voltageRequest;
 
-    // Status signals
-    private final StatusSignal<Angle> motorPosition;
+  // Status signals
+  private final StatusSignal<Angle> motorPosition;
 
-    // State
-    private double targetPositionDegrees = 0.0;
-    private boolean isHomed = false;
+  // State
+  private double targetPositionDegrees = 0.0;
+  private boolean isHomed = false;
 
-    public Hood() {
-        // Initialize hardware
-        motor = new TalonFX(CANIds.HOOD_MOTOR, TunerConstants.kCANBus);
+  public Hood() {
+    // Initialize hardware
+    motor = new TalonFX(CANIds.HOOD_MOTOR, TunerConstants.kCANBus);
 
-        // Initialize control requests
-        positionRequest = new PositionVoltage(0).withSlot(0);
-        neutralRequest = new NeutralOut();
-        voltageRequest = new VoltageOut(0);
+    // Initialize control requests
+    positionRequest = new PositionVoltage(0).withSlot(0);
+    neutralRequest = new NeutralOut();
+    voltageRequest = new VoltageOut(0);
 
-        // Configure hardware
-        configureMotor();
-        motor.setPosition(0.0);
+    // Configure hardware
+    configureMotor();
+    motor.setPosition(0.0);
 
-        // Cache status signals
-        motorPosition = motor.getPosition();
+    // Cache status signals
+    motorPosition = motor.getPosition();
 
-        BaseStatusSignal.setUpdateFrequencyForAll(
-                Constants.SIGNAL_UPDATE_FREQUENCY_HZ,
-                motorPosition,
-                motor.getVelocity(),
-                motor.getMotorVoltage());
+    BaseStatusSignal.setUpdateFrequencyForAll(
+        Constants.SIGNAL_UPDATE_FREQUENCY_HZ,
+        motorPosition,
+        motor.getVelocity(),
+        motor.getMotorVoltage());
 
-        // Optimize CAN bus utilization
-        motor.optimizeBusUtilization();
+    // Optimize CAN bus utilization
+    motor.optimizeBusUtilization();
+  }
+
+  private void configureMotor() {
+    TalonFXConfiguration config = new TalonFXConfiguration();
+
+    // Motor output
+    config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+    config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+
+    // Feedback - use rotor sensor, seeded to 0 on startup
+    config.Feedback.SensorToMechanismRatio = HoodConstants.GEAR_RATIO;
+
+    // PID Gains (Slot 0)
+    config.Slot0.kS = HoodConstants.S;
+    config.Slot0.kV = HoodConstants.V;
+    config.Slot0.kA = HoodConstants.A;
+    config.Slot0.kP = HoodConstants.P;
+    config.Slot0.kI = HoodConstants.I;
+    config.Slot0.kD = HoodConstants.D;
+    config.Slot0.GravityType = GravityTypeValue.Arm_Cosine;
+    config.Slot0.kG = HoodConstants.G;
+
+    // Motion Magic - convert deg/s to rot/s
+    config.MotionMagic.MotionMagicCruiseVelocity =
+        HoodConstants.MOTION_MAGIC_CRUISE_VELOCITY / 360.0;
+    config.MotionMagic.MotionMagicAcceleration = HoodConstants.MOTION_MAGIC_ACCELERATION / 360.0;
+    config.MotionMagic.MotionMagicJerk = HoodConstants.MOTION_MAGIC_JERK / 360.0;
+
+    // Soft limits - convert degrees to rotations
+    config.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
+    config.SoftwareLimitSwitch.ForwardSoftLimitThreshold =
+        HoodConstants.MAX_POSITION_DEGREES / 360.0;
+    config.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
+    config.SoftwareLimitSwitch.ReverseSoftLimitThreshold =
+        HoodConstants.MIN_POSITION_DEGREES / 360.0;
+
+    // Current limits
+    config.CurrentLimits.StatorCurrentLimitEnable = true;
+    config.CurrentLimits.StatorCurrentLimit = HoodConstants.STATOR_CURRENT_LIMIT;
+    config.CurrentLimits.SupplyCurrentLimitEnable = true;
+    config.CurrentLimits.SupplyCurrentLimit = HoodConstants.SUPPLY_CURRENT_LIMIT;
+    config.CurrentLimits.SupplyCurrentLowerLimit = HoodConstants.SUPPLY_CURRENT_LOWER_LIMIT;
+    config.CurrentLimits.SupplyCurrentLowerTime = HoodConstants.SUPPLY_CURRENT_LOWER_TIME;
+
+    // Apply with retry
+    StatusCode status = StatusCode.StatusCodeNotInitialized;
+    for (int i = 0; i < 5; i++) {
+      status = motor.getConfigurator().apply(config);
+      if (status.isOK()) {
+        break;
+      }
     }
-
-    private void configureMotor() {
-        TalonFXConfiguration config = new TalonFXConfiguration();
-
-        // Motor output
-        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
-
-        // Feedback - use rotor sensor, seeded to 0 on startup
-        config.Feedback.SensorToMechanismRatio = HoodConstants.GEAR_RATIO;
-
-        // PID Gains (Slot 0)
-        config.Slot0.kS = HoodConstants.S;
-        config.Slot0.kV = HoodConstants.V;
-        config.Slot0.kA = HoodConstants.A;
-        config.Slot0.kP = HoodConstants.P;
-        config.Slot0.kI = HoodConstants.I;
-        config.Slot0.kD = HoodConstants.D;
-        config.Slot0.GravityType = GravityTypeValue.Arm_Cosine;
-        config.Slot0.kG = HoodConstants.G;
-
-        // Motion Magic - convert deg/s to rot/s
-        config.MotionMagic.MotionMagicCruiseVelocity = HoodConstants.MOTION_MAGIC_CRUISE_VELOCITY / 360.0;
-        config.MotionMagic.MotionMagicAcceleration = HoodConstants.MOTION_MAGIC_ACCELERATION / 360.0;
-        config.MotionMagic.MotionMagicJerk = HoodConstants.MOTION_MAGIC_JERK / 360.0;
-
-        // Soft limits - convert degrees to rotations
-        config.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
-        config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = HoodConstants.MAX_POSITION_DEGREES / 360.0;
-        config.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
-        config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = HoodConstants.MIN_POSITION_DEGREES / 360.0;
-
-        // Current limits
-        config.CurrentLimits.StatorCurrentLimitEnable = true;
-        config.CurrentLimits.StatorCurrentLimit = HoodConstants.STATOR_CURRENT_LIMIT;
-        config.CurrentLimits.SupplyCurrentLimitEnable = true;
-        config.CurrentLimits.SupplyCurrentLimit = HoodConstants.SUPPLY_CURRENT_LIMIT;
-        config.CurrentLimits.SupplyCurrentLowerLimit = HoodConstants.SUPPLY_CURRENT_LOWER_LIMIT;
-        config.CurrentLimits.SupplyCurrentLowerTime = HoodConstants.SUPPLY_CURRENT_LOWER_TIME;
-
-        // Apply with retry
-        StatusCode status = StatusCode.StatusCodeNotInitialized;
-        for (int i = 0; i < 5; i++) {
-            status = motor.getConfigurator().apply(config);
-            if (status.isOK()) {
-                break;
-            }
-        }
-        if (!status.isOK()) {
-            System.err.println("Failed to configure hood motor: " + status);
-        }
+    if (!status.isOK()) {
+      System.err.println("Failed to configure hood motor: " + status);
     }
+  }
 
-    public void setPosition(double degrees) {
-        targetPositionDegrees = clamp(degrees, HoodConstants.MIN_POSITION_DEGREES, HoodConstants.MAX_POSITION_DEGREES);
-        double rotations = targetPositionDegrees / 360.0;
-        motor.setControl(positionRequest.withPosition(rotations));
+  public void setPosition(double degrees) {
+    targetPositionDegrees =
+        clamp(degrees, HoodConstants.MIN_POSITION_DEGREES, HoodConstants.MAX_POSITION_DEGREES);
+    double rotations = targetPositionDegrees / 360.0;
+    motor.setControl(positionRequest.withPosition(rotations));
+  }
+
+  public boolean atPosition() {
+    double currentDegrees = getCurrentPositionDegrees();
+    return Math.abs(currentDegrees - targetPositionDegrees)
+        < HoodConstants.POSITION_TOLERANCE_DEGREES;
+  }
+
+  public double getCurrentPositionDegrees() {
+    BaseStatusSignal.refreshAll(motorPosition);
+    return motorPosition.getValue().in(Rotations) * 360.0;
+  }
+
+  public void setNeutral() {
+    motor.setControl(neutralRequest);
+  }
+
+  /**
+   * Applies a small positive voltage to test motor direction. Watch the dashboard: if position
+   * INCREASES, direction is correct. If position DECREASES, flip motor inversion.
+   */
+  public void testDirectionPositive() {
+    motor.setControl(voltageRequest.withOutput(1.0));
+  }
+
+  /** Applies a small negative voltage to test motor direction. */
+  public void testDirectionNegative() {
+    motor.setControl(voltageRequest.withOutput(-1.0));
+  }
+
+  /** Commands a small movement relative to current position for safe testing. */
+  public void nudge(double deltaDegrees) {
+    double current = getCurrentPositionDegrees();
+    setPosition(current + deltaDegrees);
+  }
+
+  /** Apply raw voltage output for characterization. */
+  public void applyVoltage(double volts) {
+    motor.setControl(voltageRequest.withOutput(volts));
+  }
+
+  /** Get mechanism velocity in rotations per second. */
+  public double getVelocityRPS() {
+    return motor.getVelocity().refresh().getValue().in(RotationsPerSecond);
+  }
+
+  /** Get motor stator current in Amps. */
+  public double getStatorCurrent() {
+    return motor.getStatorCurrent().refresh().getValue().in(Amps);
+  }
+
+  /** Read applied motor voltage for telemetry. */
+  public double getMotorVoltage() {
+    return motor.getMotorVoltage().refresh().getValue().in(Volts);
+  }
+
+  /** Get the current target position in degrees. */
+  public double getTargetPositionDegrees() {
+    return targetPositionDegrees;
+  }
+
+  /**
+   * Hot-reload only Slot0 and MotionMagic gains. Uses per-group config objects so gear ratio, soft
+   * limits, and current limits are never touched. Motion Magic params are in deg/s (matching
+   * HoodConstants convention), divided by 360 internally.
+   */
+  public void applyTuningConfig(
+      double kS,
+      double kV,
+      double kA,
+      double kG,
+      double kP,
+      double kI,
+      double kD,
+      double cruiseVelDegS,
+      double accelDegS2,
+      double jerkDegS3) {
+    var configurator = motor.getConfigurator();
+
+    Slot0Configs slot0 = new Slot0Configs();
+    slot0.kS = kS;
+    slot0.kV = kV;
+    slot0.kA = kA;
+    slot0.kG = kG;
+    slot0.GravityType = GravityTypeValue.Arm_Cosine;
+    slot0.kP = kP;
+    slot0.kI = kI;
+    slot0.kD = kD;
+
+    MotionMagicConfigs mm = new MotionMagicConfigs();
+    mm.MotionMagicCruiseVelocity = cruiseVelDegS / 360.0;
+    mm.MotionMagicAcceleration = accelDegS2 / 360.0;
+    mm.MotionMagicJerk = jerkDegS3 / 360.0;
+
+    StatusCode status = configurator.apply(slot0);
+    if (!status.isOK()) {
+      System.err.println("Failed to apply hood Slot0 config: " + status);
     }
-
-    public boolean atPosition() {
-        double currentDegrees = getCurrentPositionDegrees();
-        return Math.abs(currentDegrees - targetPositionDegrees) < HoodConstants.POSITION_TOLERANCE_DEGREES;
+    status = configurator.apply(mm);
+    if (!status.isOK()) {
+      System.err.println("Failed to apply hood MotionMagic config: " + status);
     }
+  }
 
-    public double getCurrentPositionDegrees() {
-        BaseStatusSignal.refreshAll(motorPosition);
-        return motorPosition.getValue().in(Rotations) * 360.0;
-    }
+  /** Restore original Constants.java values by re-running configureMotor(). */
+  public void restoreDefaultConfig() {
+    configureMotor();
+  }
 
-    public void setNeutral() {
-        motor.setControl(neutralRequest);
-    }
+  public boolean isHomed() {
+    return isHomed;
+  }
 
-    /**
-     * Applies a small positive voltage to test motor direction. Watch the
-     * dashboard: if position INCREASES, direction
-     * is correct. If position DECREASES, flip motor inversion.
-     */
-    public void testDirectionPositive() {
-        motor.setControl(voltageRequest.withOutput(1.0));
-    }
+  private void disableReverseSoftLimit() {
+    SoftwareLimitSwitchConfigs softLimits = new SoftwareLimitSwitchConfigs();
+    motor.getConfigurator().refresh(softLimits);
+    softLimits.ReverseSoftLimitEnable = false;
+    motor.getConfigurator().apply(softLimits);
+  }
 
-    /**
-     * Applies a small negative voltage to test motor direction.
-     */
-    public void testDirectionNegative() {
-        motor.setControl(voltageRequest.withOutput(-1.0));
-    }
+  private void enableSoftLimits() {
+    SoftwareLimitSwitchConfigs softLimits = new SoftwareLimitSwitchConfigs();
+    softLimits.ForwardSoftLimitEnable = true;
+    softLimits.ForwardSoftLimitThreshold = HoodConstants.MAX_POSITION_DEGREES / 360.0;
+    softLimits.ReverseSoftLimitEnable = true;
+    softLimits.ReverseSoftLimitThreshold = HoodConstants.MIN_POSITION_DEGREES / 360.0;
+    motor.getConfigurator().apply(softLimits);
+  }
 
-    /**
-     * Commands a small movement relative to current position for safe testing.
-     */
-    public void nudge(double deltaDegrees) {
-        double current = getCurrentPositionDegrees();
-        setPosition(current + deltaDegrees);
-    }
+  /** Drives hood to reverse hard stop, detects stall via stator current, then zeroes encoder. */
+  public Command zeroHoodCommand() {
+    Timer homingTimer = new Timer();
+    int[] stallCount = {0};
 
-    /** Apply raw voltage output for characterization. */
-    public void applyVoltage(double volts) {
-        motor.setControl(voltageRequest.withOutput(volts));
-    }
-
-    /** Get mechanism velocity in rotations per second. */
-    public double getVelocityRPS() {
-        return motor.getVelocity().refresh().getValue().in(RotationsPerSecond);
-    }
-
-    /** Get motor stator current in Amps. */
-    public double getStatorCurrent() {
-        return motor.getStatorCurrent().refresh().getValue().in(Amps);
-    }
-
-    /** Read applied motor voltage for telemetry. */
-    public double getMotorVoltage() {
-        return motor.getMotorVoltage().refresh().getValue().in(Volts);
-    }
-
-    /** Get the current target position in degrees. */
-    public double getTargetPositionDegrees() {
-        return targetPositionDegrees;
-    }
-
-    /**
-     * Hot-reload only Slot0 and MotionMagic gains. Uses per-group config objects so
-     * gear ratio, soft limits, and
-     * current limits are never touched. Motion Magic params are in deg/s (matching
-     * HoodConstants convention), divided
-     * by 360 internally.
-     */
-    public void applyTuningConfig(double kS, double kV, double kA, double kG,
-            double kP, double kI, double kD,
-            double cruiseVelDegS, double accelDegS2, double jerkDegS3) {
-        var configurator = motor.getConfigurator();
-
-        Slot0Configs slot0 = new Slot0Configs();
-        slot0.kS = kS;
-        slot0.kV = kV;
-        slot0.kA = kA;
-        slot0.kG = kG;
-        slot0.GravityType = GravityTypeValue.Arm_Cosine;
-        slot0.kP = kP;
-        slot0.kI = kI;
-        slot0.kD = kD;
-
-        MotionMagicConfigs mm = new MotionMagicConfigs();
-        mm.MotionMagicCruiseVelocity = cruiseVelDegS / 360.0;
-        mm.MotionMagicAcceleration = accelDegS2 / 360.0;
-        mm.MotionMagicJerk = jerkDegS3 / 360.0;
-
-        StatusCode status = configurator.apply(slot0);
-        if (!status.isOK()) {
-            System.err.println("Failed to apply hood Slot0 config: " + status);
-        }
-        status = configurator.apply(mm);
-        if (!status.isOK()) {
-            System.err.println("Failed to apply hood MotionMagic config: " + status);
-        }
-    }
-
-    /** Restore original Constants.java values by re-running configureMotor(). */
-    public void restoreDefaultConfig() {
-        configureMotor();
-    }
-
-    public boolean isHomed() {
-        return isHomed;
-    }
-
-    private void disableReverseSoftLimit() {
-        SoftwareLimitSwitchConfigs softLimits = new SoftwareLimitSwitchConfigs();
-        motor.getConfigurator().refresh(softLimits);
-        softLimits.ReverseSoftLimitEnable = false;
-        motor.getConfigurator().apply(softLimits);
-    }
-
-    private void enableSoftLimits() {
-        SoftwareLimitSwitchConfigs softLimits = new SoftwareLimitSwitchConfigs();
-        softLimits.ForwardSoftLimitEnable = true;
-        softLimits.ForwardSoftLimitThreshold = HoodConstants.MAX_POSITION_DEGREES / 360.0;
-        softLimits.ReverseSoftLimitEnable = true;
-        softLimits.ReverseSoftLimitThreshold = HoodConstants.MIN_POSITION_DEGREES / 360.0;
-        motor.getConfigurator().apply(softLimits);
-    }
-
-    /**
-     * Drives hood to reverse hard stop, detects stall via stator current, then
-     * zeroes encoder.
-     */
-    public Command zeroHoodCommand() {
-        Timer homingTimer = new Timer();
-        int[] stallCount = { 0 };
-
-        return Commands.sequence(
-                runOnce(() -> {
-                    isHomed = false;
-                    stallCount[0] = 0;
-                    disableReverseSoftLimit();
-                    homingTimer.restart();
-                    motor.setControl(voltageRequest.withOutput(HoodConstants.HOMING_VOLTAGE));
+    return Commands.sequence(
+            runOnce(
+                () -> {
+                  isHomed = false;
+                  stallCount[0] = 0;
+                  disableReverseSoftLimit();
+                  homingTimer.restart();
+                  motor.setControl(voltageRequest.withOutput(HoodConstants.HOMING_VOLTAGE));
                 }),
-                Commands.idle(this).until(() -> {
-                    double current = Math.abs(getStatorCurrent());
-                    if (homingTimer.hasElapsed(HoodConstants.HOMING_TIMEOUT_SECONDS)) {
+            Commands.idle(this)
+                .until(
+                    () -> {
+                      double current = Math.abs(getStatorCurrent());
+                      if (homingTimer.hasElapsed(HoodConstants.HOMING_TIMEOUT_SECONDS)) {
                         return true;
-                    }
-                    if (!homingTimer.hasElapsed(HoodConstants.HOMING_STALL_DETECTION_DELAY_SECONDS)) {
+                      }
+                      if (!homingTimer.hasElapsed(
+                          HoodConstants.HOMING_STALL_DETECTION_DELAY_SECONDS)) {
                         return false;
-                    }
-                    if (current >= HoodConstants.HOMING_STALL_CURRENT_THRESHOLD_AMPS) {
+                      }
+                      if (current >= HoodConstants.HOMING_STALL_CURRENT_THRESHOLD_AMPS) {
                         stallCount[0]++;
-                    } else {
+                      } else {
                         stallCount[0] = 0;
-                    }
-                    return stallCount[0] >= HoodConstants.HOMING_STALL_SAMPLE_COUNT;
-                }),
-                runOnce(() -> {
-                    motor.setControl(neutralRequest);
-                    if (stallCount[0] >= HoodConstants.HOMING_STALL_SAMPLE_COUNT) {
-                        motor.setPosition(0.0);
-                        targetPositionDegrees = 0.0;
-                        isHomed = true;
-                    } else {
-                        System.err.println("Hood homing timed out without stall detection -- NOT zeroed.");
-                    }
-                    enableSoftLimits();
+                      }
+                      return stallCount[0] >= HoodConstants.HOMING_STALL_SAMPLE_COUNT;
+                    }),
+            runOnce(
+                () -> {
+                  motor.setControl(neutralRequest);
+                  if (stallCount[0] >= HoodConstants.HOMING_STALL_SAMPLE_COUNT) {
+                    motor.setPosition(0.0);
+                    targetPositionDegrees = 0.0;
+                    isHomed = true;
+                  } else {
+                    System.err.println(
+                        "Hood homing timed out without stall detection -- NOT zeroed.");
+                  }
+                  enableSoftLimits();
                 }))
-                .finallyDo(() -> {
-                    motor.setControl(neutralRequest);
-                    enableSoftLimits();
-                })
-                .withName("Hood.zeroHood");
-    }
+        .finallyDo(
+            () -> {
+              motor.setControl(neutralRequest);
+              enableSoftLimits();
+            })
+        .withName("Hood.zeroHood");
+  }
 
-    private double clamp(double value, double min, double max) {
-        return Math.max(min, Math.min(max, value));
-    }
+  private double clamp(double value, double min, double max) {
+    return Math.max(min, Math.min(max, value));
+  }
 
-    @Override
-    public void periodic() {
-        // double position = getCurrentPositionDegrees();
-        // SmartDashboard.putNumber("Hood/Position Degrees", position);
-        // SmartDashboard.putNumber("Hood/Target Degrees", targetPositionDegrees);
-        // SmartDashboard.putNumber("Hood/Motor Raw Rotations",
-        // motorPosition.refresh().getValue().in(Rotations));
-        // SmartDashboard.putNumber("Hood/Motor Stator Current",
-        // motor.getStatorCurrent().refresh().getValue().in(Amps));
-        // SmartDashboard.putNumber("Hood/Motor Voltage",
-        // motor.getMotorVoltage().refresh().getValue().in(Volts));
-        // SmartDashboard.putBoolean("Hood/At Position", atPosition());
-        // SmartDashboard.putBoolean("Hood/Is Homed", isHomed);
-    }
+  @Override
+  public void periodic() {
+    // double position = getCurrentPositionDegrees();
+    // SmartDashboard.putNumber("Hood/Position Degrees", position);
+    // SmartDashboard.putNumber("Hood/Target Degrees", targetPositionDegrees);
+    // SmartDashboard.putNumber("Hood/Motor Raw Rotations",
+    // motorPosition.refresh().getValue().in(Rotations));
+    // SmartDashboard.putNumber("Hood/Motor Stator Current",
+    // motor.getStatorCurrent().refresh().getValue().in(Amps));
+    // SmartDashboard.putNumber("Hood/Motor Voltage",
+    // motor.getMotorVoltage().refresh().getValue().in(Volts));
+    // SmartDashboard.putBoolean("Hood/At Position", atPosition());
+    // SmartDashboard.putBoolean("Hood/Is Homed", isHomed);
+  }
 }
