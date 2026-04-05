@@ -8,12 +8,11 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
-import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.TurretAimingConstants;
 import frc.robot.Constants.TurretConstants;
+import frc.robot.generated.GeneratedShotLUT;
 
 import frc.robot.util.firecontrol.ShotCalculator;
-import frc.robot.util.firecontrol.ProjectileSimulator;
 import frc.robot.util.firecontrol.ShotLUT;
 
 /**
@@ -67,42 +66,16 @@ public class AimingCalculator {
         config.launcherOffsetX = TurretAimingConstants.TURRET_OFFSET_X_METERS;
         config.launcherOffsetY = TurretAimingConstants.TURRET_OFFSET_Y_METERS;
         config.maxScoringDistance = 17.0;
+        config.headingMaxErrorRad = Math.PI; // Turret aims independently; disable body-heading penalty
 
         this.shotCalculator = new ShotCalculator(config);
 
-        // Build physics LUT based on 4" flywheel and estimated 2026 specs
-        ProjectileSimulator.SimParameters params = new ProjectileSimulator.SimParameters(
-                0.235, // ballMassKg
-                0.1778, // ballDiameterM (7 inches)
-                0.47, // dragCoeff
-                0.2, // magnusCoeff
-                1.225, // airDensityKgPerCubicM
-                0.5, // exitHeightM
-                0.1016, // flywheelDiameterM (4 inches)
-                2.64, // targetHeightM (typical high goal)
-                0.6, // slipFactor
-                45.0, // baseLaunchAngleDeg
-                0.001, // simDtSec
-                1500, // minRPM
-                6000, // maxRPM
-                25, // maxIterations
-                5.0 // maxTOFSamples
-        );
-        ProjectileSimulator sim = new ProjectileSimulator(params);
-
-        // Sweep hood mechanism positions (0-25 deg), converting each to the actual
-        // launch elevation (70-45 deg) for the physics simulation. The LUT stores
-        // mechanism positions so getHoodAngle() returns values the hood can use directly.
-        ShotLUT lut = sim.generateVariableAngleShotLUT(
-                HoodConstants.MIN_POSITION_DEGREES,
-                HoodConstants.MAX_POSITION_DEGREES,
-                1.0,
-                HoodConstants::mechanismToActualAngle,
-                0.50, 17.0);
+        // Load pre-generated LUT (built at compile time by tools/GenerateShotLUT.java)
+        ShotLUT lut = GeneratedShotLUT.create();
         shotCalculator.loadShotLUT(lut);
 
-        // --- DEBUG: LUT generation summary ---
-        System.out.println("[AimingCalc] LUT generated with " + lut.size() + " entries");
+        // --- DEBUG: LUT summary ---
+        System.out.println("[AimingCalc] LUT loaded with " + lut.size() + " pre-generated entries");
         double[] sampleDists = {1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 13.0, 15.0, 17.0};
         for (double d : sampleDists) {
             var sp = lut.get(d);

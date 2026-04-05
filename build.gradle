@@ -143,3 +143,34 @@ task generateTurretLookupTables {
 }
 
 compileJava.dependsOn generateTurretLookupTables
+
+// Task to pre-generate shot LUT from physics simulation (runs on laptop, not roboRIO)
+task generateShotLUT {
+    description = 'Pre-generate shot lookup table from RK4 projectile physics'
+    group = 'code generation'
+
+    def toolSource = file('tools/GenerateShotLUT.java')
+    def outputFile = file('src/main/java/frc/robot/generated/GeneratedShotLUT.java')
+
+    inputs.file(toolSource)
+    outputs.file(outputFile)
+
+    doLast {
+        def compiledDir = file("${buildDir}/tools-classes")
+        compiledDir.mkdirs()
+
+        exec {
+            commandLine 'javac', '-d', compiledDir.absolutePath, toolSource.absolutePath
+            ignoreExitValue = false
+        }
+
+        javaexec {
+            mainClass = 'GenerateShotLUT'
+            classpath = files(compiledDir)
+            args = [outputFile.absolutePath]
+            ignoreExitValue = false
+        }
+    }
+}
+
+compileJava.dependsOn generateShotLUT
