@@ -68,8 +68,8 @@ public class Indexer extends SubsystemBase {
         config.idleMode(IdleMode.kBrake);
         config.inverted(true); // Inverted to match previous follower direction
 
-        config.smartCurrentLimit(IndexerConstants.SMART_CURRENT_LIMIT);
-        config.secondaryCurrentLimit(IndexerConstants.SECONDARY_CURRENT_LIMIT);
+        config.smartCurrentLimit(IndexerConstants.GROUP_SMART_CURRENT_LIMIT);
+        config.secondaryCurrentLimit(IndexerConstants.GROUP_SECONDARY_CURRENT_LIMIT);
 
         REVLibError error = REVLibError.kError;
         for (int i = 0; i < 5; i++) {
@@ -89,8 +89,8 @@ public class Indexer extends SubsystemBase {
         config.idleMode(IdleMode.kBrake);
         config.follow(CANIds.INDEXER_FOLLOWER_ONE_MOTOR, false); // Same direction as group leader
 
-        config.smartCurrentLimit(IndexerConstants.SMART_CURRENT_LIMIT);
-        config.secondaryCurrentLimit(IndexerConstants.SECONDARY_CURRENT_LIMIT);
+        config.smartCurrentLimit(IndexerConstants.GROUP_SMART_CURRENT_LIMIT);
+        config.secondaryCurrentLimit(IndexerConstants.GROUP_SECONDARY_CURRENT_LIMIT);
 
         REVLibError error = REVLibError.kError;
         for (int i = 0; i < 5; i++) {

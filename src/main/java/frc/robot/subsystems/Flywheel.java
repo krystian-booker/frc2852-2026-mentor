@@ -9,7 +9,7 @@ import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.TorqueCurrentFOC;
 import com.ctre.phoenix6.controls.VelocityTorqueCurrentFOC;
 import com.ctre.phoenix6.controls.VoltageOut;
-import com.ctre.phoenix6.CANBus;
+import frc.robot.generated.TunerConstants;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
@@ -48,9 +48,8 @@ public class Flywheel extends SubsystemBase {
 
     public Flywheel() {
         // Initialize motors
-        CANBus canBus = new CANBus(CANIds.CANIVORE);
-        leaderMotor = new TalonFX(CANIds.FLYWHEEL_LEADER_MOTOR, canBus);
-        followerMotor = new TalonFX(CANIds.FLYWHEEL_FOLLOWER_MOTOR, canBus);
+        leaderMotor = new TalonFX(CANIds.FLYWHEEL_LEADER_MOTOR, TunerConstants.kCANBus);
+        followerMotor = new TalonFX(CANIds.FLYWHEEL_FOLLOWER_MOTOR, TunerConstants.kCANBus);
 
         // Initialize control requests
         velocityRequest = new VelocityTorqueCurrentFOC(0).withSlot(0);

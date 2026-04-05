@@ -81,6 +81,19 @@ public final class Constants {
     public static final double MIN_POSITION_DEGREES = 0.0;
     public static final double MAX_POSITION_DEGREES = 25.0;
 
+    /** Actual shot elevation (degrees from horizontal) when hood is at mechanism position 0. */
+    public static final double ACTUAL_ANGLE_AT_ZERO_POSITION = 70.0;
+
+    /** Convert mechanism position (0-25) to actual launch elevation (70-45). */
+    public static double mechanismToActualAngle(double mechanismDeg) {
+      return ACTUAL_ANGLE_AT_ZERO_POSITION - mechanismDeg;
+    }
+
+    /** Convert actual launch elevation (70-45) to mechanism position (0-25). */
+    public static double actualToMechanismAngle(double actualDeg) {
+      return ACTUAL_ANGLE_AT_ZERO_POSITION - actualDeg;
+    }
+
     public static final double S = 3.5;
     public static final double V = 3.8;
     public static final double A = 0.0;
@@ -166,8 +179,8 @@ public final class Constants {
   }
 
   public static class IntakeActuatorConstants {
-    public static final int SMART_CURRENT_LIMIT = 60;
-    public static final int SECONDARY_CURRENT_LIMIT = 60;
+    public static final int SMART_CURRENT_LIMIT = 40;
+    public static final int SECONDARY_CURRENT_LIMIT = 50;
     public static final double EXTEND_DUTY_CYCLE = 1.0;
     public static final double RETRACT_DUTY_CYCLE = -1.0;
 
@@ -193,10 +206,10 @@ public final class Constants {
     public static final double GEAR_RATIO = 1.0;
     public static final double INTAKE_VOLTAGE = 12.0;
     public static final double OUTTAKE_VOLTAGE = -12.0;
-    public static final double STATOR_CURRENT_LIMIT = 60.0;
-    public static final double SUPPLY_CURRENT_LIMIT = 40.0;
-    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 30.0;
-    public static final double SUPPLY_CURRENT_LOWER_TIME = 1.0;
+    public static final double STATOR_CURRENT_LIMIT = 40.0;
+    public static final double SUPPLY_CURRENT_LIMIT = 30.0;
+    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 25.0;
+    public static final double SUPPLY_CURRENT_LOWER_TIME = 0.75;
   }
 
   public static class IndexerConstants {
@@ -205,6 +218,8 @@ public final class Constants {
     public static final double REVERSE_SPEED = -1.0;
     public static final int SMART_CURRENT_LIMIT = 60;
     public static final int SECONDARY_CURRENT_LIMIT = 80;
+    public static final int GROUP_SMART_CURRENT_LIMIT = 40;
+    public static final int GROUP_SECONDARY_CURRENT_LIMIT = 60;
 
     // Jam detection
     public static final double JAM_CURRENT_THRESHOLD_AMPS = 55;
@@ -255,14 +270,13 @@ public final class Constants {
             new Rotation3d(Math.toRadians(0), Math.toRadians(0), Math.toRadians(90))));
 
     // All cameras
-    public static final List<CameraConfig> CAMERAS = List.of(RIGHT_CAMERA);
+    public static final List<CameraConfig> CAMERAS = List.of();
 
     // The layout of the AprilTags on the field
     public static final AprilTagFieldLayout kTagLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
 
     // The standard deviations of our vision estimated poses, which affect
     // correction rate
-    // (Fake values. Experiment and determine estimation noise on an actual robot.)
     public static final Matrix<N3, N1> kSingleTagStdDevs = VecBuilder.fill(4, 4, 8);
     public static final Matrix<N3, N1> kMultiTagStdDevs = VecBuilder.fill(0.5, 0.5, 1);
 

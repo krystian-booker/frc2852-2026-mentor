@@ -1,7 +1,7 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.BaseStatusSignal;
-import com.ctre.phoenix6.CANBus;
+import frc.robot.generated.TunerConstants;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.MotionMagicConfigs;
@@ -47,8 +47,7 @@ public class Hood extends SubsystemBase {
 
     public Hood() {
         // Initialize hardware
-        CANBus canBus = new CANBus(CANIds.CANIVORE);
-        motor = new TalonFX(CANIds.HOOD_MOTOR, canBus);
+        motor = new TalonFX(CANIds.HOOD_MOTOR, TunerConstants.kCANBus);
 
         // Initialize control requests
         positionRequest = new PositionVoltage(0).withSlot(0);

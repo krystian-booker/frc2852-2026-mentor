@@ -76,11 +76,12 @@ public class ShotCalculator {
       boolean isValid,
       double confidence,
       double solvedDistanceM,
+      double projectedDistanceM,
       int iterationsUsed,
       boolean warmStartUsed) {
 
     public static final LaunchParameters INVALID =
-        new LaunchParameters(0, 0, new Rotation2d(), 0, false, 0, 0, 0, false);
+        new LaunchParameters(0, 0, new Rotation2d(), 0, false, 0, 0, 0, 0, false);
   }
 
   /**
@@ -236,13 +237,21 @@ public class ShotCalculator {
     return (tHigh - tLow) / (2.0 * DERIV_H);
   }
 
+  // Debug logging throttle
+  private int calcCycleCount = 0;
+  private static final int CALC_LOG_EVERY_N = 50;
+
   /**
    * Solve for the firing solution. Call once per cycle in robotPeriodic(). Returns INVALID if
    * you're out of range, behind the hub, going too fast, or the inputs are bad.
    */
   public LaunchParameters calculate(ShotInputs inputs) {
+    calcCycleCount++;
+    boolean shouldLog = (calcCycleCount % CALC_LOG_EVERY_N) == 0;
+
     if (inputs == null || inputs.robotPose() == null
         || inputs.fieldVelocity() == null || inputs.robotVelocity() == null) {
+      if (shouldLog) System.out.println("[ShotCalc] INVALID: null inputs");
       return LaunchParameters.INVALID;
     }
 
@@ -254,6 +263,7 @@ public class ShotCalculator {
     double poseY = rawPose.getY();
     if (Double.isNaN(poseX) || Double.isNaN(poseY)
         || Double.isInfinite(poseX) || Double.isInfinite(poseY)) {
+      if (shouldLog) System.out.println("[ShotCalc] INVALID: NaN/Inf pose");
       return LaunchParameters.INVALID;
     }
 
@@ -287,6 +297,8 @@ public class ShotCalculator {
     double dot =
         (hubX - robotX) * hubForward.getX() + (hubY - robotY) * hubForward.getY();
     if (dot < 0) {
+      if (shouldLog) System.out.printf("[ShotCalc] INVALID: behind hub (dot=%.3f) robot=(%.2f,%.2f) hub=(%.2f,%.2f) fwd=(%.3f,%.3f)%n",
+          dot, robotX, robotY, hubX, hubY, hubForward.getX(), hubForward.getY());
       return LaunchParameters.INVALID;
     }
 
@@ -294,6 +306,8 @@ public class ShotCalculator {
     // suppress firing when the chassis is tilted beyond the threshold.
     if (Math.abs(inputs.pitchDeg()) > config.maxTiltDeg
         || Math.abs(inputs.rollDeg()) > config.maxTiltDeg) {
+      if (shouldLog) System.out.printf("[ShotCalc] INVALID: tilt exceeded (pitch=%.1f roll=%.1f max=%.1f)%n",
+          inputs.pitchDeg(), inputs.rollDeg(), config.maxTiltDeg);
       return LaunchParameters.INVALID;
     }
 
@@ -318,6 +332,8 @@ public class ShotCalculator {
     double distance = Math.hypot(rx, ry);
 
     if (distance < config.minScoringDistance || distance > config.maxScoringDistance) {
+      if (shouldLog) System.out.printf("[ShotCalc] INVALID: distance %.2fm outside range [%.1f, %.1f]%n",
+          distance, config.minScoringDistance, config.maxScoringDistance);
       return LaunchParameters.INVALID;
     }
 
@@ -325,6 +341,8 @@ public class ShotCalculator {
 
     // Speed cap: shots above this speed are out of calibration range
     if (robotSpeed > config.maxSOTMSpeed) {
+      if (shouldLog) System.out.printf("[ShotCalc] INVALID: speed %.2f m/s exceeds max %.1f%n",
+          robotSpeed, config.maxSOTMSpeed);
       return LaunchParameters.INVALID;
     }
 
@@ -470,6 +488,17 @@ public class ShotCalculator {
     double confidence = computeConfidence(
         solverQuality, robotSpeed, headingErrorRad, distance, inputs.visionConfidence());
 
+    if (shouldLog) {
+      System.out.printf("[ShotCalc] SOLVED: dist=%.2f projDist=%.2f rpm=%.0f tof=%.3f speed=%.2f iters=%d%n",
+          distance, projDist, effectiveRPMValue, effectiveTOF, robotSpeed, iterationsUsed);
+      System.out.printf("[ShotCalc] confidence=%.1f (solverQ=%.2f headingErr=%.1fdeg visionConf=%.1f)%n",
+          confidence, solverQuality, Math.toDegrees(headingErrorRad), inputs.visionConfidence());
+      if (shotLUT != null) {
+        System.out.printf("[ShotCalc] LUT@projDist: rpm=%.0f angle=%.1f tof=%.3f%n",
+            shotLUT.getRPM(projDist), shotLUT.getAngle(projDist), shotLUT.getTOF(projDist));
+      }
+    }
+
     previousSpeed = robotSpeed;
 
     return new LaunchParameters(
@@ -480,6 +509,7 @@ public class ShotCalculator {
         true,
         confidence,
         distance,
+        projDist,
         iterationsUsed,
         warmStartUsed);
   }

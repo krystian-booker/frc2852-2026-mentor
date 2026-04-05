@@ -1,7 +1,7 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.BaseStatusSignal;
-import com.ctre.phoenix6.CANBus;
+import frc.robot.generated.TunerConstants;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
@@ -48,9 +48,8 @@ public class Turret extends SubsystemBase {
 
     public Turret() {
         // Initialize hardware
-        CANBus canBus = new CANBus(CANIds.CANIVORE);
-        motor = new TalonFX(CANIds.TURRET_MOTOR, canBus);
-        canCoder = new CANcoder(CANIds.TURRET_CANCODER, canBus);
+        motor = new TalonFX(CANIds.TURRET_MOTOR, TunerConstants.kCANBus);
+        canCoder = new CANcoder(CANIds.TURRET_CANCODER, TunerConstants.kCANBus);
 
         // Initialize control requests
         positionRequest = new PositionVoltage(0).withSlot(0);
@@ -63,7 +62,7 @@ public class Turret extends SubsystemBase {
 
         // Seed motor position from CANcoder so they agree on startup
         // (avoids 360° wrapping mismatch between absolute position and fused position)
-        motor.setPosition(canCoder.getAbsolutePosition().waitForUpdate(0.1).getValue().in(Rotations));
+        motor.setPosition(canCoder.getAbsolutePosition().getValue().in(Rotations));
 
         // Cache status signals
         motorPosition = motor.getPosition();

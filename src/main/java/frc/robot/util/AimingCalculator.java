@@ -8,6 +8,7 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
+import frc.robot.Constants.HoodConstants;
 import frc.robot.Constants.TurretAimingConstants;
 import frc.robot.Constants.TurretConstants;
 
@@ -30,6 +31,10 @@ public class AimingCalculator {
     // Alliance cache to prevent expensive DriverStation lookups
     private Alliance cachedAlliance = Alliance.Blue;
     private double lastAllianceCheckTime = -10.0;
+
+    // Debug logging throttle (print every N cycles = every N*20ms)
+    private int updateCycleCount = 0;
+    private static final int LOG_EVERY_N_CYCLES = 50; // every 1 second
 
     // Diagnostic/Cached state
     private double lastRawAngleDegrees = 0.0;
@@ -61,6 +66,7 @@ public class AimingCalculator {
         ShotCalculator.Config config = new ShotCalculator.Config();
         config.launcherOffsetX = TurretAimingConstants.TURRET_OFFSET_X_METERS;
         config.launcherOffsetY = TurretAimingConstants.TURRET_OFFSET_Y_METERS;
+        config.maxScoringDistance = 17.0;
 
         this.shotCalculator = new ShotCalculator(config);
 
@@ -84,9 +90,25 @@ public class AimingCalculator {
         );
         ProjectileSimulator sim = new ProjectileSimulator(params);
 
-        // Sweep angles from 0 to 25 degrees
-        ShotLUT lut = sim.generateVariableAngleShotLUT(0.0, 25.0, 1.0);
+        // Sweep hood mechanism positions (0-25 deg), converting each to the actual
+        // launch elevation (70-45 deg) for the physics simulation. The LUT stores
+        // mechanism positions so getHoodAngle() returns values the hood can use directly.
+        ShotLUT lut = sim.generateVariableAngleShotLUT(
+                HoodConstants.MIN_POSITION_DEGREES,
+                HoodConstants.MAX_POSITION_DEGREES,
+                1.0,
+                HoodConstants::mechanismToActualAngle,
+                0.50, 17.0);
         shotCalculator.loadShotLUT(lut);
+
+        // --- DEBUG: LUT generation summary ---
+        System.out.println("[AimingCalc] LUT generated with " + lut.size() + " entries");
+        double[] sampleDists = {1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 13.0, 15.0, 17.0};
+        for (double d : sampleDists) {
+            var sp = lut.get(d);
+            System.out.printf("[AimingCalc] LUT @ %.1fm: RPM=%.0f, mechAngle=%.1f, TOF=%.3fs%n",
+                    d, sp.rpm(), sp.angleDeg(), sp.tofSec());
+        }
     }
 
     /**
@@ -95,14 +117,20 @@ public class AimingCalculator {
      * block.
      */
     public void update() {
+        updateCycleCount++;
+        boolean shouldLog = (updateCycleCount % LOG_EVERY_N_CYCLES) == 0;
+
         Pose2d robotPose = poseSupplier.get();
         if (robotPose == null || Double.isNaN(robotPose.getX()) || Double.isNaN(robotPose.getY())) {
+            if (shouldLog) System.out.println("[AimingCalc] SKIP: pose null or NaN");
             return;
         }
 
         ChassisSpeeds robotSpeeds = speedsSupplier.get();
-        if (robotSpeeds == null)
+        if (robotSpeeds == null) {
+            if (shouldLog) System.out.println("[AimingCalc] SKIP: speeds null");
             return;
+        }
 
         // Convert robot-relative speeds to field-relative
         ChassisSpeeds fieldSpeeds = ChassisSpeeds.fromRobotRelativeSpeeds(robotSpeeds, robotPose.getRotation());
@@ -110,9 +138,9 @@ public class AimingCalculator {
         Translation2d targetPosition = getTargetPosition(robotPose);
         lastTargetPosition = targetPosition;
 
-        // Unit vector pointing from target towards robot (hub forward)
+        // Unit vector pointing from robot towards target (hub forward)
         // This is used by the solver to prevent shooting through the hub.
-        Translation2d displacement = robotPose.getTranslation().minus(targetPosition);
+        Translation2d displacement = targetPosition.minus(robotPose.getTranslation());
         double dist = Math.max(0.1, displacement.getNorm());
         Translation2d hubForward = displacement.div(dist);
 
@@ -133,9 +161,19 @@ public class AimingCalculator {
         isReachable = lastDistanceMeters >= TurretAimingConstants.MIN_SHOOTING_DISTANCE_METERS
                 && lastDistanceMeters <= TurretAimingConstants.MAX_SHOOTING_DISTANCE_METERS;
 
+        if (shouldLog) {
+            System.out.printf("[AimingCalc] pose=(%.2f,%.2f) heading=%.1f target=(%.2f,%.2f) dist=%.2fm%n",
+                    robotPose.getX(), robotPose.getY(),
+                    robotPose.getRotation().getDegrees(),
+                    targetPosition.getX(), targetPosition.getY(), dist);
+            System.out.printf("[AimingCalc] shot: valid=%b conf=%.1f rpm=%.0f projDist=%.2f solvedDist=%.2f iters=%d%n",
+                    shot.isValid(), shot.confidence(), shot.rpm(),
+                    shot.projectedDistanceM(), shot.solvedDistanceM(), shot.iterationsUsed());
+        }
+
         if (shot.isValid() && shot.confidence() > 0) {
             lastTargetRPM = shot.rpm();
-            lastTargetHoodAngle = shotCalculator.getHoodAngle(lastDistanceMeters);
+            lastTargetHoodAngle = shotCalculator.getHoodAngle(shot.projectedDistanceM());
 
             // Convert absolute field drive angle to a robot-relative turret angle
             double robotRelativeRadians = shot.driveAngle().getRadians() - robotPose.getRotation().getRadians();
@@ -151,6 +189,16 @@ public class AimingCalculator {
             }
 
             lastRawAngleDegrees = turretAngleDegrees;
+
+            if (shouldLog) {
+                System.out.printf("[AimingCalc] OUTPUT: RPM=%.0f hoodAngle=%.1f turretAngle=%.1f%n",
+                        lastTargetRPM, lastTargetHoodAngle, turretAngleDegrees);
+            }
+        } else {
+            if (shouldLog) {
+                System.out.printf("[AimingCalc] SHOT REJECTED: valid=%b confidence=%.1f (RPM/hood unchanged at %.0f/%.1f)%n",
+                        shot.isValid(), shot.confidence(), lastTargetRPM, lastTargetHoodAngle);
+            }
         }
     }
 

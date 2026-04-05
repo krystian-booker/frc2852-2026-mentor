@@ -4,9 +4,7 @@
 
 package frc.robot;
 
-import com.ctre.phoenix6.HootAutoReplay;
-import com.ctre.phoenix6.SignalLogger;
-
+import com.revrobotics.util.StatusLogger;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -22,14 +20,14 @@ public class Robot extends TimedRobot {
   private final RobotContainer m_robotContainer;
 
   // log and replay timestamp and joystick data
-  private final HootAutoReplay m_timeAndJoystickReplay = new HootAutoReplay()
-      .withTimestampReplay()
-      .withJoystickReplay();
 
   /**
    * This function is run when the robot is first started up and should be used for any initialization code.
    */
   public Robot() {
+    // Disable REVLib automatic .revlog file logging before any Spark devices are created
+    StatusLogger.disableAutoLogging();
+
     // Instantiate our RobotContainer. This will perform all our button bindings,
     // and put our
     // autonomous chooser on the dashboard.
@@ -45,15 +43,12 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    m_timeAndJoystickReplay.update();
     CommandScheduler.getInstance().run();
   }
 
   /** This function is called once each time the robot enters Disabled mode. */
   @Override
   public void disabledInit() {
-    m_robotContainer.stopDiagnosticLogging();
-    SignalLogger.stop();
   }
 
   @Override
@@ -65,7 +60,6 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousInit() {
-    m_robotContainer.startDiagnosticLogging();
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
     // schedule the autonomous command (example)
@@ -85,7 +79,6 @@ public class Robot extends TimedRobot {
     // PathPlanner event commands like ShootCommand). Default commands and
     // teleop-triggered commands restart automatically on the next scheduler run.
     CommandScheduler.getInstance().cancelAll();
-    m_robotContainer.startDiagnosticLogging();
   }
 
   /** This function is called periodically during operator control. */
@@ -98,8 +91,6 @@ public class Robot extends TimedRobot {
     // Cancels all running commands at the start of test mode.
     CommandScheduler.getInstance().cancelAll();
     // Restart the signal logger for SysId characterization
-    SignalLogger.start();
-    m_robotContainer.startDiagnosticLogging();
   }
 
   /** This function is called periodically during test mode. */

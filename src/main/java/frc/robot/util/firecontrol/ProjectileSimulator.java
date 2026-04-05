@@ -353,6 +353,47 @@ public class ProjectileSimulator {
     return lut;
   }
 
+  /**
+   * Sweep stored angles and simulate with mapped physics angles. The storedToPhysics
+   * function converts the angle stored in ShotParameters (returned to callers) into the
+   * actual launch elevation used by the physics simulation.
+   *
+   * <p>Use when the mechanism's angle reference frame differs from the physical launch
+   * angle (e.g., an adjustable hood where position 0 = 70 deg elevation).
+   */
+  public ShotLUT generateVariableAngleShotLUT(
+      double minStoredAngleDeg, double maxStoredAngleDeg, double angleStepDeg,
+      java.util.function.DoubleUnaryOperator storedToPhysics,
+      double minDistM, double maxDistM) {
+    ShotLUT lut = new ShotLUT();
+
+    for (double distance = minDistM; distance <= maxDistM + 0.001; distance += 0.05) {
+      distance = Math.round(distance * 100.0) / 100.0;
+
+      double bestRPM = Double.MAX_VALUE;
+      double bestStoredAngle = 0;
+      double bestTOF = 0;
+      boolean found = false;
+
+      for (double stored = minStoredAngleDeg; stored <= maxStoredAngleDeg + 0.001;
+          stored += angleStepDeg) {
+        double physicsAngle = storedToPhysics.applyAsDouble(stored);
+        LUTEntry entry = findRPMForDistance(distance, physicsAngle);
+        if (entry.reachable() && entry.rpm() < bestRPM) {
+          bestRPM = entry.rpm();
+          bestStoredAngle = stored;
+          bestTOF = entry.tof();
+          found = true;
+        }
+      }
+
+      if (found) {
+        lut.put(distance, new ShotParameters(bestRPM, bestStoredAngle, bestTOF));
+      }
+    }
+    return lut;
+  }
+
   /** RPM to ball exit speed without needing a ProjectileSimulator instance. */
   public static double rpmToExitVelocity(double rpm, double wheelDiameterM, double slipFactor) {
     return slipFactor * rpm * Math.PI * wheelDiameterM / 60.0;
