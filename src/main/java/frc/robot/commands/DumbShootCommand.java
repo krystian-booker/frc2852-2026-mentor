@@ -5,6 +5,7 @@ import frc.robot.subsystems.flywheel.Flywheel;
 import frc.robot.subsystems.hood.Hood;
 import frc.robot.subsystems.indexer.Indexer;
 import frc.robot.subsystems.intakeactuator.IntakeActuator;
+import frc.robot.util.LoggedTunableNumber;
 
 /**
  * Fixed-parameter shoot command that uses hardcoded hood angle and flywheel RPM instead of the
@@ -12,8 +13,10 @@ import frc.robot.subsystems.intakeactuator.IntakeActuator;
  */
 public class DumbShootCommand extends Command {
 
-  private static final double HOOD_ANGLE_DEGREES = 15.0;
-  private static final double FLYWHEEL_RPM = 2500.0;
+  private static final LoggedTunableNumber hoodAngle =
+      new LoggedTunableNumber("DumbShoot/HoodAngle", 15.0);
+  private static final LoggedTunableNumber flywheelRPM =
+      new LoggedTunableNumber("DumbShoot/FlywheelRPM", 2500.0);
 
   private final Flywheel flywheel;
   private final Hood hood;
@@ -42,8 +45,8 @@ public class DumbShootCommand extends Command {
 
   @Override
   public void execute() {
-    flywheel.setVelocity(FLYWHEEL_RPM);
-    hood.setPosition(HOOD_ANGLE_DEGREES);
+    flywheel.setVelocity(flywheelRPM.get());
+    hood.setPosition(hoodAngle.get());
 
     // Feed when flywheel and hood are ready
     boolean flywheelReady = flywheel.atSetpoint();

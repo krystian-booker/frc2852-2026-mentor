@@ -8,6 +8,7 @@ public interface IntakeIO {
     public boolean leftConnected = false;
     public boolean rightConnected = false;
     public double velocityRPS = 0.0;
+    public double statorCurrentAmps = 0.0;
   }
 
   /** Updates the set of loggable inputs. */

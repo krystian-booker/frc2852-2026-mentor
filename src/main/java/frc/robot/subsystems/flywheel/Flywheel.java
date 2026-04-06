@@ -4,6 +4,8 @@ import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.FlywheelConstants;
+import frc.robot.Robot;
+import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.Logger;
 
 public class Flywheel extends SubsystemBase {
@@ -14,6 +16,23 @@ public class Flywheel extends SubsystemBase {
       new Alert("Flywheel leader motor disconnected!", AlertType.kWarning);
   private final Alert followerDisconnected =
       new Alert("Flywheel follower motor disconnected!", AlertType.kWarning);
+
+  // Tunable PID gains
+  private final LoggedTunableNumber kS =
+      new LoggedTunableNumber("Flywheel/kS", FlywheelConstants.S);
+  private final LoggedTunableNumber kV =
+      new LoggedTunableNumber("Flywheel/kV", FlywheelConstants.V);
+  private final LoggedTunableNumber kA =
+      new LoggedTunableNumber("Flywheel/kA", FlywheelConstants.A);
+  private final LoggedTunableNumber kP =
+      new LoggedTunableNumber("Flywheel/kP", FlywheelConstants.P);
+  private final LoggedTunableNumber kI =
+      new LoggedTunableNumber("Flywheel/kI", FlywheelConstants.I);
+  private final LoggedTunableNumber kD =
+      new LoggedTunableNumber("Flywheel/kD", FlywheelConstants.D);
+  private final LoggedTunableNumber velocityTolerance =
+      new LoggedTunableNumber(
+          "Flywheel/VelocityToleranceRPM", FlywheelConstants.VELOCITY_TOLERANCE_RPM);
 
   private double targetVelocityRPM = 0.0;
 
@@ -29,8 +48,21 @@ public class Flywheel extends SubsystemBase {
     leaderDisconnected.set(!inputs.leaderConnected);
     followerDisconnected.set(!inputs.followerConnected);
 
+    // Auto-apply PID gains when tunable values change
+    LoggedTunableNumber.ifChanged(
+        hashCode(),
+        values -> io.setPID(values[0], values[1], values[2], values[3], values[4], values[5]),
+        kS,
+        kV,
+        kA,
+        kP,
+        kI,
+        kD);
+
     Logger.recordOutput("Flywheel/TargetRPM", targetVelocityRPM);
     Logger.recordOutput("Flywheel/AtSetpoint", atSetpoint());
+
+    Robot.batteryLogger.reportCurrentUsage("Shooter/Flywheel", false, inputs.statorCurrentAmps);
   }
 
   public void setVelocity(double rpm) {
@@ -57,10 +89,9 @@ public class Flywheel extends SubsystemBase {
 
   public boolean atSetpoint() {
     if (targetVelocityRPM == 0.0) {
-      return Math.abs(inputs.velocityRPM) < FlywheelConstants.VELOCITY_TOLERANCE_RPM;
+      return Math.abs(inputs.velocityRPM) < velocityTolerance.get();
     }
-    return Math.abs(inputs.velocityRPM - targetVelocityRPM)
-        < FlywheelConstants.VELOCITY_TOLERANCE_RPM;
+    return Math.abs(inputs.velocityRPM - targetVelocityRPM) < velocityTolerance.get();
   }
 
   public double getCurrentVelocityRPM() {
@@ -90,19 +121,5 @@ public class Flywheel extends SubsystemBase {
   public void stop() {
     targetVelocityRPM = 0.0;
     io.stop();
-  }
-
-  public void applyTuningConfig(double kS, double kV, double kA, double kP, double kI, double kD) {
-    io.setPID(kS, kV, kA, kP, kI, kD);
-  }
-
-  public void restoreDefaultConfig() {
-    io.setPID(
-        FlywheelConstants.S,
-        FlywheelConstants.V,
-        FlywheelConstants.A,
-        FlywheelConstants.P,
-        FlywheelConstants.I,
-        FlywheelConstants.D);
   }
 }

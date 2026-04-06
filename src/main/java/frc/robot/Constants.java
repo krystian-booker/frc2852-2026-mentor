@@ -17,6 +17,8 @@ import java.util.List;
 public final class Constants {
 
   public static final double SIGNAL_UPDATE_FREQUENCY_HZ = 250.0;
+  public static final double loopPeriodSecs = 0.02;
+  public static final boolean tuningMode = true; // Set false for competition
 
   public static final Mode simMode = Mode.SIM;
   public static final Mode currentMode = RobotBase.isReal() ? Mode.REAL : simMode;
@@ -172,18 +174,15 @@ public final class Constants {
   }
 
   public static class TurretAimingConstants {
+    // All positions defined for blue alliance; AllianceFlipUtil flips for red
     public static final Translation2d BLUE_TARGET_POSITION = new Translation2d(4.625, 4.040);
-    public static final Translation2d RED_TARGET_POSITION = new Translation2d(11.915, 4.040);
 
     public static final double BLUE_ZONE_MAX_X = 4.625;
-    public static final double RED_ZONE_MIN_X = 11.905;
     public static final double FIELD_CENTERLINE_Y = 4.035;
 
-    // Non-goal targets per alliance (used in neutral/opponent zone)
+    // Non-goal targets (used in neutral/opponent zone)
     public static final Translation2d BLUE_LEFT_TARGET_POSITION = new Translation2d(1.5, 2.5);
     public static final Translation2d BLUE_RIGHT_TARGET_POSITION = new Translation2d(1.5, 6.5);
-    public static final Translation2d RED_LEFT_TARGET_POSITION = new Translation2d(15.040, 2.5);
-    public static final Translation2d RED_RIGHT_TARGET_POSITION = new Translation2d(15.040, 6.5);
 
     // Turret mounting offset from robot center
     public static final double TURRET_OFFSET_X_METERS = Units.inchesToMeters(-4.719);

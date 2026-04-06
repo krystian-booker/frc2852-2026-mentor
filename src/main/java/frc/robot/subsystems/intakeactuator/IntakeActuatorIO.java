@@ -9,6 +9,7 @@ public interface IntakeActuatorIO {
     public double positionRotations = 0.0;
     public double velocityRPS = 0.0;
     public double appliedOutput = 0.0;
+    public double outputCurrentAmps = 0.0;
   }
 
   /** Updates the set of loggable inputs. */

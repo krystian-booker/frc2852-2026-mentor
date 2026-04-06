@@ -13,6 +13,7 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.units.measure.Current;
 import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
 import frc.robot.Constants.IntakeConstants;
@@ -25,6 +26,7 @@ public class IntakeIOTalonFX implements IntakeIO {
   private final NeutralOut neutralRequest = new NeutralOut();
 
   private final StatusSignal<AngularVelocity> leftVelocity;
+  private final StatusSignal<Current> leftStatorCurrent;
 
   private final Debouncer leftConnectedDebounce =
       new Debouncer(0.5, Debouncer.DebounceType.kFalling);
@@ -39,7 +41,9 @@ public class IntakeIOTalonFX implements IntakeIO {
     configureMotor(rightMotor, InvertedValue.Clockwise_Positive);
 
     leftVelocity = leftMotor.getVelocity();
-    BaseStatusSignal.setUpdateFrequencyForAll(Constants.SIGNAL_UPDATE_FREQUENCY_HZ, leftVelocity);
+    leftStatorCurrent = leftMotor.getStatorCurrent();
+    BaseStatusSignal.setUpdateFrequencyForAll(
+        Constants.SIGNAL_UPDATE_FREQUENCY_HZ, leftVelocity, leftStatorCurrent);
 
     leftMotor.optimizeBusUtilization();
     rightMotor.optimizeBusUtilization();
@@ -64,10 +68,11 @@ public class IntakeIOTalonFX implements IntakeIO {
 
   @Override
   public void updateInputs(IntakeIOInputs inputs) {
-    var leftStatus = BaseStatusSignal.refreshAll(leftVelocity);
+    var leftStatus = BaseStatusSignal.refreshAll(leftVelocity, leftStatorCurrent);
     inputs.leftConnected = leftConnectedDebounce.calculate(leftStatus.isOK());
-    inputs.rightConnected = rightConnectedDebounce.calculate(true); // No signal to check
+    inputs.rightConnected = rightConnectedDebounce.calculate(true);
     inputs.velocityRPS = leftVelocity.getValue().in(RotationsPerSecond);
+    inputs.statorCurrentAmps = leftStatorCurrent.getValue().in(Amps);
   }
 
   @Override

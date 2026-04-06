@@ -11,6 +11,7 @@ import frc.robot.Constants.TurretConstants;
 import frc.robot.generated.GeneratedShotLUT;
 import frc.robot.util.firecontrol.ShotCalculator;
 import frc.robot.util.firecontrol.ShotLUT;
+import frc.robot.util.geometry.AllianceFlipUtil;
 import java.util.function.Supplier;
 
 /**
@@ -190,27 +191,26 @@ public class AimingCalculator {
   }
 
   public Translation2d getTargetPosition(Pose2d robotPose) {
-    Alliance alliance = getAlliance();
-    double robotX = robotPose.getX();
-    double robotY = robotPose.getY();
+    // Work in blue-side coordinates, then flip result if red alliance
+    double blueX =
+        AllianceFlipUtil.shouldFlip()
+            ? AllianceFlipUtil.applyX(robotPose.getX())
+            : robotPose.getX();
+    double blueY =
+        AllianceFlipUtil.shouldFlip()
+            ? AllianceFlipUtil.applyY(robotPose.getY())
+            : robotPose.getY();
 
-    if (alliance == Alliance.Blue) {
-      if (robotX < TurretAimingConstants.BLUE_ZONE_MAX_X) {
-        return TurretAimingConstants.BLUE_TARGET_POSITION;
-      } else if (robotY < TurretAimingConstants.FIELD_CENTERLINE_Y) {
-        return TurretAimingConstants.BLUE_LEFT_TARGET_POSITION;
-      } else {
-        return TurretAimingConstants.BLUE_RIGHT_TARGET_POSITION;
-      }
+    Translation2d blueTarget;
+    if (blueX < TurretAimingConstants.BLUE_ZONE_MAX_X) {
+      blueTarget = TurretAimingConstants.BLUE_TARGET_POSITION;
+    } else if (blueY < TurretAimingConstants.FIELD_CENTERLINE_Y) {
+      blueTarget = TurretAimingConstants.BLUE_LEFT_TARGET_POSITION;
     } else {
-      if (robotX > TurretAimingConstants.RED_ZONE_MIN_X) {
-        return TurretAimingConstants.RED_TARGET_POSITION;
-      } else if (robotY < TurretAimingConstants.FIELD_CENTERLINE_Y) {
-        return TurretAimingConstants.RED_LEFT_TARGET_POSITION;
-      } else {
-        return TurretAimingConstants.RED_RIGHT_TARGET_POSITION;
-      }
+      blueTarget = TurretAimingConstants.BLUE_RIGHT_TARGET_POSITION;
     }
+
+    return AllianceFlipUtil.apply(blueTarget);
   }
 
   public double getLastRawAngleDegrees() {

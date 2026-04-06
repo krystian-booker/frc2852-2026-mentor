@@ -7,8 +7,13 @@
 
 package frc.robot;
 
+import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import frc.robot.energy.BatteryLogger;
+import frc.robot.util.FullSubsystem;
+import frc.robot.util.LoggedTracer;
+import org.littletonrobotics.junction.AutoLog;
 import org.littletonrobotics.junction.LogFileUtil;
 import org.littletonrobotics.junction.LoggedRobot;
 import org.littletonrobotics.junction.Logger;
@@ -25,6 +30,15 @@ import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 public class Robot extends LoggedRobot {
   private Command autonomousCommand;
   private RobotContainer robotContainer;
+
+  public static final BatteryLogger batteryLogger = new BatteryLogger();
+  private final BatteryInputsAutoLogged batteryInputs = new BatteryInputsAutoLogged();
+
+  @AutoLog
+  public static class BatteryInputs {
+    public double batteryVoltage = 12.6;
+    public double totalCurrentAmps = 0.0;
+  }
 
   public Robot() {
     // Record metadata
@@ -74,19 +88,30 @@ public class Robot extends LoggedRobot {
   /** This function is called periodically during all modes. */
   @Override
   public void robotPeriodic() {
-    // Optionally switch the thread to high priority to improve loop
-    // timing (see the template project documentation for details)
-    // Threads.setCurrentThreadPriority(true, 99);
+    // Start performance tracing
+    LoggedTracer.reset();
 
-    // Runs the Scheduler. This is responsible for polling buttons, adding
-    // newly-scheduled commands, running already-scheduled commands, removing
-    // finished or interrupted commands, and running subsystem periodic() methods.
-    // This must be called from the robot's periodic block in order for anything in
-    // the Command-based framework to work.
+    // Read battery inputs
+    batteryInputs.batteryVoltage = RobotController.getBatteryVoltage();
+    batteryInputs.totalCurrentAmps = RobotController.getInputCurrent();
+    Logger.processInputs("BatteryLogger", batteryInputs);
+    batteryLogger.setBatteryVoltage(batteryInputs.batteryVoltage);
+    batteryLogger.setRioCurrent(batteryInputs.totalCurrentAmps);
+
+    // Run command scheduler (calls subsystem periodic() methods)
     CommandScheduler.getInstance().run();
+    LoggedTracer.record("CommandScheduler");
 
-    // Return to non-RT thread priority (do not modify the first argument)
-    // Threads.setCurrentThreadPriority(false, 10);
+    // Run post-scheduler hooks
+    FullSubsystem.runAllPeriodicAfterScheduler();
+    LoggedTracer.record("AfterScheduler");
+
+    // Log energy usage
+    batteryLogger.periodicAfterScheduler();
+
+    // Log mechanism 3D visualization
+    Mechanism3d.getInstance().log("Mechanism3d");
+    LoggedTracer.record("PeriodicEnd");
   }
 
   /** This function is called once when the robot is disabled. */

@@ -8,6 +8,9 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.HoodConstants;
+import frc.robot.Mechanism3d;
+import frc.robot.Robot;
+import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.Logger;
 
 public class Hood extends SubsystemBase {
@@ -15,6 +18,24 @@ public class Hood extends SubsystemBase {
   private final HoodIOInputsAutoLogged inputs = new HoodIOInputsAutoLogged();
 
   private final Alert disconnected = new Alert("Hood motor disconnected!", AlertType.kWarning);
+
+  // Tunable PID and Motion Magic gains
+  private final LoggedTunableNumber kS = new LoggedTunableNumber("Hood/kS", HoodConstants.S);
+  private final LoggedTunableNumber kV = new LoggedTunableNumber("Hood/kV", HoodConstants.V);
+  private final LoggedTunableNumber kA = new LoggedTunableNumber("Hood/kA", HoodConstants.A);
+  private final LoggedTunableNumber kG = new LoggedTunableNumber("Hood/kG", HoodConstants.G);
+  private final LoggedTunableNumber kP = new LoggedTunableNumber("Hood/kP", HoodConstants.P);
+  private final LoggedTunableNumber kI = new LoggedTunableNumber("Hood/kI", HoodConstants.I);
+  private final LoggedTunableNumber kD = new LoggedTunableNumber("Hood/kD", HoodConstants.D);
+  private final LoggedTunableNumber cruiseVel =
+      new LoggedTunableNumber("Hood/CruiseVel", HoodConstants.MOTION_MAGIC_CRUISE_VELOCITY);
+  private final LoggedTunableNumber accel =
+      new LoggedTunableNumber("Hood/Accel", HoodConstants.MOTION_MAGIC_ACCELERATION);
+  private final LoggedTunableNumber jerk =
+      new LoggedTunableNumber("Hood/Jerk", HoodConstants.MOTION_MAGIC_JERK);
+  private final LoggedTunableNumber positionTolerance =
+      new LoggedTunableNumber(
+          "Hood/PositionToleranceDeg", HoodConstants.POSITION_TOLERANCE_DEGREES);
 
   private double targetPositionDegrees = 0.0;
   private boolean isHomed = false;
@@ -30,9 +51,31 @@ public class Hood extends SubsystemBase {
 
     disconnected.set(!inputs.connected);
 
+    // Auto-apply gains when tunable values change
+    LoggedTunableNumber.ifChanged(
+        hashCode(),
+        values ->
+            io.setPID(
+                values[0], values[1], values[2], values[3], values[4], values[5], values[6],
+                values[7], values[8], values[9]),
+        kS,
+        kV,
+        kA,
+        kG,
+        kP,
+        kI,
+        kD,
+        cruiseVel,
+        accel,
+        jerk);
+
     Logger.recordOutput("Hood/TargetDegrees", targetPositionDegrees);
     Logger.recordOutput("Hood/AtPosition", atPosition());
     Logger.recordOutput("Hood/IsHomed", isHomed);
+
+    Mechanism3d.getInstance().setHoodAngle(inputs.positionDegrees);
+
+    Robot.batteryLogger.reportCurrentUsage("Shooter/Hood", false, inputs.statorCurrentAmps);
   }
 
   public void setPosition(double degrees) {
@@ -43,8 +86,7 @@ public class Hood extends SubsystemBase {
   }
 
   public boolean atPosition() {
-    return Math.abs(inputs.positionDegrees - targetPositionDegrees)
-        < HoodConstants.POSITION_TOLERANCE_DEGREES;
+    return Math.abs(inputs.positionDegrees - targetPositionDegrees) < positionTolerance.get();
   }
 
   public double getCurrentPositionDegrees() {
@@ -91,34 +133,6 @@ public class Hood extends SubsystemBase {
     return isHomed;
   }
 
-  public void applyTuningConfig(
-      double kS,
-      double kV,
-      double kA,
-      double kG,
-      double kP,
-      double kI,
-      double kD,
-      double cruiseVelDegS,
-      double accelDegS2,
-      double jerkDegS3) {
-    io.setPID(kS, kV, kA, kG, kP, kI, kD, cruiseVelDegS, accelDegS2, jerkDegS3);
-  }
-
-  public void restoreDefaultConfig() {
-    io.setPID(
-        HoodConstants.S,
-        HoodConstants.V,
-        HoodConstants.A,
-        HoodConstants.G,
-        HoodConstants.P,
-        HoodConstants.I,
-        HoodConstants.D,
-        HoodConstants.MOTION_MAGIC_CRUISE_VELOCITY,
-        HoodConstants.MOTION_MAGIC_ACCELERATION,
-        HoodConstants.MOTION_MAGIC_JERK);
-  }
-
   /** Drives hood to reverse hard stop, detects stall via stator current, then zeroes encoder. */
   public Command zeroHoodCommand() {
     Timer homingTimer = new Timer();
@@ -129,7 +143,7 @@ public class Hood extends SubsystemBase {
                 () -> {
                   isHomed = false;
                   stallCount[0] = 0;
-                  io.setSoftLimitsEnabled(true, false); // Disable reverse soft limit for homing
+                  io.setSoftLimitsEnabled(true, false);
                   homingTimer.restart();
                   io.setVoltage(HoodConstants.HOMING_VOLTAGE);
                 }),

@@ -5,6 +5,9 @@ import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.IntakeActuatorConstants;
+import frc.robot.Mechanism3d;
+import frc.robot.Robot;
+import frc.robot.util.LoggedTunableNumber;
 import org.littletonrobotics.junction.Logger;
 
 public class IntakeActuator extends SubsystemBase {
@@ -13,6 +16,14 @@ public class IntakeActuator extends SubsystemBase {
 
   private final Alert disconnected =
       new Alert("IntakeActuator motor disconnected!", AlertType.kWarning);
+
+  // Tunable agitation timing
+  private final LoggedTunableNumber agitateExtendSeconds =
+      new LoggedTunableNumber(
+          "IntakeActuator/AgitateExtendSec", IntakeActuatorConstants.AGITATE_EXTEND_SECONDS);
+  private final LoggedTunableNumber agitateRetractSeconds =
+      new LoggedTunableNumber(
+          "IntakeActuator/AgitateRetractSec", IntakeActuatorConstants.AGITATE_RETRACT_SECONDS);
 
   public IntakeActuator(IntakeActuatorIO io) {
     this.io = io;
@@ -24,6 +35,10 @@ public class IntakeActuator extends SubsystemBase {
     Logger.processInputs("IntakeActuator", inputs);
 
     disconnected.set(!inputs.connected);
+
+    Mechanism3d.getInstance().setIntakeActuatorPosition(inputs.positionRotations);
+
+    Robot.batteryLogger.reportCurrentUsage("Intake/Actuator", false, inputs.outputCurrentAmps);
   }
 
   public void driveExtend() {
@@ -75,10 +90,7 @@ public class IntakeActuator extends SubsystemBase {
   }
 
   public void runAgitate() {
-    double timeout =
-        agitateRetract
-            ? IntakeActuatorConstants.AGITATE_RETRACT_SECONDS
-            : IntakeActuatorConstants.AGITATE_EXTEND_SECONDS;
+    double timeout = agitateRetract ? agitateRetractSeconds.get() : agitateExtendSeconds.get();
     if (System.currentTimeMillis() - agitateTimer >= timeout * 1000) {
       agitateRetract = !agitateRetract;
       agitateTimer = System.currentTimeMillis();

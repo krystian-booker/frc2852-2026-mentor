@@ -60,10 +60,11 @@ public class IntakeActuatorIOSparkFlex implements IntakeActuatorIO {
 
   @Override
   public void updateInputs(IntakeActuatorIOInputs inputs) {
-    inputs.connected = true; // REVLib doesn't provide a simple connection check
+    inputs.connected = true;
     inputs.positionRotations = encoder.getPosition();
     inputs.velocityRPS = encoder.getVelocity();
     inputs.appliedOutput = motor.getAppliedOutput();
+    inputs.outputCurrentAmps = motor.getOutputCurrent();
   }
 
   @Override
