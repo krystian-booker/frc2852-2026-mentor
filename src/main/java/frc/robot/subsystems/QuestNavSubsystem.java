@@ -15,13 +15,15 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.QuestNavConstants;
+import frc.robot.subsystems.drive.Drive;
+import frc.robot.subsystems.vision.Vision;
 import gg.questnav.questnav.PoseFrame;
 import gg.questnav.questnav.QuestNav;
 
 public class QuestNavSubsystem extends SubsystemBase {
 
   private final QuestNav questNav;
-  private final CommandSwerveDrivetrain drivetrain;
+  private final Drive drive;
   private final Vision vision;
 
   // Transform from robot center to Quest headset
@@ -35,8 +37,8 @@ public class QuestNavSubsystem extends SubsystemBase {
   private boolean isSeeded = false;
   private Pose2d latestRobotPose = new Pose2d();
 
-  public QuestNavSubsystem(CommandSwerveDrivetrain drivetrain, Vision vision) {
-    this.drivetrain = drivetrain;
+  public QuestNavSubsystem(Drive drive, Vision vision) {
+    this.drive = drive;
     this.vision = vision;
     this.questNav = new QuestNav();
 
@@ -81,7 +83,7 @@ public class QuestNavSubsystem extends SubsystemBase {
 
         // Only feed to drivetrain after seeded from vision
         if (isSeeded) {
-          drivetrain.addVisionMeasurement(robotPose, frame.dataTimestamp(), visionStdDevs);
+          drive.addVisionMeasurement(robotPose, frame.dataTimestamp(), visionStdDevs);
         }
       } else {
         isConnected = false;
@@ -129,7 +131,7 @@ public class QuestNavSubsystem extends SubsystemBase {
       var visionPose = vision.getLatestPose2d();
       if (visionPose.isPresent()) {
         resetPose(visionPose.get());
-        drivetrain.resetPose(visionPose.get());
+        drive.setPose(visionPose.get());
         isSeeded = true;
         return true;
       }

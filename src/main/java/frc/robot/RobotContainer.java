@@ -18,12 +18,12 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
+import frc.robot.Constants.TurretConstants;
 import frc.robot.commands.DriveCommands;
 import frc.robot.commands.DumbShootCommand;
 import frc.robot.commands.ShootCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.QuestNavSubsystem;
-import frc.robot.subsystems.Vision;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.GyroIO;
 import frc.robot.subsystems.drive.GyroIOPigeon2;
@@ -54,6 +54,11 @@ import frc.robot.subsystems.turret.Turret;
 import frc.robot.subsystems.turret.TurretIO;
 import frc.robot.subsystems.turret.TurretIOSim;
 import frc.robot.subsystems.turret.TurretIOTalonFX;
+import frc.robot.subsystems.vision.Vision;
+import frc.robot.subsystems.vision.VisionConstants;
+import frc.robot.subsystems.vision.VisionIO;
+import frc.robot.subsystems.vision.VisionIOPhotonVision;
+import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
 import frc.robot.util.AimingCalculator;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
@@ -74,8 +79,8 @@ public class RobotContainer {
   private final CommandXboxController operatorController =
       new CommandXboxController(OperatorConstants.OPERATOR_CONTROLLER_PORT);
 
-  // Vision
-  private Vision vision = null;
+  // Vision and QuestNav
+  private final Vision vision;
   private QuestNavSubsystem questNav = null;
 
   // Turret aiming calculator
@@ -111,6 +116,13 @@ public class RobotContainer {
         intake = new Intake(new IntakeIOTalonFX());
         intakeActuator = new IntakeActuator(new IntakeActuatorIOSparkFlex());
         indexer = new Indexer(new IndexerIOSparkFlex());
+        vision =
+            new Vision(
+                drive::addVisionMeasurement,
+                new VisionIOPhotonVision(
+                    VisionConstants.leftCameraName, VisionConstants.robotToLeftCamera),
+                new VisionIOPhotonVision(
+                    VisionConstants.rightCameraName, VisionConstants.robotToRightCamera));
         break;
 
       case SIM:
@@ -128,6 +140,17 @@ public class RobotContainer {
         intake = new Intake(new IntakeIOSim());
         intakeActuator = new IntakeActuator(new IntakeActuatorIOSim());
         indexer = new Indexer(new IndexerIOSim());
+        vision =
+            new Vision(
+                drive::addVisionMeasurement,
+                new VisionIOPhotonVisionSim(
+                    VisionConstants.leftCameraName,
+                    VisionConstants.robotToLeftCamera,
+                    drive::getPose),
+                new VisionIOPhotonVisionSim(
+                    VisionConstants.rightCameraName,
+                    VisionConstants.robotToRightCamera,
+                    drive::getPose));
         break;
 
       default:
@@ -145,6 +168,7 @@ public class RobotContainer {
         intake = new Intake(new IntakeIO() {});
         intakeActuator = new IntakeActuator(new IntakeActuatorIO() {});
         indexer = new Indexer(new IndexerIO() {});
+        vision = new Vision(drive::addVisionMeasurement, new VisionIO() {}, new VisionIO() {});
         break;
     }
 
@@ -170,16 +194,11 @@ public class RobotContainer {
     // Configure the button bindings
     configureButtonBindings();
 
-    // Initialize vision subsystems
-
-    // TODO: These new to be updated for the new drive train
-    // vision = new Vision(drivetrain::addVisionMeasurement);
-    // if (QuestNavConstants.ENABLED) {
-    //   questNav = new QuestNavSubsystem(drivetrain, vision);
-    // }
-    // shooterCalculator =
-    //     new AimingCalculator(() -> drivetrain.getState().Pose, () ->
-    // drivetrain.getState().Speeds);
+    // Initialize QuestNav (disabled in SIM mode)
+    if (QuestNavConstants.ENABLED && Constants.currentMode != Constants.Mode.SIM) {
+      questNav = new QuestNavSubsystem(drive, vision);
+    }
+    shooterCalculator = new AimingCalculator(drive::getPose, drive::getChassisSpeeds);
 
     // Register named commands before building auto chooser
     NamedCommands.registerCommand(
@@ -203,28 +222,22 @@ public class RobotContainer {
                   double magnitude = Math.hypot(stickX, stickY);
 
                   double turretSetpoint = 0.0;
-                  boolean sotmActive = false;
 
                   if (magnitude > 0.15) {
                     // Manual field-oriented override
                     double fieldAngleRad = Math.atan2(-stickX, -stickY);
+                    double robotHeadingRad = drive.getPose().getRotation().getRadians();
+                    double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) % 360.0;
 
-                    // TODO: This needs to be updated for the new drive train
-                    // double robotHeadingRad =
-                    // drivetrain.getState().Pose.getRotation().getRadians();
-                    // double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) %
-                    // 360.0;
-
-                    // if (turretAngleDeg > 180.0) turretAngleDeg -= 360.0;
-                    // else if (turretAngleDeg <= -180.0) turretAngleDeg += 360.0;
-                    // if (turretAngleDeg > TurretConstants.MAX_POSITION_DEGREES)
-                    //   turretAngleDeg -= 360.0;
-                    // turretSetpoint = turretAngleDeg;
+                    if (turretAngleDeg > 180.0) turretAngleDeg -= 360.0;
+                    else if (turretAngleDeg <= -180.0) turretAngleDeg += 360.0;
+                    if (turretAngleDeg > TurretConstants.MAX_POSITION_DEGREES)
+                      turretAngleDeg -= 360.0;
+                    turretSetpoint = turretAngleDeg;
                   } else if (shooterCalculator != null) {
                     // Auto-aim at target
                     var result = shooterCalculator.calculate();
                     turretSetpoint = result.turretAngleDegrees();
-                    sotmActive = true;
                   }
 
                   turret.setPosition(turretSetpoint);
@@ -235,7 +248,7 @@ public class RobotContainer {
     configureDriverBindings();
     configureOperatorBindings();
 
-    if (QuestNavConstants.ENABLED) {
+    if (QuestNavConstants.ENABLED && Constants.currentMode != Constants.Mode.SIM) {
       questNavInitialization();
     }
 
