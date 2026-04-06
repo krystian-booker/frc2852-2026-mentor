@@ -1,9 +1,5 @@
 package frc.robot;
 
-import static edu.wpi.first.units.Units.*;
-
-import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
-import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
@@ -22,12 +18,10 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
-import frc.robot.Constants.TurretConstants;
 import frc.robot.commands.DriveCommands;
 import frc.robot.commands.DumbShootCommand;
 import frc.robot.commands.ShootCommand;
 import frc.robot.generated.TunerConstants;
-import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Indexer;
@@ -43,7 +37,6 @@ import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
 import frc.robot.util.AimingCalculator;
-import frc.robot.util.Telemetry;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 public class RobotContainer {
@@ -62,20 +55,6 @@ public class RobotContainer {
       new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER_PORT);
   private final CommandXboxController operatorController =
       new CommandXboxController(OperatorConstants.OPERATOR_CONTROLLER_PORT);
-
-  // Swerve constants
-  private double MaxSpeed = 1.0 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
-  private double MaxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond);
-
-  private final SwerveRequest.FieldCentric old_drive =
-      new SwerveRequest.FieldCentric()
-          .withDeadband(MaxSpeed * 0.1)
-          .withRotationalDeadband(MaxAngularRate * 0.1)
-          .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
-
-  // Swerve setup
-  private final Telemetry logger = new Telemetry(MaxSpeed);
-  public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
   // Vision
   private Vision vision = null;
@@ -176,12 +155,15 @@ public class RobotContainer {
     configureButtonBindings();
 
     // Initialize vision subsystems
-    vision = new Vision(drivetrain::addVisionMeasurement);
-    if (QuestNavConstants.ENABLED) {
-      questNav = new QuestNavSubsystem(drivetrain, vision);
-    }
-    shooterCalculator =
-        new AimingCalculator(() -> drivetrain.getState().Pose, () -> drivetrain.getState().Speeds);
+
+    // TODO: These new to be updated for the new drive train
+    // vision = new Vision(drivetrain::addVisionMeasurement);
+    // if (QuestNavConstants.ENABLED) {
+    //   questNav = new QuestNavSubsystem(drivetrain, vision);
+    // }
+    // shooterCalculator =
+    //     new AimingCalculator(() -> drivetrain.getState().Pose, () ->
+    // drivetrain.getState().Speeds);
 
     // Register named commands before building auto chooser
     NamedCommands.registerCommand(
@@ -189,12 +171,6 @@ public class RobotContainer {
     NamedCommands.registerCommand("extendIntake", intakeActuator.extend());
     NamedCommands.registerCommand("agitateIntake", intakeActuator.agitate());
     NamedCommands.registerCommand("runIntake", intake.runCommand());
-
-    // autoChooser = AutoBuilder.buildAutoChooser();
-    // autoChooser.addOption("Drive Back & Shoot", buildDriveBackAndShootAuto());
-    // SmartDashboard.putData("Auto Mode", autoChooser);
-    // SmartDashboard.putNumber("IntakeActuator/StepTestDutyCycle",
-    // IntakeActuatorConstants.STEP_TEST_DUTY_CYCLE);
 
     // Set turret default command - auto-aim with operator stick override
     turret.setDefaultCommand(
@@ -208,19 +184,24 @@ public class RobotContainer {
                   double stickY = operatorController.getLeftY();
                   double magnitude = Math.hypot(stickX, stickY);
 
-                  double turretSetpoint;
+                  double turretSetpoint = 0.0;
                   boolean sotmActive = false;
 
                   if (magnitude > 0.15) {
                     // Manual field-oriented override
                     double fieldAngleRad = Math.atan2(-stickX, -stickY);
-                    double robotHeadingRad = drivetrain.getState().Pose.getRotation().getRadians();
-                    double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) % 360.0;
-                    if (turretAngleDeg > 180.0) turretAngleDeg -= 360.0;
-                    else if (turretAngleDeg <= -180.0) turretAngleDeg += 360.0;
-                    if (turretAngleDeg > TurretConstants.MAX_POSITION_DEGREES)
-                      turretAngleDeg -= 360.0;
-                    turretSetpoint = turretAngleDeg;
+
+                    // TODO: This needs to be updated for the new drive train
+                    // double robotHeadingRad =
+                    // drivetrain.getState().Pose.getRotation().getRadians();
+                    // double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) %
+                    // 360.0;
+
+                    // if (turretAngleDeg > 180.0) turretAngleDeg -= 360.0;
+                    // else if (turretAngleDeg <= -180.0) turretAngleDeg += 360.0;
+                    // if (turretAngleDeg > TurretConstants.MAX_POSITION_DEGREES)
+                    //   turretAngleDeg -= 360.0;
+                    // turretSetpoint = turretAngleDeg;
                   } else {
                     // Auto-aim at target
                     var result = shooterCalculator.calculate();
@@ -235,16 +216,13 @@ public class RobotContainer {
     // Configure normal bindings (always available)
     configureDriverBindings();
     configureOperatorBindings();
-    configureTestBindings();
+
     if (QuestNavConstants.ENABLED) {
       questNavInitialization();
     }
 
     // Warmup PathPlanner to avoid Java pauses
     CommandScheduler.getInstance().schedule(FollowPathCommand.warmupCommand());
-
-    // Telemetry setup
-    drivetrain.registerTelemetry(logger::telemeterize);
   }
 
   /**
@@ -312,14 +290,6 @@ public class RobotContainer {
         .rightBumper()
         .whileTrue(
             new DumbShootCommand(flywheel, hood, indexer, intakeActuator).withName("DumbShoot"));
-
-    // DEFAULT COMMAND - Field-Centric Drive
-    drivetrain.setDefaultCommand(drivetrain.applyRequest(this::getDriveRequest));
-
-    // DISABLED MODE - Idle Request
-    final var idle = new SwerveRequest.Idle();
-    RobotModeTriggers.disabled()
-        .whileTrue(drivetrain.applyRequest(() -> idle).ignoringDisable(true));
   }
 
   private void configureOperatorBindings() {}
@@ -383,122 +353,6 @@ public class RobotContainer {
                           }
                         }))
                 .ignoringDisable(true));
-  }
-
-  /**
-   * Configure test mode bindings using RobotModeTriggers. These bindings are only active when the
-   * robot is in test mode.
-   */
-  private void configureTestBindings() {
-    // Only allow toggling calibration mode while in test mode
-    // RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
-
-    // --- Indexer ---
-    // RobotModeTriggers.test().and(driverController.povUp()).whileTrue(indexer.feedCommand());
-    // RobotModeTriggers.test().and(driverController.povDown()).onTrue(Commands.runOnce(indexer::stop,
-    // indexer));
-
-    // // --- Intake Actuator ---
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
-
-    // // --- Intake ---
-    // RobotModeTriggers.test().and(driverController.leftBumper()).whileTrue(intake.run(intake::runIntake));
-    // RobotModeTriggers.test().and(driverController.y()).onTrue(Commands.runOnce(intake::stop,
-    // intake));
-
-    // --- Turret Manual Test ---
-    // driverController.a()
-    // .whileTrue(turret.run(turret::testDirectionPositive).finallyDo(() ->
-    // turret.stop()));
-    // driverController.b()
-    // .whileTrue(turret.run(turret::testDirectionNegative).finallyDo(() ->
-    // turret.stop()));
-    // RobotModeTriggers.test().and(driverController.x())
-    // .onTrue(Commands.runOnce(() -> turret.setPosition(0)));
-    // RobotModeTriggers.test().and(driverController.y())
-    // .onTrue(Commands.runOnce(() -> turret.nudge(-120)));
-    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop,
-    // turret));
-
-    // --- Turret Field Hold ---
-    // RobotModeTriggers.test().and(driverController.rightBumper())
-    // .whileTrue(turret.fieldHoldCommand(() ->
-    // drivetrain.getState().Pose.getRotation().getDegrees()));
-    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop,
-    // turret));
-
-    // --- Turret System Identification (for MATLAB) ---
-    // Operator D-pad Up: runs all routines (Quasistatic → Steps → Coastdown)
-    // RobotModeTriggers.test().and(operatorController.povUp())
-    // .toggleOnTrue(new TurretSysIdCommand(turret,
-    // TurretSysIdCommand.Routine.ALL));
-
-    // --- Flywheel System Identification (for MATLAB) ---
-    // RobotModeTriggers.test().and(driverController.back())
-    // .toggleOnTrue(new FlywheelSysIdCommand(flywheel));
-
-    // --- Flywheel ---
-    // RobotModeTriggers.test().and(driverController.a())
-    // .whileTrue(new FlywheelTestCommand(flywheel, false, 4000.0));
-    // RobotModeTriggers.test().and(driverController.b())
-    // .whileTrue(new FlywheelTestCommand(flywheel, true, 4000.0));
-    // RobotModeTriggers.test().and(driverController.x()).whileTrue(flywheel.run(()
-    // -> flywheel.setVelocity(6000)));
-    // RobotModeTriggers.test().and(driverController.y())
-    // .onTrue(Commands.runOnce(() -> flywheel.setVelocity(0), flywheel));
-
-    // --- Hood Test Sequence ---
-    // Operator start button: zeros hood then runs through full range for diagnostic
-    // capture
-    // RobotModeTriggers.test().and(driverController.start())
-    // .onTrue(HoodTestSequenceCommand.create(hood));
-
-    // --- Hood ---
-    // RobotModeTriggers.test().and(driverController.a())
-    // .whileTrue(hood.run(hood::testDirectionPositive).finallyDo(() ->
-    // hood.setNeutral()));
-    // RobotModeTriggers.test().and(driverController.b())
-    // .whileTrue(hood.run(hood::testDirectionNegative).finallyDo(() ->
-    // hood.setNeutral()));
-    // RobotModeTriggers.test().and(driverController.x())
-    // .onTrue(hood.runOnce(() -> hood.nudge(5)));
-    // RobotModeTriggers.test().and(driverController.y())
-    // .onTrue(hood.runOnce(() -> hood.nudge(-5)));
-    // RobotModeTriggers.test().and(driverController.leftBumper())
-    // .onTrue(Commands.runOnce(hood::setNeutral, hood));
-
-    // Hood manual re-home (start button in test mode)
-    // RobotModeTriggers.test().and(driverController.start())
-    // .onTrue(hood.zeroHoodCommand());
-
-  }
-
-  /** Builds a field-centric drive request from driver joystick input. */
-  private SwerveRequest getDriveRequest() {
-    return old_drive
-        .withVelocityX(-driverController.getLeftY() * MaxSpeed)
-        .withVelocityY(-driverController.getLeftX() * MaxSpeed)
-        .withRotationalRate(-driverController.getRightX() * MaxAngularRate);
-  }
-
-  private Command buildDriveBackAndShootAuto() {
-    SwerveRequest.RobotCentric driveBack =
-        new SwerveRequest.RobotCentric()
-            .withVelocityX(-1.0) // backwards at 1 m/s
-            .withVelocityY(0)
-            .withRotationalRate(0);
-    SwerveRequest.Idle stop = new SwerveRequest.Idle();
-
-    return Commands.sequence(
-        Commands.deadline(
-            drivetrain.applyRequest(() -> driveBack).withTimeout(0.6), intakeActuator.extend()),
-        drivetrain.applyRequest(() -> stop).withTimeout(0.02),
-        Commands.parallel(
-            new ShootCommand(flywheel, hood, indexer, turret, shooterCalculator),
-            intakeActuator.agitate(),
-            intake.runCommand()));
   }
 
   /**
