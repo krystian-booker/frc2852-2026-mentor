@@ -22,13 +22,7 @@ import frc.robot.commands.DriveCommands;
 import frc.robot.commands.DumbShootCommand;
 import frc.robot.commands.ShootCommand;
 import frc.robot.generated.TunerConstants;
-import frc.robot.subsystems.Flywheel;
-import frc.robot.subsystems.Hood;
-import frc.robot.subsystems.Indexer;
-import frc.robot.subsystems.Intake;
-import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.QuestNavSubsystem;
-import frc.robot.subsystems.Turret;
 import frc.robot.subsystems.Vision;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.GyroIO;
@@ -36,6 +30,30 @@ import frc.robot.subsystems.drive.GyroIOPigeon2;
 import frc.robot.subsystems.drive.ModuleIO;
 import frc.robot.subsystems.drive.ModuleIOSim;
 import frc.robot.subsystems.drive.ModuleIOTalonFX;
+import frc.robot.subsystems.flywheel.Flywheel;
+import frc.robot.subsystems.flywheel.FlywheelIO;
+import frc.robot.subsystems.flywheel.FlywheelIOSim;
+import frc.robot.subsystems.flywheel.FlywheelIOTalonFX;
+import frc.robot.subsystems.hood.Hood;
+import frc.robot.subsystems.hood.HoodIO;
+import frc.robot.subsystems.hood.HoodIOSim;
+import frc.robot.subsystems.hood.HoodIOTalonFX;
+import frc.robot.subsystems.indexer.Indexer;
+import frc.robot.subsystems.indexer.IndexerIO;
+import frc.robot.subsystems.indexer.IndexerIOSim;
+import frc.robot.subsystems.indexer.IndexerIOSparkFlex;
+import frc.robot.subsystems.intake.Intake;
+import frc.robot.subsystems.intake.IntakeIO;
+import frc.robot.subsystems.intake.IntakeIOSim;
+import frc.robot.subsystems.intake.IntakeIOTalonFX;
+import frc.robot.subsystems.intakeactuator.IntakeActuator;
+import frc.robot.subsystems.intakeactuator.IntakeActuatorIO;
+import frc.robot.subsystems.intakeactuator.IntakeActuatorIOSim;
+import frc.robot.subsystems.intakeactuator.IntakeActuatorIOSparkFlex;
+import frc.robot.subsystems.turret.Turret;
+import frc.robot.subsystems.turret.TurretIO;
+import frc.robot.subsystems.turret.TurretIOSim;
+import frc.robot.subsystems.turret.TurretIOTalonFX;
 import frc.robot.util.AimingCalculator;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
@@ -43,12 +61,12 @@ public class RobotContainer {
 
   // Subsystems
   private final Drive drive;
-  private final Indexer indexer = new Indexer();
-  private final Flywheel flywheel = new Flywheel();
-  private final Hood hood = new Hood();
-  private final Intake intake = new Intake();
-  private final IntakeActuator intakeActuator = new IntakeActuator();
-  private final Turret turret = new Turret();
+  private final Indexer indexer;
+  private final Flywheel flywheel;
+  private final Hood hood;
+  private final Intake intake;
+  private final IntakeActuator intakeActuator;
+  private final Turret turret;
 
   // Controllers
   private final CommandXboxController driverController =
@@ -80,8 +98,6 @@ public class RobotContainer {
     switch (Constants.currentMode) {
       case REAL:
         // Real robot, instantiate hardware IO implementations
-        // ModuleIOTalonFX is intended for modules with TalonFX drive, TalonFX turn, and
-        // a CANcoder
         drive =
             new Drive(
                 new GyroIOPigeon2(),
@@ -89,24 +105,12 @@ public class RobotContainer {
                 new ModuleIOTalonFX(TunerConstants.FrontRight),
                 new ModuleIOTalonFX(TunerConstants.BackLeft),
                 new ModuleIOTalonFX(TunerConstants.BackRight));
-
-        // The ModuleIOTalonFXS implementation provides an example implementation for
-        // TalonFXS controller connected to a CANdi with a PWM encoder. The
-        // implementations
-        // of ModuleIOTalonFX, ModuleIOTalonFXS, and ModuleIOSpark (from the Spark
-        // swerve
-        // template) can be freely intermixed to support alternative hardware
-        // arrangements.
-        // Please see the AdvantageKit template documentation for more information:
-        // https://docs.advantagekit.org/getting-started/template-projects/talonfx-swerve-template#custom-module-implementations
-        //
-        // drive =
-        // new Drive(
-        // new GyroIOPigeon2(),
-        // new ModuleIOTalonFXS(TunerConstants.FrontLeft),
-        // new ModuleIOTalonFXS(TunerConstants.FrontRight),
-        // new ModuleIOTalonFXS(TunerConstants.BackLeft),
-        // new ModuleIOTalonFXS(TunerConstants.BackRight));
+        flywheel = new Flywheel(new FlywheelIOTalonFX());
+        hood = new Hood(new HoodIOTalonFX());
+        turret = new Turret(new TurretIOTalonFX());
+        intake = new Intake(new IntakeIOTalonFX());
+        intakeActuator = new IntakeActuator(new IntakeActuatorIOSparkFlex());
+        indexer = new Indexer(new IndexerIOSparkFlex());
         break;
 
       case SIM:
@@ -118,6 +122,12 @@ public class RobotContainer {
                 new ModuleIOSim(TunerConstants.FrontRight),
                 new ModuleIOSim(TunerConstants.BackLeft),
                 new ModuleIOSim(TunerConstants.BackRight));
+        flywheel = new Flywheel(new FlywheelIOSim());
+        hood = new Hood(new HoodIOSim());
+        turret = new Turret(new TurretIOSim());
+        intake = new Intake(new IntakeIOSim());
+        intakeActuator = new IntakeActuator(new IntakeActuatorIOSim());
+        indexer = new Indexer(new IndexerIOSim());
         break;
 
       default:
@@ -129,6 +139,12 @@ public class RobotContainer {
                 new ModuleIO() {},
                 new ModuleIO() {},
                 new ModuleIO() {});
+        flywheel = new Flywheel(new FlywheelIO() {});
+        hood = new Hood(new HoodIO() {});
+        turret = new Turret(new TurretIO() {});
+        intake = new Intake(new IntakeIO() {});
+        intakeActuator = new IntakeActuator(new IntakeActuatorIO() {});
+        indexer = new Indexer(new IndexerIO() {});
         break;
     }
 
@@ -178,7 +194,9 @@ public class RobotContainer {
             .run(
                 () -> {
                   // ALWAYS update solver once per 20ms cycle for Newton predictions
-                  shooterCalculator.update();
+                  if (shooterCalculator != null) {
+                    shooterCalculator.update();
+                  }
 
                   double stickX = operatorController.getLeftX();
                   double stickY = operatorController.getLeftY();
@@ -202,7 +220,7 @@ public class RobotContainer {
                     // if (turretAngleDeg > TurretConstants.MAX_POSITION_DEGREES)
                     //   turretAngleDeg -= 360.0;
                     // turretSetpoint = turretAngleDeg;
-                  } else {
+                  } else if (shooterCalculator != null) {
                     // Auto-aim at target
                     var result = shooterCalculator.calculate();
                     turretSetpoint = result.turretAngleDegrees();
@@ -299,6 +317,10 @@ public class RobotContainer {
    * pose. The physical reseed button (DIO) resets and re-seeds when 2+ tags visible.
    */
   private void questNavInitialization() {
+    if (vision == null || questNav == null) {
+      return;
+    }
+
     // Automatic initial seeding: poll every second while disabled until first seed
     Command initialSeedingCommand =
         Commands.sequence(

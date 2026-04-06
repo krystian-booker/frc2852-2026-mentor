@@ -1,9 +1,9 @@
-package frc.robot.subsystems;
+package frc.robot.subsystems.intake;
 
 import static edu.wpi.first.units.Units.*;
+import static frc.robot.util.PhoenixUtil.*;
 
 import com.ctre.phoenix6.BaseStatusSignal;
-import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.DutyCycleOut;
@@ -11,35 +11,32 @@ import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.units.measure.AngularVelocity;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
 import frc.robot.Constants.IntakeConstants;
 
-public class Intake extends SubsystemBase {
-
-  // Hardware
+public class IntakeIOTalonFX implements IntakeIO {
   private final TalonFX leftMotor;
   private final TalonFX rightMotor;
 
-  // Control requests
-  private final DutyCycleOut dutyRequest;
-  private final NeutralOut neutralRequest;
+  private final DutyCycleOut dutyRequest = new DutyCycleOut(0);
+  private final NeutralOut neutralRequest = new NeutralOut();
 
-  // Status signals
   private final StatusSignal<AngularVelocity> leftVelocity;
 
-  public Intake() {
+  private final Debouncer leftConnectedDebounce =
+      new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+  private final Debouncer rightConnectedDebounce =
+      new Debouncer(0.5, Debouncer.DebounceType.kFalling);
+
+  public IntakeIOTalonFX() {
     leftMotor = new TalonFX(CANIds.INTAKE_LEFT_MOTOR);
     rightMotor = new TalonFX(CANIds.INTAKE_RIGHT_MOTOR);
 
-    dutyRequest = new DutyCycleOut(0);
-    neutralRequest = new NeutralOut();
-
-    configureMotor(leftMotor, InvertedValue.CounterClockwise_Positive, "left");
-    configureMotor(rightMotor, InvertedValue.Clockwise_Positive, "right");
+    configureMotor(leftMotor, InvertedValue.CounterClockwise_Positive);
+    configureMotor(rightMotor, InvertedValue.Clockwise_Positive);
 
     leftVelocity = leftMotor.getVelocity();
     BaseStatusSignal.setUpdateFrequencyForAll(Constants.SIGNAL_UPDATE_FREQUENCY_HZ, leftVelocity);
@@ -48,7 +45,7 @@ public class Intake extends SubsystemBase {
     rightMotor.optimizeBusUtilization();
   }
 
-  private void configureMotor(TalonFX motor, InvertedValue inversion, String name) {
+  private void configureMotor(TalonFX motor, InvertedValue inversion) {
     TalonFXConfiguration config = new TalonFXConfiguration();
 
     config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
@@ -62,44 +59,26 @@ public class Intake extends SubsystemBase {
     config.CurrentLimits.SupplyCurrentLowerLimit = IntakeConstants.SUPPLY_CURRENT_LOWER_LIMIT;
     config.CurrentLimits.SupplyCurrentLowerTime = IntakeConstants.SUPPLY_CURRENT_LOWER_TIME;
 
-    StatusCode status = StatusCode.StatusCodeNotInitialized;
-    for (int i = 0; i < 5; i++) {
-      status = motor.getConfigurator().apply(config);
-      if (status.isOK()) {
-        break;
-      }
-    }
-    if (!status.isOK()) {
-      System.err.println("Failed to configure intake " + name + " motor: " + status);
-    }
-  }
-
-  public void runIntake() {
-    rightMotor.setControl(dutyRequest.withOutput(1));
-    leftMotor.setControl(dutyRequest.withOutput(1));
-  }
-
-  public void runOuttake() {
-    rightMotor.setControl(dutyRequest.withOutput(-1));
-    leftMotor.setControl(dutyRequest.withOutput(-1));
-  }
-
-  public void stop() {
-    rightMotor.setControl(neutralRequest);
-    leftMotor.setControl(neutralRequest);
-  }
-
-  public double getVelocityRPS() {
-    BaseStatusSignal.refreshAll(leftVelocity);
-    return leftVelocity.getValue().in(RotationsPerSecond);
-  }
-
-  public Command runCommand() {
-    return run(this::runIntake).finallyDo(this::stop).withName("Intake.run");
+    tryUntilOk(5, () -> motor.getConfigurator().apply(config, 0.25));
   }
 
   @Override
-  public void periodic() {
-    // SmartDashboard.putNumber("Intake/Velocity RPS", getVelocityRPS());
+  public void updateInputs(IntakeIOInputs inputs) {
+    var leftStatus = BaseStatusSignal.refreshAll(leftVelocity);
+    inputs.leftConnected = leftConnectedDebounce.calculate(leftStatus.isOK());
+    inputs.rightConnected = rightConnectedDebounce.calculate(true); // No signal to check
+    inputs.velocityRPS = leftVelocity.getValue().in(RotationsPerSecond);
+  }
+
+  @Override
+  public void setDutyCycle(double output) {
+    leftMotor.setControl(dutyRequest.withOutput(output));
+    rightMotor.setControl(dutyRequest.withOutput(output));
+  }
+
+  @Override
+  public void stop() {
+    leftMotor.setControl(neutralRequest);
+    rightMotor.setControl(neutralRequest);
   }
 }

@@ -1,10 +1,10 @@
 package frc.robot.commands;
 
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.subsystems.Flywheel;
-import frc.robot.subsystems.Hood;
-import frc.robot.subsystems.Indexer;
-import frc.robot.subsystems.IntakeActuator;
+import frc.robot.subsystems.flywheel.Flywheel;
+import frc.robot.subsystems.hood.Hood;
+import frc.robot.subsystems.indexer.Indexer;
+import frc.robot.subsystems.intakeactuator.IntakeActuator;
 
 /**
  * Fixed-parameter shoot command that uses hardcoded hood angle and flywheel RPM instead of the
