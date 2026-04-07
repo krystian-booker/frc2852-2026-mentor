@@ -176,6 +176,22 @@ public final class Constants {
     public static final double AIM_TOLERANCE_DEGREES = 2.0;
     public static final double MIN_SHOOTING_DISTANCE_METERS = 0;
     public static final double MAX_SHOOTING_DISTANCE_METERS = 99.0;
+
+    // Fallback grids used when no calibration data has been generated
+    // Indexed by [row][col] matching CalibrationConstants grid dimensions
+    public static final double[][] HOOD_GRID_FALLBACK;
+    public static final double[][] FLYWHEEL_GRID_FALLBACK;
+
+    static {
+      HOOD_GRID_FALLBACK = new double[CalibrationConstants.GRID_ROWS][CalibrationConstants.GRID_COLS];
+      FLYWHEEL_GRID_FALLBACK = new double[CalibrationConstants.GRID_ROWS][CalibrationConstants.GRID_COLS];
+      for (int r = 0; r < CalibrationConstants.GRID_ROWS; r++) {
+        for (int c = 0; c < CalibrationConstants.GRID_COLS; c++) {
+          HOOD_GRID_FALLBACK[r][c] = CalibrationConstants.DEFAULT_HOOD_ANGLE;
+          FLYWHEEL_GRID_FALLBACK[r][c] = CalibrationConstants.DEFAULT_FLYWHEEL_RPM;
+        }
+      }
+    }
   }
 
   public static class IntakeActuatorConstants {
@@ -225,6 +241,35 @@ public final class Constants {
     public static final double JAM_CURRENT_THRESHOLD_AMPS = 55;
     public static final double JAM_REVERSE_DURATION_SECONDS = 0.5;
     public static final double JAM_COOLDOWN_SECONDS = 1.0;
+  }
+
+  public static class CalibrationConstants {
+    // Field dimensions
+    public static final double FIELD_LENGTH_METERS = 16.54;
+    public static final double FIELD_WIDTH_METERS = 8.07;
+
+    /**
+     * Grid cell size in meters. Used for both UI display and 2D lookup table generation.
+     */
+    public static final double GRID_CELL_SIZE_METERS = 0.5;
+    public static final double CALIBRATION_START_X = 0.0;
+    public static final double CALIBRATION_START_Y = 0.0;
+    public static final double CALIBRATION_END_X = FIELD_LENGTH_METERS;
+    public static final double CALIBRATION_END_Y = FIELD_WIDTH_METERS;
+
+    // Calculated grid size
+    public static final int GRID_COLS = (int) ((CALIBRATION_END_X - CALIBRATION_START_X) / GRID_CELL_SIZE_METERS) + 1;
+    public static final int GRID_ROWS = (int) ((CALIBRATION_END_Y - CALIBRATION_START_Y) / GRID_CELL_SIZE_METERS) + 1;
+
+    // Position tolerance for grid cell detection
+    public static final double POSITION_TOLERANCE_METERS = 0.15;
+
+    // Default values for inputs
+    public static final double DEFAULT_HOOD_ANGLE = 15.0;
+    public static final double DEFAULT_FLYWHEEL_RPM = 3000.0;
+
+    // Calibration file path on roboRIO
+    public static final String CALIBRATION_FILE_PATH = "/home/lvuser/deploy/calibration/turret_calibration_data.csv";
   }
 
   public static class QuestNavConstants {

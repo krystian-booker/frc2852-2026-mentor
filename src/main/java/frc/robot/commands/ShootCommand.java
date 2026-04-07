@@ -7,7 +7,7 @@ import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
-import frc.robot.util.AimingCalculator;
+import frc.robot.util.TurretAimingCalculator;
 
 /**
  * Shooting command that coordinates flywheel, hood, indexer, and intake
@@ -33,7 +33,7 @@ public class ShootCommand extends Command {
     private final Flywheel flywheel;
     private final Hood hood;
     private final Indexer indexer;
-    private final AimingCalculator aimingCalculator;
+    private final TurretAimingCalculator aimingCalculator;
     private final IntakeActuator intakeActuator;
 
     private boolean isFeeding;
@@ -47,7 +47,7 @@ public class ShootCommand extends Command {
             Hood hood,
             Indexer indexer,
             Turret turret,
-            AimingCalculator aimingCalculator,
+            TurretAimingCalculator aimingCalculator,
             IntakeActuator intakeActuator) {
         this.flywheel = flywheel;
         this.hood = hood;
@@ -64,7 +64,7 @@ public class ShootCommand extends Command {
             Hood hood,
             Indexer indexer,
             Turret turret,
-            AimingCalculator aimingCalculator) {
+            TurretAimingCalculator aimingCalculator) {
         this.flywheel = flywheel;
         this.hood = hood;
         this.indexer = indexer;

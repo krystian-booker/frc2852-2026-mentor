@@ -15,7 +15,8 @@ import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
 import frc.robot.subsystems.Vision;
 import frc.robot.util.Telemetry;
-import frc.robot.util.AimingCalculator;
+import frc.robot.commands.TurretCalibrationCommand;
+import frc.robot.util.TurretAimingCalculator;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -72,7 +73,7 @@ public class RobotContainer {
   private QuestNavSubsystem questNav = null;
 
   // Turret aiming calculator
-  private AimingCalculator shooterCalculator = null;
+  private TurretAimingCalculator shooterCalculator = null;
 
   // QuestNav seeding state
   private boolean isQuestNavSeeded = false;
@@ -92,9 +93,8 @@ public class RobotContainer {
     if (QuestNavConstants.ENABLED) {
       questNav = new QuestNavSubsystem(drivetrain, vision);
     }
-    shooterCalculator = new AimingCalculator(
-        () -> drivetrain.getState().Pose,
-        () -> drivetrain.getState().Speeds);
+    shooterCalculator = new TurretAimingCalculator(
+        () -> drivetrain.getState().Pose);
 
     // Register named commands before building auto chooser
     NamedCommands.registerCommand("shoot",
@@ -110,9 +110,6 @@ public class RobotContainer {
 
     // Set turret default command - auto-aim with operator stick override
     turret.setDefaultCommand(turret.run(() -> {
-      // ALWAYS update solver once per 20ms cycle for Newton predictions
-      shooterCalculator.update();
-
       double stickX = operatorController.getLeftX();
       double stickY = operatorController.getLeftY();
       double magnitude = Math.hypot(stickX, stickY);
@@ -248,8 +245,12 @@ public class RobotContainer {
    * mode.
    */
   private void configureTestBindings() {
-    // Only allow toggling calibration mode while in test mode
-    // RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
+    // Toggle calibration mode while in test mode
+    TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
+        hood, flywheel, indexer, intakeActuator,
+        () -> drivetrain.getState().Pose, shooterCalculator,
+        drivetrain, this::getDriveRequest, this::isDriverActive);
+    RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
 
     // --- Indexer ---
     // RobotModeTriggers.test().and(driverController.povUp()).whileTrue(indexer.feedCommand());
@@ -330,6 +331,12 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.start())
     // .onTrue(hood.zeroHoodCommand());
 
+  }
+
+  /** Returns true if the driver is actively providing joystick input. */
+  private boolean isDriverActive() {
+    double stickMag = Math.hypot(driverController.getLeftX(), driverController.getLeftY());
+    return stickMag > 0.1 || Math.abs(driverController.getRightX()) > 0.1;
   }
 
   /** Builds a field-centric drive request from driver joystick input. */
