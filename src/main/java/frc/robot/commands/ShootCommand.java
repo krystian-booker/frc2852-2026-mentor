@@ -83,19 +83,17 @@ public class ShootCommand extends Command {
     flywheel.setVelocity(targetRPM);
     hood.setPosition(targetHoodAngle);
 
-    // Check if all conditions are met to begin feeding
+    // Once flywheel and hood are ready, latch feeding on for the rest of the command
     boolean flywheelReady = flywheel.atSetpoint();
     boolean hoodReady = hood.atPosition();
     boolean turretReady = true; // turret.isAtPosition();
 
-    if (flywheelReady && hoodReady && turretReady) {
+    if (!isFeeding && flywheelReady && hoodReady && turretReady) {
       isFeeding = true;
+    }
+
+    if (isFeeding) {
       indexer.runFeed();
-    } else {
-      if (isFeeding) {
-        indexer.stop();
-      }
-      isFeeding = false;
     }
 
     // Intake actuator control (teleop only)

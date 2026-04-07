@@ -100,6 +100,7 @@ dependencies {
 test {
     useJUnitPlatform()
     systemProperty 'junit.jupiter.extensions.autodetection.enabled', 'true'
+    onlyIf { project.hasProperty('runTests') }
 }
 
 // Simulation configuration (e.g. environment variables).
@@ -128,6 +129,34 @@ wpi.java.configureTestTasks(test)
 // Configure string concat to always inline compile
 tasks.withType(JavaCompile) {
     options.compilerArgs.add '-XDstringConcat=inline'
+}
+
+// Generate shot lookup table from physics sim (re-runs when GenerateShotLUT.java changes)
+def lutOutputFile = file("src/main/java/frc/robot/generated/GeneratedShotLUT.java")
+def lutSourceFile = file("tools/GenerateShotLUT.java")
+
+task generateShotLUT(type: JavaExec) {
+    description = "Generate shot lookup table from projectile physics"
+    mainClass = "GenerateShotLUT"
+    classpath = files("${buildDir}/lut-gen")
+    args = [lutOutputFile.absolutePath]
+    inputs.file lutSourceFile
+    outputs.file lutOutputFile
+    dependsOn "compileLutGenerator"
+}
+
+task compileLutGenerator(type: JavaCompile) {
+    source = files(lutSourceFile, "src/main/java/frc/robot/util/firecontrol/ShooterPhysicsConstants.java")
+    destinationDirectory = file("${buildDir}/lut-gen")
+    classpath = files()
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+project.compileJava.dependsOn(generateShotLUT)
+afterEvaluate {
+    tasks.findByName('spotlessJava')?.dependsOn(generateShotLUT)
+    tasks.findByName('spotlessJavaCheck')?.dependsOn(generateShotLUT)
 }
 
 // Create version file

@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.energy.BatteryLogger;
+import frc.robot.sim.BallSimManager;
 import frc.robot.util.FullSubsystem;
 import frc.robot.util.LoggedTracer;
 import org.littletonrobotics.junction.AutoLog;
@@ -166,9 +167,19 @@ public class Robot extends LoggedRobot {
 
   /** This function is called once when the robot is first started up. */
   @Override
-  public void simulationInit() {}
+  public void simulationInit() {
+    BallSimManager ballSim = robotContainer.getBallSimManager();
+    if (ballSim != null) {
+      ballSim.init();
+    }
+  }
 
   /** This function is called periodically whilst in simulation. */
   @Override
-  public void simulationPeriodic() {}
+  public void simulationPeriodic() {
+    BallSimManager ballSim = robotContainer.getBallSimManager();
+    if (ballSim != null) {
+      ballSim.tick();
+    }
+  }
 }

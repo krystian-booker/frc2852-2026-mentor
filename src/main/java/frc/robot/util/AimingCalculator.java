@@ -1,11 +1,13 @@
 package frc.robot.util;
 
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.Timer;
 import frc.robot.Constants.TurretAimingConstants;
 import frc.robot.Constants.TurretConstants;
 import frc.robot.generated.GeneratedShotLUT;
@@ -13,6 +15,7 @@ import frc.robot.util.firecontrol.ShotCalculator;
 import frc.robot.util.firecontrol.ShotLUT;
 import frc.robot.util.geometry.AllianceFlipUtil;
 import java.util.function.Supplier;
+import org.littletonrobotics.junction.Logger;
 
 /**
  * Utility class that calculates the turret angle needed to point at a specific field target based
@@ -24,6 +27,17 @@ public class AimingCalculator {
   private final Supplier<Pose2d> poseSupplier;
   private final Supplier<ChassisSpeeds> speedsSupplier;
   private final ShotCalculator shotCalculator;
+  private final ShotCalculator.Config config;
+
+  // Live-tunable SOTM parameters (show up under /Tuning/SOTM/ in NetworkTables)
+  private final LoggedTunableNumber sotmDragCoeff = new LoggedTunableNumber("SOTM/DragCoeff", 0.24);
+  private final LoggedTunableNumber phaseDelayMs =
+      new LoggedTunableNumber("SOTM/PhaseDelayMs", 30.0);
+  private final LoggedTunableNumber mechLatencyMs =
+      new LoggedTunableNumber("SOTM/MechLatencyMs", 20.0);
+  private final LoggedTunableNumber maxSOTMSpeed =
+      new LoggedTunableNumber("SOTM/MaxSOTMSpeed", 3.0);
+  private final LoggedTunableNumber rpmOffset = new LoggedTunableNumber("SOTM/RPMOffset", 0.0);
 
   // Alliance cache to prevent expensive DriverStation lookups
   private Alliance cachedAlliance = Alliance.Blue;
@@ -56,11 +70,14 @@ public class AimingCalculator {
     this.poseSupplier = poseSupplier;
     this.speedsSupplier = speedsSupplier;
 
-    ShotCalculator.Config config = new ShotCalculator.Config();
+    this.config = new ShotCalculator.Config();
     config.launcherOffsetX = TurretAimingConstants.TURRET_OFFSET_X_METERS;
     config.launcherOffsetY = TurretAimingConstants.TURRET_OFFSET_Y_METERS;
     config.maxScoringDistance = 17.0;
     config.headingMaxErrorRad = Math.PI; // Turret aims independently; disable body-heading penalty
+    config.headingSpeedScalar = 0.0; // Turret: no speed-based tightening of heading tolerance
+    config.headingReferenceDistance =
+        1000.0; // Turret: force distanceScale to max (no distance tightening)
 
     this.shotCalculator = new ShotCalculator(config);
 
@@ -86,6 +103,20 @@ public class AimingCalculator {
   public void update() {
     updateCycleCount++;
     boolean shouldLog = (updateCycleCount % LOG_EVERY_N_CYCLES) == 0;
+
+    // Apply live-tunable SOTM parameters
+    config.sotmDragCoeff = sotmDragCoeff.get();
+    config.phaseDelayMs = phaseDelayMs.get();
+    config.mechLatencyMs = mechLatencyMs.get();
+    config.maxSOTMSpeed = maxSOTMSpeed.get();
+
+    // RPM offset: reset then set to desired value (adjustOffset accumulates)
+    double desiredOffset = rpmOffset.get();
+    double currentOffset = shotCalculator.getOffset();
+    if (desiredOffset != currentOffset) {
+      shotCalculator.resetOffset();
+      shotCalculator.adjustOffset(desiredOffset);
+    }
 
     Pose2d robotPose = poseSupplier.get();
     if (robotPose == null || Double.isNaN(robotPose.getX()) || Double.isNaN(robotPose.getY())) {
@@ -150,10 +181,9 @@ public class AimingCalculator {
           shot.iterationsUsed());
     }
 
-    if (shot.isValid() && shot.confidence() > 0) {
-      lastTargetRPM = shot.rpm();
-      lastTargetHoodAngle = shotCalculator.getHoodAngle(shot.projectedDistanceM());
-
+    // Always update turret tracking angle when the solver found a valid geometric solution.
+    // Confidence gates SHOOTING (RPM/hood), not TRACKING (turret angle).
+    if (shot.isValid()) {
       // Convert absolute field drive angle to a robot-relative turret angle
       double robotRelativeRadians =
           shot.driveAngle().getRadians() - robotPose.getRotation().getRadians();
@@ -168,18 +198,94 @@ public class AimingCalculator {
 
       lastRawAngleDegrees = turretAngleDegrees;
 
+      // Only update shooting parameters when confidence is sufficient
+      if (shot.confidence() > 0) {
+        lastTargetRPM = shot.rpm();
+        lastTargetHoodAngle = shotCalculator.getHoodAngle(shot.projectedDistanceM());
+      }
+
       if (shouldLog) {
         System.out.printf(
-            "[AimingCalc] OUTPUT: RPM=%.0f hoodAngle=%.1f turretAngle=%.1f%n",
-            lastTargetRPM, lastTargetHoodAngle, turretAngleDegrees);
+            "[AimingCalc] OUTPUT: RPM=%.0f hoodAngle=%.1f turretAngle=%.1f conf=%.1f%n",
+            lastTargetRPM, lastTargetHoodAngle, turretAngleDegrees, shot.confidence());
       }
     } else {
+      // Solver returned INVALID (e.g. speed cap exceeded, behind hub).
+      // Fall back to pure geometric aim from turret position (not robot center).
+      double heading = robotPose.getRotation().getRadians();
+      double cosH = Math.cos(heading);
+      double sinH = Math.sin(heading);
+      double turretFieldX =
+          robotPose.getX()
+              + TurretAimingConstants.TURRET_OFFSET_X_METERS * cosH
+              - TurretAimingConstants.TURRET_OFFSET_Y_METERS * sinH;
+      double turretFieldY =
+          robotPose.getY()
+              + TurretAimingConstants.TURRET_OFFSET_X_METERS * sinH
+              + TurretAimingConstants.TURRET_OFFSET_Y_METERS * cosH;
+      double geometricAngleRad =
+          Math.atan2(targetPosition.getY() - turretFieldY, targetPosition.getX() - turretFieldX);
+      double robotRelativeRadians = geometricAngleRad - robotPose.getRotation().getRadians();
+      double turretAngleDegrees = Math.toDegrees(robotRelativeRadians) % 360.0;
+
+      if (turretAngleDegrees > 180.0) turretAngleDegrees -= 360.0;
+      else if (turretAngleDegrees <= -180.0) turretAngleDegrees += 360.0;
+
+      if (turretAngleDegrees > TurretConstants.MAX_POSITION_DEGREES) {
+        turretAngleDegrees -= 360.0;
+      }
+
+      lastRawAngleDegrees = turretAngleDegrees;
+      lastDistanceMeters = dist;
+      isReachable =
+          dist >= TurretAimingConstants.MIN_SHOOTING_DISTANCE_METERS
+              && dist <= TurretAimingConstants.MAX_SHOOTING_DISTANCE_METERS;
+
       if (shouldLog) {
         System.out.printf(
-            "[AimingCalc] SHOT REJECTED: valid=%b confidence=%.1f (RPM/hood unchanged at %.0f/%.1f)%n",
-            shot.isValid(), shot.confidence(), lastTargetRPM, lastTargetHoodAngle);
+            "[AimingCalc] FALLBACK AIM: turretAngle=%.1f dist=%.2f (shot invalid: valid=%b conf=%.1f)%n",
+            turretAngleDegrees, dist, shot.isValid(), shot.confidence());
       }
     }
+
+    // ── AdvantageKit telemetry ──────────────────────────────────────
+    // Selected target on 2D field view
+    Logger.recordOutput("Aiming/TargetPosition", new Pose2d(lastTargetPosition, new Rotation2d()));
+
+    // Aim line: robot to target (renders as connected path on 2D field)
+    Logger.recordOutput(
+        "Aiming/AimLine",
+        new Pose2d[] {robotPose, new Pose2d(lastTargetPosition, new Rotation2d())});
+
+    // All target positions (static reference markers on field)
+    Logger.recordOutput(
+        "Aiming/BlueTargets",
+        new Pose2d[] {
+          new Pose2d(TurretAimingConstants.BLUE_TARGET_POSITION, new Rotation2d()),
+          new Pose2d(TurretAimingConstants.BLUE_LEFT_TARGET_POSITION, new Rotation2d()),
+          new Pose2d(TurretAimingConstants.BLUE_RIGHT_TARGET_POSITION, new Rotation2d())
+        });
+
+    // Turret aim direction as a pose (robot position + field-relative turret heading)
+    double aimFieldAngle =
+        robotPose.getRotation().getRadians() + Math.toRadians(lastRawAngleDegrees);
+    Logger.recordOutput(
+        "Aiming/TurretAimPose",
+        new Pose3d(
+            new Translation3d(robotPose.getX(), robotPose.getY(), 1.0),
+            new Rotation3d(0, 0, aimFieldAngle)));
+
+    // Numeric diagnostics
+    Logger.recordOutput("Aiming/TurretAngleDeg", lastRawAngleDegrees);
+    Logger.recordOutput("Aiming/DistanceMeters", lastDistanceMeters);
+    Logger.recordOutput("Aiming/FlywheelRPM", lastTargetRPM);
+    Logger.recordOutput("Aiming/HoodAngleDeg", lastTargetHoodAngle);
+    Logger.recordOutput("Aiming/Confidence", lastSotmConfidence);
+    Logger.recordOutput("Aiming/IsReachable", isReachable);
+
+    // Target name for quick identification
+    String targetName = identifyTargetName(lastTargetPosition);
+    Logger.recordOutput("Aiming/TargetName", targetName);
   }
 
   /**
@@ -237,12 +343,17 @@ public class AimingCalculator {
     return lastTargetRPM;
   }
 
-  private Alliance getAlliance() {
-    double currentTime = Timer.getFPGATimestamp();
-    if (currentTime - lastAllianceCheckTime > 1.0) {
-      cachedAlliance = DriverStation.getAlliance().orElse(cachedAlliance);
-      lastAllianceCheckTime = currentTime;
-    }
-    return cachedAlliance;
+  /** Identify which target is currently selected by comparing positions. */
+  private String identifyTargetName(Translation2d target) {
+    Translation2d bluePrimary = AllianceFlipUtil.apply(TurretAimingConstants.BLUE_TARGET_POSITION);
+    Translation2d blueLeft =
+        AllianceFlipUtil.apply(TurretAimingConstants.BLUE_LEFT_TARGET_POSITION);
+    Translation2d blueRight =
+        AllianceFlipUtil.apply(TurretAimingConstants.BLUE_RIGHT_TARGET_POSITION);
+
+    if (target.getDistance(bluePrimary) < 0.01) return "Primary";
+    if (target.getDistance(blueLeft) < 0.01) return "Left";
+    if (target.getDistance(blueRight) < 0.01) return "Right";
+    return "Unknown";
   }
 }

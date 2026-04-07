@@ -30,10 +30,10 @@ public class VisionIOPhotonVisionSim extends VisionIOPhotonVision {
     var cameraProperties = new SimCameraProperties();
     cameraProperties.setCalibration(
         960, 720, edu.wpi.first.math.geometry.Rotation2d.fromDegrees(90));
-    cameraProperties.setCalibError(0.35, 0.10);
-    cameraProperties.setFPS(15);
-    cameraProperties.setAvgLatencyMs(50);
-    cameraProperties.setLatencyStdDevMs(15);
+    cameraProperties.setCalibError(0.01, 0.005);
+    cameraProperties.setFPS(50);
+    cameraProperties.setAvgLatencyMs(10);
+    cameraProperties.setLatencyStdDevMs(2);
 
     var cameraSim = new PhotonCameraSim(camera, cameraProperties, aprilTagLayout);
     visionSim.addCamera(cameraSim, robotToCamera);

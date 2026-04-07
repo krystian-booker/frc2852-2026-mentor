@@ -1,3 +1,5 @@
+import static frc.robot.util.firecontrol.ShooterPhysicsConstants.*;
+
 import java.io.FileWriter;
 import java.io.PrintWriter;
 
@@ -8,32 +10,17 @@ import java.io.PrintWriter;
  *
  * <p>Usage: java GenerateShotLUT <output-file-path>
  *
- * <p>If you change physics parameters (ball mass, drag, hood angles, etc.), update them here AND in
- * AimingCalculator/Constants so both stay in sync.
+ * <p>Physics parameters are defined in {@link frc.robot.util.firecontrol.ShooterPhysicsConstants}
+ * and shared with the robot runtime. Change them there, not here.
  */
 public class GenerateShotLUT {
 
-  // ── Robot parameters (must match AimingCalculator + Constants) ──────────
-  static final double BALL_MASS_KG = 0.235;
-  static final double BALL_DIAMETER_M = 0.1778; // 7 inches
-  static final double DRAG_COEFF = 0.47;
-  static final double MAGNUS_COEFF = 0.2;
-  static final double AIR_DENSITY = 1.225;
-  static final double EXIT_HEIGHT_M = 0.5;
-  static final double WHEEL_DIAMETER_M = 0.1016; // 4 inches
-  static final double TARGET_HEIGHT_M = 2.64;
-  static final double SLIP_FACTOR = 0.6;
+  // ── LUT generation parameters (not shared with robot runtime) ──────────
   static final double DT = 0.001;
   static final double RPM_MIN = 1500;
-  static final double RPM_MAX = 6000;
+  static final double RPM_MAX = 5000;
   static final int BINARY_SEARCH_ITERS = 25;
   static final double MAX_SIM_TIME = 5.0;
-  static final double MAGNUS_SIGN = 1.0; // +1 topspin
-
-  // Hood angle mapping (must match HoodConstants)
-  static final double ACTUAL_ANGLE_AT_ZERO = 70.0;
-  static final double MECHANISM_MIN = 0.0;
-  static final double MECHANISM_MAX = 25.0;
   static final double ANGLE_STEP = 1.0;
 
   // Distance range

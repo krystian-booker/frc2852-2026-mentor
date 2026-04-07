@@ -23,6 +23,7 @@ import frc.robot.commands.DriveCommands;
 import frc.robot.commands.DumbShootCommand;
 import frc.robot.commands.ShootCommand;
 import frc.robot.generated.TunerConstants;
+import frc.robot.sim.BallSimManager;
 import frc.robot.subsystems.QuestNavSubsystem;
 import frc.robot.subsystems.drive.Drive;
 import frc.robot.subsystems.drive.GyroIO;
@@ -85,6 +86,9 @@ public class RobotContainer {
 
   // Turret aiming calculator
   private AimingCalculator shooterCalculator = null;
+
+  // Ball physics sim (SIM mode only)
+  private BallSimManager ballSimManager = null;
 
   // QuestNav seeding state
   private boolean isQuestNavSeeded = false;
@@ -199,6 +203,11 @@ public class RobotContainer {
       questNav = new QuestNavSubsystem(drive, vision);
     }
     shooterCalculator = new AimingCalculator(drive::getPose, drive::getChassisSpeeds);
+
+    // Create ball physics sim in SIM mode
+    if (Constants.currentMode == Constants.Mode.SIM) {
+      ballSimManager = new BallSimManager(drive, flywheel, hood, turret, intake);
+    }
 
     // Register named commands before building auto chooser
     NamedCommands.registerCommand(
@@ -397,5 +406,10 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     return autoChooser.get();
+  }
+
+  /** Returns the ball sim manager (null outside SIM mode). */
+  public BallSimManager getBallSimManager() {
+    return ballSimManager;
   }
 }

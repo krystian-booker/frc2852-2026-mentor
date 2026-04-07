@@ -477,8 +477,8 @@ public class ShotCalculator {
       compTargetX = hubX - vx * headingDriftTOF;
       compTargetY = hubY - vy * headingDriftTOF;
     }
-    double aimX = compTargetX - robotX;
-    double aimY = compTargetY - robotY;
+    double aimX = compTargetX - launcherX;
+    double aimY = compTargetY - launcherY;
     Rotation2d driveAngle = new Rotation2d(aimX, aimY);
     if (config.shooterAngleOffsetRad != 0.0) {
       driveAngle = driveAngle.plus(new Rotation2d(config.shooterAngleOffsetRad));

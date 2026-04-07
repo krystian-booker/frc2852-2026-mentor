@@ -12,6 +12,7 @@ import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.RobotBase;
+import frc.robot.util.firecontrol.ShooterPhysicsConstants;
 import java.util.List;
 
 public final class Constants {
@@ -175,7 +176,7 @@ public final class Constants {
 
   public static class TurretAimingConstants {
     // All positions defined for blue alliance; AllianceFlipUtil flips for red
-    public static final Translation2d BLUE_TARGET_POSITION = new Translation2d(4.625, 4.040);
+    public static final Translation2d BLUE_TARGET_POSITION = new Translation2d(4.620, 4.035);
 
     public static final double BLUE_ZONE_MAX_X = 4.625;
     public static final double FIELD_CENTERLINE_Y = 4.035;
@@ -258,6 +259,26 @@ public final class Constants {
     public static final double STD_DEV_Y = 0.02;
     public static final double STD_DEV_THETA = 0.035;
     public static final int RESEED_BUTTON_DIO_PORT = 0;
+  }
+
+  public static class BallSimConstants {
+    // Robot frame dimensions (with bumpers)
+    public static final double ROBOT_WIDTH_M = Units.inchesToMeters(28.25);
+    public static final double ROBOT_LENGTH_M = Units.inchesToMeters(28.25);
+    public static final double BUMPER_HEIGHT_M = Units.inchesToMeters(7.0);
+
+    // Launcher physics (shared with GenerateShotLUT.java via ShooterPhysicsConstants)
+    public static final double SLIP_FACTOR = ShooterPhysicsConstants.SLIP_FACTOR;
+    public static final double WHEEL_DIAMETER_M = ShooterPhysicsConstants.WHEEL_DIAMETER_M;
+    public static final double EXIT_HEIGHT_M = ShooterPhysicsConstants.EXIT_HEIGHT_M;
+
+    // Launch detection
+    public static final double INDEXER_FEEDING_VELOCITY_THRESHOLD_RPS = 1.0;
+    public static final double LAUNCH_COOLDOWN_SECONDS = 0.25;
+
+    // Spin imparted to launched ball (fraction of flywheel RPM)
+    // Set to 0 for single flywheel + solid hood (no backspin mechanism)
+    public static final double BACKSPIN_FRACTION = 0.0;
   }
 
   public static class DiagnosticConstants {
