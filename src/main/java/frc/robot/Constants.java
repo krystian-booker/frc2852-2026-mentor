@@ -170,8 +170,8 @@ public final class Constants {
     public static final Translation2d RED_RIGHT_TARGET_POSITION = new Translation2d(15.040, 6.5);
 
     // Turret mounting offset from robot center
-    public static final double TURRET_OFFSET_X_METERS = Units.inchesToMeters(-4.719);
-    public static final double TURRET_OFFSET_Y_METERS = Units.inchesToMeters(-5.250);
+    public static final double TURRET_OFFSET_X_METERS = Units.inchesToMeters(-4.75);
+    public static final double TURRET_OFFSET_Y_METERS = Units.inchesToMeters(-4.5);
 
     public static final double AIM_TOLERANCE_DEGREES = 2.0;
     public static final double MIN_SHOOTING_DISTANCE_METERS = 0;
@@ -281,10 +281,10 @@ public final class Constants {
     public static final boolean ENABLED = true;
 
     // Transform from robot center to Quest headset mounting position
-    public static final double QUEST_OFFSET_X_METERS = -0.14605; // Forward/backward from robot center
-    public static final double QUEST_OFFSET_Y_METERS = 0.2099564; // Left/right from robot center
-    public static final double QUEST_OFFSET_Z_METERS = 0.4172712; // Up/down from robot center
-    public static final double QUEST_YAW_OFFSET_DEGREES = 90.0; // Rotation around vertical axis
+    public static final double QUEST_OFFSET_X_METERS = Units.inchesToMeters(-9.213); // Forward/backward from robot center
+    public static final double QUEST_OFFSET_Y_METERS = Units.inchesToMeters(8.250); // Left/right from robot center
+    public static final double QUEST_OFFSET_Z_METERS = Units.inchesToMeters(13.303); // Up/down from robot center
+    public static final double QUEST_YAW_OFFSET_DEGREES = 180.0; // Rotation around vertical axis
     public static final double QUEST_PITCH_OFFSET_DEGREES = 0.0; // Tilt forward/backward
     public static final double QUEST_ROLL_OFFSET_DEGREES = 0.0; // Tilt left/right
 
@@ -316,8 +316,8 @@ public final class Constants {
 
     // Limelight 4
     public static final CameraConfig LIMELIGHT = new CameraConfig("LIMELIGHT",
-        new Transform3d(new Translation3d(-0.1651, 0.2421636, 0.5263896),
-            new Rotation3d(Math.toRadians(0), Math.toRadians(0), Math.toRadians(90))));
+        new Transform3d(new Translation3d(Units.inchesToMeters(-10.941), Units.inchesToMeters(8.250), Units.inchesToMeters(15.934)),
+            new Rotation3d(Math.toRadians(0), Math.toRadians(0), Math.toRadians(180))));
 
     // All cameras
     public static final List<CameraConfig> CAMERAS = List.of();
