@@ -143,3 +143,4 @@ task generateTurretLookupTables {
 }
 
 compileJava.dependsOn generateTurretLookupTables
+

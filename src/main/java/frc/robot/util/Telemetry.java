@@ -9,11 +9,9 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.networktables.DoubleArrayPublisher;
 import edu.wpi.first.networktables.DoublePublisher;
-import edu.wpi.first.networktables.IntegerPublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
-import frc.robot.Constants.CalibrationConstants;
 import edu.wpi.first.networktables.StructArrayPublisher;
 import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
@@ -24,26 +22,27 @@ import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj.util.Color8Bit;
 
 public class Telemetry {
-  private final double MaxSpeed;
-  private final Field2d field = new Field2d();
+    private final double MaxSpeed;
+    private final Field2d field = new Field2d();
 
-  /** Set to false to disable all telemetry except Field2d. */
-  public static boolean VERBOSE = false;
+    /** Set to false to disable all telemetry except Field2d. */
+    public static boolean VERBOSE = false;
 
-  /**
-   * Construct a telemetry object, with the specified max speed of the robot
-   *
-   * @param maxSpeed Maximum speed in meters per second
-   */
-  public Telemetry(double maxSpeed) {
-    MaxSpeed = maxSpeed;
-    SignalLogger.start();
+    /**
+     * Construct a telemetry object, with the specified max speed of the robot
+     *
+     * @param maxSpeed Maximum speed in meters per second
+     */
+    public Telemetry(double maxSpeed) {
+        MaxSpeed = maxSpeed;
+        SignalLogger.start();
 
-    SmartDashboard.putData("Field", field);
+        SmartDashboard.putData("Field", field);
 
-    /* Set up the module state Mechanism2d telemetry */
-    for (int i = 0; i < 4; ++i) {
-      SmartDashboard.putData("Module " + i, m_moduleMechanisms[i]);
+        /* Set up the module state Mechanism2d telemetry */
+        for (int i = 0; i < 4; ++i) {
+            SmartDashboard.putData("Module " + i, m_moduleMechanisms[i]);
+        }
     }
 
     /* What to publish over networktables for telemetry */
@@ -69,13 +68,6 @@ public class Telemetry {
     private final NetworkTable table = inst.getTable("Pose");
     private final DoubleArrayPublisher fieldPub = table.getDoubleArrayTopic("robotPose").publish();
     private final StringPublisher fieldTypePub = table.getStringTopic(".type").publish();
-
-    /* Always-on robot position for webapp (matches TurretCalibration/Position path) */
-    private final NetworkTable calibrationTable = inst.getTable("TurretCalibration");
-    private final DoublePublisher positionXPub = calibrationTable.getDoubleTopic("Position/X").publish();
-    private final DoublePublisher positionYPub = calibrationTable.getDoubleTopic("Position/Y").publish();
-    private final IntegerPublisher gridRowPub = calibrationTable.getIntegerTopic("Grid/CurrentRow").publish();
-    private final IntegerPublisher gridColPub = calibrationTable.getIntegerTopic("Grid/CurrentCol").publish();
 
     /* Mechanisms to represent the swerve module states */
     private final Mechanism2d[] m_moduleMechanisms = new Mechanism2d[] {
@@ -113,7 +105,10 @@ public class Telemetry {
 
     private final double[] m_poseArray = new double[3];
 
-    /** Accept the swerve drive state and telemeterize it to SmartDashboard and SignalLogger. */
+    /**
+     * Accept the swerve drive state and telemeterize it to SmartDashboard and
+     * SignalLogger.
+     */
     public void telemeterize(SwerveDriveState state) {
         /* Always update Field2d */
         field.setRobotPose(state.Pose);
@@ -124,19 +119,8 @@ public class Telemetry {
         m_poseArray[2] = state.Pose.getRotation().getDegrees();
         fieldPub.set(m_poseArray);
 
-        /* Always publish position and grid cell for webapp */
-        double robotX = state.Pose.getX();
-        double robotY = state.Pose.getY();
-        positionXPub.set(robotX);
-        positionYPub.set(robotY);
-        gridColPub.set(Math.max(0, Math.min(CalibrationConstants.GRID_COLS - 1,
-                (int) ((robotX - CalibrationConstants.CALIBRATION_START_X)
-                        / CalibrationConstants.GRID_CELL_SIZE_METERS))));
-        gridRowPub.set(Math.max(0, Math.min(CalibrationConstants.GRID_ROWS - 1,
-                (int) ((robotY - CalibrationConstants.CALIBRATION_START_Y)
-                        / CalibrationConstants.GRID_CELL_SIZE_METERS))));
-
-        // if (!VERBOSE) return;
+        if (!VERBOSE)
+            return;
 
         /* Telemeterize the swerve drive state */
         drivePose.set(state.Pose);

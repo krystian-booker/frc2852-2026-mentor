@@ -1,7 +1,0 @@
-# This directory holds calibration data files.
-# turret_calibration_data.csv will be created here when running calibration on the robot.
-# To use calibration data:
-# 1. Run calibration on robot in test mode
-# 2. Download CSV from roboRIO: scp lvuser@roborio-2852-frc.local:/home/lvuser/deploy/calibration/turret_calibration_data.csv src/main/deploy/calibration/
-# 3. Build the project: ./gradlew build
-# 4. The build will auto-generate TurretLookupTables.java with optimized constants

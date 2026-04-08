@@ -21,7 +21,7 @@ public final class TurretLookupTables {
 
     // ==================== QUALITY METRICS ====================
     /**
-     * Generated timestamp: 2026-03-29T12:15:06.7809442
+     * Generated timestamp: 2026-04-07T19:55:05.0498737
      * Data points: 578 (578 cells calibrated, 0 filled by interpolation, 0 outliers rejected)
      * Grid dimensions: 17 rows x 34 cols (0.5m cell size)
      * Alliances in calibration data: Blue

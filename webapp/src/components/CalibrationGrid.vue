@@ -40,10 +40,15 @@ const gridCells = computed(() => {
   // Iterate rows in reverse order so Y increases from bottom to top (matching field coordinates)
   for (let row = store.gridRows - 1; row >= 0; row--) {
     for (let col = 0; col < store.gridCols; col++) {
-      const hasPoint = store.hasPointAt(row, col)
+      const point = store.getPointAt(row, col)
+      const hasPoint = !!point
       const isCurrent = row === currentRow.value && col === currentCol.value
       const isSelected = props.selectedCells.has(`${row},${col}`)
-      cells.push({ row, col, hasPoint, isCurrent, isSelected })
+      cells.push({
+        row, col, hasPoint, isCurrent, isSelected,
+        hoodAngle: point?.hoodAngleDegrees,
+        rpm: point?.flywheelRPM
+      })
     }
   }
   return cells
@@ -98,7 +103,12 @@ const gridStyle = computed(() => ({
             }"
             :title="`[${cell.row}, ${cell.col}] - X: ${getCellX(cell.col).toFixed(1)}m, Y: ${getCellY(cell.row).toFixed(1)}m`"
             @click="handleCellClick(cell.row, cell.col)"
-          ></div>
+          >
+            <template v-if="cell.hasPoint">
+              <span class="cell-value">{{ Math.round(cell.hoodAngle!) }}</span>
+              <span class="cell-value">{{ Math.round(cell.rpm!) }}</span>
+            </template>
+          </div>
         </div>
       </div>
     </div>
@@ -196,6 +206,18 @@ h3 {
   transition: all 0.2s;
   pointer-events: auto;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.cell-value {
+  font-size: 7px;
+  line-height: 1.1;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
 }
 
 .grid-cell:hover {

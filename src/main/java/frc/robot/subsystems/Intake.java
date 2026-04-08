@@ -1,81 +1,101 @@
 package frc.robot.subsystems;
 
-import com.revrobotics.PersistMode;
-import com.revrobotics.REVLibError;
-import com.revrobotics.RelativeEncoder;
-import com.revrobotics.ResetMode;
-import com.revrobotics.spark.SparkFlex;
-import com.revrobotics.spark.SparkLowLevel.MotorType;
-import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
-import com.revrobotics.spark.config.SparkFlexConfig;
+import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.StatusCode;
+import com.ctre.phoenix6.StatusSignal;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.DutyCycleOut;
+import com.ctre.phoenix6.controls.NeutralOut;
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
+import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
 import frc.robot.Constants.IntakeConstants;
+
+import static edu.wpi.first.units.Units.*;
 
 public class Intake extends SubsystemBase {
 
     // Hardware
-    private final SparkFlex motor;
-    private final RelativeEncoder encoder;
+    private final TalonFX leftMotor;
+    private final TalonFX rightMotor;
+
+    // Control requests
+    private final DutyCycleOut dutyRequest;
+    private final NeutralOut neutralRequest;
+
+    // Status signals
+    private final StatusSignal<AngularVelocity> leftVelocity;
 
     public Intake() {
-        // Initialize hardware
-        motor = new SparkFlex(CANIds.INTAKE_ROLLER_MOTOR, MotorType.kBrushless);
-        encoder = motor.getEncoder();
+        leftMotor = new TalonFX(CANIds.INTAKE_LEFT_MOTOR);
+        rightMotor = new TalonFX(CANIds.INTAKE_RIGHT_MOTOR);
 
-        // Configure motor
-        configureMotor();
+        dutyRequest = new DutyCycleOut(0);
+        neutralRequest = new NeutralOut();
+
+        configureMotor(leftMotor, InvertedValue.CounterClockwise_Positive, "left");
+        configureMotor(rightMotor, InvertedValue.Clockwise_Positive, "right");
+
+        leftVelocity = leftMotor.getVelocity();
+        BaseStatusSignal.setUpdateFrequencyForAll(
+                Constants.SIGNAL_UPDATE_FREQUENCY_HZ,
+                leftVelocity);
+
+        leftMotor.optimizeBusUtilization();
+        rightMotor.optimizeBusUtilization();
     }
 
-    private void configureMotor() {
-        SparkFlexConfig config = new SparkFlexConfig();
+    private void configureMotor(TalonFX motor, InvertedValue inversion, String name) {
+        TalonFXConfiguration config = new TalonFXConfiguration();
 
-        // Motor output
-        config.idleMode(IdleMode.kBrake);
-        config.inverted(true);
+        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        config.MotorOutput.Inverted = inversion;
+        config.Feedback.SensorToMechanismRatio = IntakeConstants.GEAR_RATIO;
 
-        // Current limits
-        config.smartCurrentLimit(IntakeConstants.SMART_CURRENT_LIMIT);
-        config.secondaryCurrentLimit(IntakeConstants.SECONDARY_CURRENT_LIMIT);
+        config.CurrentLimits.StatorCurrentLimitEnable = true;
+        config.CurrentLimits.StatorCurrentLimit = IntakeConstants.STATOR_CURRENT_LIMIT;
+        config.CurrentLimits.SupplyCurrentLimitEnable = true;
+        config.CurrentLimits.SupplyCurrentLimit = IntakeConstants.SUPPLY_CURRENT_LIMIT;
+        config.CurrentLimits.SupplyCurrentLowerLimit = IntakeConstants.SUPPLY_CURRENT_LOWER_LIMIT;
+        config.CurrentLimits.SupplyCurrentLowerTime = IntakeConstants.SUPPLY_CURRENT_LOWER_TIME;
 
-        // Encoder configuration - convert to mechanism rotations
-        config.encoder.positionConversionFactor(1.0 / IntakeConstants.GEAR_RATIO);
-        config.encoder.velocityConversionFactor(1.0 / IntakeConstants.GEAR_RATIO / 60.0);
-
-        // Apply configuration with retry
-        REVLibError error = REVLibError.kError;
+        StatusCode status = StatusCode.StatusCodeNotInitialized;
         for (int i = 0; i < 5; i++) {
-            error = motor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-            if (error == REVLibError.kOk) {
+            status = motor.getConfigurator().apply(config);
+            if (status.isOK()) {
                 break;
             }
         }
-        if (error != REVLibError.kOk) {
-            System.err.println("Failed to configure Intake motor: " + error);
+        if (!status.isOK()) {
+            System.err.println("Failed to configure intake " + name + " motor: " + status);
         }
     }
 
-    private void setSpeed(double speed) {
-        motor.set(speed);
-    }
-
     public void runIntake() {
-        setSpeed(IntakeConstants.INTAKE_SPEED);
+        rightMotor.setControl(dutyRequest.withOutput(1));
+        leftMotor.setControl(dutyRequest.withOutput(1));
     }
 
     public void runOuttake() {
-        setSpeed(IntakeConstants.OUTTAKE_SPEED);
+        rightMotor.setControl(dutyRequest.withOutput(-1));
+        leftMotor.setControl(dutyRequest.withOutput(-1));
     }
 
     public void stop() {
-        motor.setVoltage(0);
+        rightMotor.setControl(neutralRequest);
+        leftMotor.setControl(neutralRequest);
     }
 
     public double getVelocityRPS() {
-        return encoder.getVelocity();
+        BaseStatusSignal.refreshAll(leftVelocity);
+        return leftVelocity.getValue().in(RotationsPerSecond);
     }
 
     public Command runCommand() {
@@ -87,6 +107,5 @@ public class Intake extends SubsystemBase {
     @Override
     public void periodic() {
         // SmartDashboard.putNumber("Intake/Velocity RPS", getVelocityRPS());
-        // SmartDashboard.putNumber("Intake/Applied Output", motor.getAppliedOutput());
     }
 }

@@ -1,12 +1,11 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.BaseStatusSignal;
-import com.ctre.phoenix6.CANBus;
+import frc.robot.generated.TunerConstants;
 import com.ctre.phoenix6.StatusCode;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
 import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
@@ -18,7 +17,6 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
 
 import edu.wpi.first.units.measure.Angle;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -38,7 +36,6 @@ public class Turret extends SubsystemBase {
 
     // Control requests
     private final PositionVoltage positionRequest;
-    private final MotionMagicVoltage motionMagicRequest;
     private final NeutralOut neutralRequest;
     private final VoltageOut voltageRequest;
 
@@ -51,13 +48,11 @@ public class Turret extends SubsystemBase {
 
     public Turret() {
         // Initialize hardware
-        CANBus canBus = new CANBus(CANIds.CANIVORE);
-        motor = new TalonFX(CANIds.TURRET_MOTOR, canBus);
-        canCoder = new CANcoder(CANIds.TURRET_CANCODER, canBus);
+        motor = new TalonFX(CANIds.TURRET_MOTOR, TunerConstants.kCANBus);
+        canCoder = new CANcoder(CANIds.TURRET_CANCODER, TunerConstants.kCANBus);
 
         // Initialize control requests
         positionRequest = new PositionVoltage(0).withSlot(0);
-        motionMagicRequest = new MotionMagicVoltage(0).withSlot(0);
         neutralRequest = new NeutralOut();
         voltageRequest = new VoltageOut(0);
 
@@ -67,7 +62,7 @@ public class Turret extends SubsystemBase {
 
         // Seed motor position from CANcoder so they agree on startup
         // (avoids 360° wrapping mismatch between absolute position and fused position)
-        motor.setPosition(canCoder.getAbsolutePosition().waitForUpdate(0.1).getValue().in(Rotations));
+        motor.setPosition(canCoder.getAbsolutePosition().getValue().in(Rotations));
 
         // Cache status signals
         motorPosition = motor.getPosition();
@@ -209,7 +204,8 @@ public class Turret extends SubsystemBase {
     }
 
     /**
-     * Creates a command that continuously aims the turret at the target. The turret will track the target position as
+     * Creates a command that continuously aims the turret at the target. The turret
+     * will track the target position as
      * the robot moves.
      *
      * @param calculator The TurretAimingCalculator to use for calculations
@@ -225,11 +221,14 @@ public class Turret extends SubsystemBase {
     }
 
     /**
-     * Creates a command that holds the turret pointing at a fixed field-relative heading. As the robot rotates, the
-     * turret counter-rotates to maintain the same field direction. Captures the current field heading on
+     * Creates a command that holds the turret pointing at a fixed field-relative
+     * heading. As the robot rotates, the
+     * turret counter-rotates to maintain the same field direction. Captures the
+     * current field heading on
      * initialization.
      *
-     * @param robotHeadingSupplier supplies the robot's field-relative heading in degrees
+     * @param robotHeadingSupplier supplies the robot's field-relative heading in
+     *                             degrees
      */
     public Command fieldHoldCommand(java.util.function.DoubleSupplier robotHeadingSupplier) {
         double[] fieldTarget = new double[1]; // captured on init
@@ -249,7 +248,8 @@ public class Turret extends SubsystemBase {
     }
 
     /**
-     * Applies a small positive voltage to test motor direction. Watch the CANcoder: if position INCREASES, direction is
+     * Applies a small positive voltage to test motor direction. Watch the CANcoder:
+     * if position INCREASES, direction is
      * correct. If position DECREASES, flip motor inversion or CANcoder direction.
      */
     public void testDirectionPositive() {
@@ -268,6 +268,26 @@ public class Turret extends SubsystemBase {
         motor.setControl(voltageRequest.withOutput(volts));
     }
 
+    /** Disable CTRE soft limits for sysid (free rotation with wires removed). */
+    public void disableSoftLimits() {
+        var config = new com.ctre.phoenix6.configs.SoftwareLimitSwitchConfigs();
+        config.ForwardSoftLimitEnable = false;
+        config.ReverseSoftLimitEnable = false;
+        motor.getConfigurator().apply(config);
+    }
+
+    /** Re-enable CTRE soft limits after sysid. */
+    public void enableSoftLimits() {
+        var config = new com.ctre.phoenix6.configs.SoftwareLimitSwitchConfigs();
+        config.ForwardSoftLimitEnable = true;
+        config.ForwardSoftLimitThreshold = (TurretConstants.ENCODER_MAX_DEGREES
+                + TurretConstants.SOFT_LIMIT_BUFFER_DEGREES) / 360.0;
+        config.ReverseSoftLimitEnable = true;
+        config.ReverseSoftLimitThreshold = (TurretConstants.ENCODER_MIN_DEGREES
+                - TurretConstants.SOFT_LIMIT_BUFFER_DEGREES) / 360.0;
+        motor.getConfigurator().apply(config);
+    }
+
     /** Get mechanism velocity in rotations per second (signal already at 250Hz). */
     public double getVelocityRPS() {
         return motor.getVelocity().refresh().getValue().in(RotationsPerSecond);
@@ -284,7 +304,8 @@ public class Turret extends SubsystemBase {
     }
 
     /**
-     * Hot-reload gains using refresh+apply to preserve soft limits and current limits.
+     * Hot-reload gains using refresh+apply to preserve soft limits and current
+     * limits.
      */
     public void applyTuningConfig(double kS, double kV, double kA, double kG,
             double kP, double kI, double kD,
@@ -342,12 +363,15 @@ public class Turret extends SubsystemBase {
         // SmartDashboard.putNumber("Turret/CANCoder Degrees", canCoderDeg);
         // SmartDashboard.putNumber("Turret/CANCoder Raw Rotations",
         // canCoderPosition.refresh().getValue().in(Rotations));
-        // SmartDashboard.putNumber("Turret/Motor Raw Rotations", motorPosition.refresh().getValue().in(Rotations));
+        // SmartDashboard.putNumber("Turret/Motor Raw Rotations",
+        // motorPosition.refresh().getValue().in(Rotations));
         // SmartDashboard.putNumber("Turret/Motor Stator Current",
         // motor.getStatorCurrent().refresh().getValue().in(Amps));
-        // SmartDashboard.putNumber("Turret/Motor Voltage", motor.getMotorVoltage().refresh().getValue().in(Volts));
+        // SmartDashboard.putNumber("Turret/Motor Voltage",
+        // motor.getMotorVoltage().refresh().getValue().in(Volts));
         // SmartDashboard.putBoolean("Turret/In Overshoot Zone",
-        // position < TurretConstants.MIN_POSITION_DEGREES || position > TurretConstants.MAX_POSITION_DEGREES);
+        // position < TurretConstants.MIN_POSITION_DEGREES || position >
+        // TurretConstants.MAX_POSITION_DEGREES);
         // SmartDashboard.putNumber("Turret/Distance From Limit",
         // Math.min(position - TurretConstants.MIN_POSITION_DEGREES,
         // TurretConstants.MAX_POSITION_DEGREES - position));

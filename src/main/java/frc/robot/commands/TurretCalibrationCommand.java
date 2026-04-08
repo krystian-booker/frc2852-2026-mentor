@@ -20,7 +20,7 @@ import frc.robot.Constants.CalibrationConstants;
 import frc.robot.Constants.FlywheelConstants;
 import frc.robot.Constants.HoodConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
-import frc.robot.subsystems.Conveyor;
+import frc.robot.subsystems.Indexer;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.IntakeActuator;
@@ -34,7 +34,7 @@ public class TurretCalibrationCommand extends Command {
 
     private final Hood hood;
     private final Flywheel flywheel;
-    private final Conveyor conveyor;
+    private final Indexer indexer;
     private final IntakeActuator intakeActuator;
     private final Supplier<Pose2d> poseSupplier;
     private final TurretAimingCalculator aimingCalculator;
@@ -79,7 +79,7 @@ public class TurretCalibrationCommand extends Command {
      *
      * @param hood The hood subsystem
      * @param flywheel The flywheel subsystem
-     * @param conveyor The conveyor subsystem
+     * @param indexer The indexer subsystem
      * @param intakeActuator The intake actuator subsystem (oscillates during feeding)
      * @param poseSupplier Supplier for the robot's current pose
      * @param aimingCalculator The turret aiming calculator for distance calculation
@@ -87,7 +87,7 @@ public class TurretCalibrationCommand extends Command {
      * @param driveRequestSupplier Supplier for the driver's swerve request
      * @param driverActive Whether the driver is actively controlling the drivetrain
      */
-    public TurretCalibrationCommand(Hood hood, Flywheel flywheel, Conveyor conveyor,
+    public TurretCalibrationCommand(Hood hood, Flywheel flywheel, Indexer indexer,
             IntakeActuator intakeActuator,
             Supplier<Pose2d> poseSupplier, TurretAimingCalculator aimingCalculator,
             CommandSwerveDrivetrain drivetrain,
@@ -95,7 +95,7 @@ public class TurretCalibrationCommand extends Command {
             BooleanSupplier driverActive) {
         this.hood = hood;
         this.flywheel = flywheel;
-        this.conveyor = conveyor;
+        this.indexer = indexer;
         this.intakeActuator = intakeActuator;
         this.poseSupplier = poseSupplier;
         this.aimingCalculator = aimingCalculator;
@@ -144,7 +144,7 @@ public class TurretCalibrationCommand extends Command {
         table.getIntegerTopic("Grid/Rows").publish().set(CalibrationConstants.GRID_ROWS);
         table.getIntegerTopic("Grid/Cols").publish().set(CalibrationConstants.GRID_COLS);
 
-        addRequirements(hood, flywheel, conveyor, intakeActuator, drivetrain);
+        addRequirements(hood, flywheel, indexer, intakeActuator, drivetrain);
     }
 
     @Override
@@ -187,7 +187,7 @@ public class TurretCalibrationCommand extends Command {
         flywheel.setVelocity(inputFlywheelRPM);
         SmartDashboard.putNumber("Calibration/InputHoodAngle", inputHoodAngle);
         SmartDashboard.putNumber("Calibration/InputFlywheelRPM", inputFlywheelRPM);
-        conveyor.runFeed();
+        indexer.runFeed();
 
         // Lock wheels in X-brake when driver is not actively driving
         if (driverActive.getAsBoolean()) {
@@ -218,7 +218,7 @@ public class TurretCalibrationCommand extends Command {
         enabledPub.set(false);
         flywheel.setVelocity(0);
         hood.setNeutral();
-        conveyor.stop();
+        indexer.stop();
         intakeActuator.driveExtend();
 
         if (interrupted) {
