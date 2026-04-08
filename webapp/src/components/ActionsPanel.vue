@@ -134,9 +134,9 @@ const mirrorQuadrants = () => {
 }
 
 const confirmMirror = () => {
-  const result = store.mirrorFromBottomRight()
+  const result = store.mirrorBottomToTop()
   showMirrorModal.value = false
-  mirrorMessage.value = `Mirrored ${result.copied} points (${result.skipped} skipped - already had data)`
+  mirrorMessage.value = `Mirrored ${result.copied} points to top half`
   setTimeout(() => { mirrorMessage.value = '' }, 5000)
 }
 
@@ -175,7 +175,7 @@ const cancelMirror = () => {
       </button>
 
       <button class="btn btn-mirror" @click="mirrorQuadrants">
-        Mirror from BR
+        Mirror Bottom to Top
       </button>
 
       <button class="btn btn-warning" @click="deletePoint">
@@ -213,8 +213,8 @@ const cancelMirror = () => {
 
     <ConfirmModal
       v-if="showMirrorModal"
-      title="Mirror from Bottom-Right"
-      message="This will copy all calibration points from the bottom-right quadrant to the other three quadrants (bottom-left, top-left, top-right) using field symmetry. Existing points in target quadrants will not be overwritten."
+      title="Mirror Bottom to Top"
+      message="This will copy all calibration points from the bottom half of the field to the top half using vertical symmetry. Existing points in the top half will be overwritten."
       confirm-text="Mirror"
       @confirm="confirmMirror"
       @cancel="cancelMirror"
