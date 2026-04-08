@@ -116,8 +116,6 @@ public class RobotContainer {
       double magnitude = Math.hypot(stickX, stickY);
 
       double turretSetpoint;
-      boolean sotmActive = false;
-
       if (magnitude > 0.15) {
         // Manual field-oriented override
         double fieldAngleRad = Math.atan2(-stickX, -stickY);
@@ -135,8 +133,9 @@ public class RobotContainer {
         // Auto-aim at target with SOTM
         var result = shooterCalculator.calculate();
         turretSetpoint = result.turretAngleDegrees();
-        sotmActive = true;
-        // Feedforward: turret counter-rotates against chassis yaw to maintain field heading
+
+        // Feedforward: turret counter-rotates against chassis yaw to maintain field
+        // heading
         double chassisOmega = shooterCalculator.getChassisOmegaDegreesPerSecond();
         turret.setPosition(turretSetpoint, -chassisOmega);
       }
@@ -171,7 +170,7 @@ public class RobotContainer {
         new ShootCommand(flywheel, hood, indexer, turret,
             shooterCalculator,
             intakeActuator)
-                .withName("Shoot"));
+            .withName("Shoot"));
 
     // LEFT BUMPER - Retract intake actuator (held)
     driverController.leftBumper().whileTrue(intakeActuator.retract());
@@ -196,7 +195,8 @@ public class RobotContainer {
   }
 
   /**
-   * Configure QuestNav seeding. Polls for 2+ visible AprilTags while disabled, then seeds QuestNav pose. The physical
+   * Configure QuestNav seeding. Polls for 2+ visible AprilTags while disabled,
+   * then seeds QuestNav pose. The physical
    * reseed button (DIO) resets and re-seeds when 2+ tags visible.
    */
   private void questNavInitialization() {
@@ -244,7 +244,8 @@ public class RobotContainer {
   }
 
   /**
-   * Configure test mode bindings using RobotModeTriggers. These bindings are only active when the robot is in test
+   * Configure test mode bindings using RobotModeTriggers. These bindings are only
+   * active when the robot is in test
    * mode.
    */
   private void configureTestBindings() {
@@ -294,7 +295,8 @@ public class RobotContainer {
     // --- Turret System Identification (for MATLAB) ---
     // Operator D-pad Up: runs all routines (Quasistatic → Steps → Coastdown)
     // RobotModeTriggers.test().and(operatorController.povUp())
-    // .toggleOnTrue(new TurretSysIdCommand(turret, TurretSysIdCommand.Routine.ALL));
+    // .toggleOnTrue(new TurretSysIdCommand(turret,
+    // TurretSysIdCommand.Routine.ALL));
 
     // --- Flywheel System Identification (for MATLAB) ---
     // RobotModeTriggers.test().and(driverController.back())
