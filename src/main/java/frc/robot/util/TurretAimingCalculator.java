@@ -4,10 +4,10 @@ import java.util.function.Supplier;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Constants.CalibrationConstants;
 import frc.robot.Constants.TurretAimingConstants;
 import frc.robot.Constants.TurretConstants;
@@ -23,6 +23,7 @@ import frc.robot.generated.TurretLookupTables;
  */
 public class TurretAimingCalculator {
     private final Supplier<Pose2d> poseSupplier;
+    private final Supplier<ChassisSpeeds> speedsSupplier;
 
     // Alliance cache to prevent expensive DriverStation lookups
     private Alliance cachedAlliance = Alliance.Blue;
@@ -32,6 +33,11 @@ public class TurretAimingCalculator {
     private double lastRawAngleDegrees = Double.NaN;
     private Translation2d lastTargetPosition = new Translation2d();
     private double lastDistanceMeters = 0.0;
+
+    // SOTM cached state — shared between calculate() and
+    // getHoodAngle()/getFlywheelRPM()
+    private double lastTimeOfFlight = 0.0;
+    private ChassisSpeeds lastFieldRelativeSpeeds = new ChassisSpeeds();
 
     /**
      * Result of an aiming calculation.
@@ -47,8 +53,9 @@ public class TurretAimingCalculator {
             boolean isReachable) {
     }
 
-    public TurretAimingCalculator(Supplier<Pose2d> poseSupplier) {
+    public TurretAimingCalculator(Supplier<Pose2d> poseSupplier, Supplier<ChassisSpeeds> speedsSupplier) {
         this.poseSupplier = poseSupplier;
+        this.speedsSupplier = speedsSupplier;
     }
 
     /**
@@ -64,15 +71,46 @@ public class TurretAimingCalculator {
             return new AimingResult(0.0, 0.0, false);
         }
 
-        Translation2d targetPosition = getTargetPosition(robotPose);
-        double turretAngleDegrees = calculateTurretAngleToTarget(robotPose, targetPosition);
+        // Convert robot-relative speeds to field-relative for SOTM
+        ChassisSpeeds robotSpeeds = speedsSupplier.get();
+        lastFieldRelativeSpeeds = ChassisSpeeds.fromRobotRelativeSpeeds(robotSpeeds, robotPose.getRotation());
 
-        // Calculate distance for reachability check
+        Translation2d realTargetPosition = getTargetPosition(robotPose);
         Translation2d turretPosition = getTurretFieldPosition(robotPose);
-        double distanceMeters = turretPosition.getDistance(targetPosition);
+
+        // Raw distance for time-of-flight estimation
+        double rawDistance = turretPosition.getDistance(realTargetPosition);
+        lastTimeOfFlight = estimateTimeOfFlight(rawDistance);
+
+        // Determine the aiming target (virtual or real)
+        Translation2d aimTarget = realTargetPosition;
+
+        if (TurretAimingConstants.SOTM_ENABLED) {
+            // Calculate how far the robot moves during the shot
+            Translation2d robotMovement = new Translation2d(
+                    lastFieldRelativeSpeeds.vxMetersPerSecond * lastTimeOfFlight,
+                    lastFieldRelativeSpeeds.vyMetersPerSecond * lastTimeOfFlight);
+
+            // Clamp lead distance for safety
+            double leadDistance = robotMovement.getNorm();
+            if (leadDistance > TurretAimingConstants.SOTM_MAX_LEAD_METERS) {
+                double scale = TurretAimingConstants.SOTM_MAX_LEAD_METERS / leadDistance;
+                robotMovement = new Translation2d(
+                        robotMovement.getX() * scale,
+                        robotMovement.getY() * scale);
+            }
+
+            // Shift target opposite to robot movement so the ball hits the real target
+            aimTarget = realTargetPosition.minus(robotMovement);
+        }
+
+        double turretAngleDegrees = calculateTurretAngleToTarget(robotPose, aimTarget);
+
+        // Distance to the aim target for reachability
+        double distanceMeters = turretPosition.getDistance(aimTarget);
 
         // Store for diagnostics
-        lastTargetPosition = targetPosition;
+        lastTargetPosition = aimTarget;
         lastDistanceMeters = distanceMeters;
 
         boolean isReachable = distanceMeters >= TurretAimingConstants.MIN_SHOOTING_DISTANCE_METERS
@@ -80,8 +118,6 @@ public class TurretAimingCalculator {
 
         return new AimingResult(turretAngleDegrees, distanceMeters, isReachable);
     }
-
-
 
     /**
      * Gets the target position based on the current alliance and robot position on
@@ -120,7 +156,10 @@ public class TurretAimingCalculator {
         }
     }
 
-    /** Returns the raw turret angle (before low-pass filter) from the last calculation. */
+    /**
+     * Returns the raw turret angle (before low-pass filter) from the last
+     * calculation.
+     */
     public double getLastRawAngleDegrees() {
         return lastRawAngleDegrees;
     }
@@ -165,24 +204,54 @@ public class TurretAimingCalculator {
 
     /**
      * Gets the recommended hood angle based on robot field position.
-     * Uses bilinear interpolation from the 2D generated grid if available,
-     * falls back to default constants if no calibration data exists.
+     * When SOTM is enabled, uses the effective (future) position where the robot
+     * will be when the ball exits the barrel.
      *
      * @return Hood angle in degrees
      */
     public double getHoodAngle() {
+        if (TurretAimingConstants.SOTM_ENABLED) {
+            Translation2d effectivePos = getEffectiveRobotPosition();
+            return gridLookup(getHoodGrid(), effectivePos.getX(), effectivePos.getY());
+        }
         return gridLookup(getHoodGrid());
     }
 
     /**
      * Gets the recommended flywheel RPM based on robot field position.
-     * Uses bilinear interpolation from the 2D generated grid if available,
-     * falls back to default constants if no calibration data exists.
+     * When SOTM is enabled, uses the effective (future) position where the robot
+     * will be when the ball exits the barrel.
      *
      * @return Flywheel speed in RPM
      */
     public double getFlywheelRPM() {
+        if (TurretAimingConstants.SOTM_ENABLED) {
+            Translation2d effectivePos = getEffectiveRobotPosition();
+            return gridLookup(getFlywheelGrid(), effectivePos.getX(), effectivePos.getY());
+        }
         return gridLookup(getFlywheelGrid());
+    }
+
+    /**
+     * Computes the effective robot position — where the robot will be when the ball
+     * reaches the target, based on current velocity and estimated time of flight.
+     */
+    private Translation2d getEffectiveRobotPosition() {
+        Pose2d pose = poseSupplier.get();
+        if (pose == null) {
+            return new Translation2d();
+        }
+        return pose.getTranslation().plus(new Translation2d(
+                lastFieldRelativeSpeeds.vxMetersPerSecond * lastTimeOfFlight,
+                lastFieldRelativeSpeeds.vyMetersPerSecond * lastTimeOfFlight));
+    }
+
+    /**
+     * Returns the chassis angular velocity in degrees per second.
+     * Used for turret rotation feedforward compensation.
+     */
+    public double getChassisOmegaDegreesPerSecond() {
+        return Math.toDegrees(lastFieldRelativeSpeeds.omegaRadiansPerSecond);
     }
 
     /**
@@ -253,8 +322,6 @@ public class TurretAimingCalculator {
         return turretAngleDegrees;
     }
 
-
-
     /**
      * Looks up a value from a 2D grid based on the robot's current field position.
      * Converts the robot pose to grid coordinates, mirrors for Red alliance,
@@ -268,9 +335,21 @@ public class TurretAimingCalculator {
         if (pose == null || Double.isNaN(pose.getX()) || Double.isNaN(pose.getY())) {
             return grid[0][0];
         }
+        return gridLookup(grid, pose.getX(), pose.getY());
+    }
 
-        double x = pose.getX();
-        double y = pose.getY();
+    /**
+     * Looks up a value from a 2D grid at explicit field coordinates.
+     * Mirrors for Red alliance and applies bilinear interpolation.
+     *
+     * @param grid   2D array indexed by [row][col]
+     * @param fieldX Field X position in meters
+     * @param fieldY Field Y position in meters
+     * @return Interpolated value at the given position
+     */
+    private double gridLookup(double[][] grid, double fieldX, double fieldY) {
+        double x = fieldX;
+        double y = fieldY;
 
         // Calibration data is recorded for Blue alliance.
         // For Red alliance, mirror the position (field has 180° rotational symmetry).
@@ -282,7 +361,15 @@ public class TurretAimingCalculator {
         return bilinearInterpolate(x, y, grid);
     }
 
-
+    /**
+     * Estimates the time of flight for a ball to reach the target.
+     *
+     * @param distanceMeters Distance to target in meters
+     * @return Estimated time of flight in seconds
+     */
+    private double estimateTimeOfFlight(double distanceMeters) {
+        return distanceMeters / TurretAimingConstants.AVERAGE_BALL_SPEED_MPS;
+    }
 
     /**
      * Bilinear interpolation on a 2D grid.

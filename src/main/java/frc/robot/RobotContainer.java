@@ -94,7 +94,8 @@ public class RobotContainer {
       questNav = new QuestNavSubsystem(drivetrain, vision);
     }
     shooterCalculator = new TurretAimingCalculator(
-        () -> drivetrain.getState().Pose);
+        () -> drivetrain.getState().Pose,
+        () -> drivetrain.getState().Speeds);
 
     // Register named commands before building auto chooser
     NamedCommands.registerCommand("shoot",
@@ -129,14 +130,16 @@ public class RobotContainer {
         if (turretAngleDeg > TurretConstants.MAX_POSITION_DEGREES)
           turretAngleDeg -= 360.0;
         turretSetpoint = turretAngleDeg;
+        turret.setPosition(turretSetpoint);
       } else {
-        // Auto-aim at target
+        // Auto-aim at target with SOTM
         var result = shooterCalculator.calculate();
         turretSetpoint = result.turretAngleDegrees();
         sotmActive = true;
+        // Feedforward: turret counter-rotates against chassis yaw to maintain field heading
+        double chassisOmega = shooterCalculator.getChassisOmegaDegreesPerSecond();
+        turret.setPosition(turretSetpoint, -chassisOmega);
       }
-
-      turret.setPosition(turretSetpoint);
     }).withName("TurretAimWithOverride"));
 
     // Configure normal bindings (always available)

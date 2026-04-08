@@ -157,6 +157,19 @@ public class Turret extends SubsystemBase {
     }
 
     public void setPosition(double aimDegrees) {
+        setPosition(aimDegrees, 0.0);
+    }
+
+    /**
+     * Sets the turret position with an optional velocity feedforward.
+     * The velocity feedforward compensates for chassis rotation by telling the
+     * onboard PID controller what velocity the turret should be moving at,
+     * which feeds into the kV gain for smoother tracking.
+     *
+     * @param aimDegrees                Robot-relative turret angle in degrees
+     * @param velocityDegreesPerSecond  Desired turret velocity for feedforward (deg/s)
+     */
+    public void setPosition(double aimDegrees, double velocityDegreesPerSecond) {
         // Wrap into turret range before clamping
         if (aimDegrees > TurretConstants.MAX_POSITION_DEGREES) {
             aimDegrees -= 360.0;
@@ -170,7 +183,8 @@ public class Turret extends SubsystemBase {
         // Convert aiming degrees to encoder degrees, then to rotations
         double encoderDegrees = targetPositionDegrees + TurretConstants.FORWARD_ENCODER_POSITION_DEGREES;
         double rotations = encoderDegrees / 360.0;
-        motor.setControl(positionRequest.withPosition(rotations));
+        double velocityRotPerSec = velocityDegreesPerSecond / 360.0;
+        motor.setControl(positionRequest.withPosition(rotations).withVelocity(velocityRotPerSec));
     }
 
     public void stop() {

@@ -177,6 +177,11 @@ public final class Constants {
     public static final double MIN_SHOOTING_DISTANCE_METERS = 0;
     public static final double MAX_SHOOTING_DISTANCE_METERS = 99.0;
 
+    // SOTM (Shoot on the Move) constants
+    public static final boolean SOTM_ENABLED = true;
+    public static final double AVERAGE_BALL_SPEED_MPS = 12.0; // Tune empirically
+    public static final double SOTM_MAX_LEAD_METERS = 1.5;    // Safety clamp on virtual target offset
+
     // Fallback grids used when no calibration data has been generated
     // Indexed by [row][col] matching CalibrationConstants grid dimensions
     public static final double[][] HOOD_GRID_FALLBACK;
