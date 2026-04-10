@@ -25,6 +25,8 @@ export const TOPICS = {
   // Input values (to robot)
   INPUT_HOOD_ANGLE: `${NT_TABLE}/Input/HoodAngle`,
   INPUT_FLYWHEEL_RPM: `${NT_TABLE}/Input/FlywheelRPM`,
+  OBSERVED_INPUT_HOOD_ANGLE: `${NT_TABLE}/ObservedInput/HoodAngle`,
+  OBSERVED_INPUT_FLYWHEEL_RPM: `${NT_TABLE}/ObservedInput/FlywheelRPM`,
 
   // Constants (from robot)
   CONSTANTS: {

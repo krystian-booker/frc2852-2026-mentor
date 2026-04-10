@@ -4,6 +4,12 @@ import { useDebounceFn } from '@vueuse/core'
 import { useNTDouble, useNTBoolean, publishDouble } from '../composables/useNetworkTables'
 import { TOPICS } from '../constants/topics'
 
+const calibrationEnabled = useNTBoolean(TOPICS.ENABLED, false)
+const ntInputHoodAngle = useNTDouble(TOPICS.INPUT_HOOD_ANGLE, 25)
+const ntInputFlywheelRPM = useNTDouble(TOPICS.INPUT_FLYWHEEL_RPM, 3000)
+const robotObservedInputHoodAngle = useNTDouble(TOPICS.OBSERVED_INPUT_HOOD_ANGLE, 25)
+const robotObservedInputFlywheelRPM = useNTDouble(TOPICS.OBSERVED_INPUT_FLYWHEEL_RPM, 3000)
+
 // Read actual values from robot
 const actualHoodAngle = useNTDouble(TOPICS.ACTUAL_HOOD_ANGLE, 25)
 const actualFlywheelRPM = useNTDouble(TOPICS.ACTUAL_FLYWHEEL_RPM, 3000)
@@ -22,14 +28,94 @@ const inputFlywheelRPM = ref(3000)
 
 // Track whether constants have been received from robot
 const constantsReceived = ref(false)
+const publishAttemptIds = new Map<string, number>()
+
+const nextPublishAttemptId = (topic: string): number => {
+  const nextId = (publishAttemptIds.get(topic) ?? 0) + 1
+  publishAttemptIds.set(topic, nextId)
+  return nextId
+}
+
+const schedulePublishVerification = (
+  topic: string,
+  label: string,
+  attemptId: number,
+  requestedValue: number,
+  echoedValue: { value: number },
+  robotReadbackValue: { value: number },
+  tolerance: number
+) => {
+  const verify = (checkRobotReadback: boolean) => {
+    if (publishAttemptIds.get(topic) !== attemptId) {
+      return
+    }
+
+    if (Math.abs(echoedValue.value - requestedValue) > tolerance) {
+      console.warn(
+        `NetworkTables publish mismatch for ${label}: requested=${requestedValue}, echoed=${echoedValue.value}.`
+      )
+    }
+
+    if (checkRobotReadback && calibrationEnabled.value &&
+        Math.abs(robotReadbackValue.value - requestedValue) > tolerance) {
+      console.warn(
+        `Robot readback mismatch for ${label}: requested=${requestedValue}, robot=${robotReadbackValue.value}.`
+      )
+    }
+  }
+
+  window.setTimeout(() => verify(false), 250)
+  window.setTimeout(() => verify(true), 1000)
+}
+
+const publishWithVerification = (
+  topic: string,
+  label: string,
+  value: number,
+  echoedValue: { value: number },
+  robotReadbackValue: { value: number },
+  tolerance: number
+) => {
+  const attemptId = nextPublishAttemptId(topic)
+  console.log(`NetworkTables publish ${label}: ${value}`)
+  void publishDouble(topic, value)
+    .then(() => {
+      schedulePublishVerification(
+        topic,
+        label,
+        attemptId,
+        value,
+        echoedValue,
+        robotReadbackValue,
+        tolerance
+      )
+    })
+    .catch((error) => {
+      console.error(`NetworkTables publish failed for ${label}`, error)
+    })
+}
 
 // Debounced publish functions (100ms debounce to reduce network traffic)
 const debouncedPublishHoodAngle = useDebounceFn((value: number) => {
-  publishDouble(TOPICS.INPUT_HOOD_ANGLE, value)
+  publishWithVerification(
+    TOPICS.INPUT_HOOD_ANGLE,
+    'hood angle',
+    value,
+    ntInputHoodAngle,
+    robotObservedInputHoodAngle,
+    0.05
+  )
 }, 100)
 
 const debouncedPublishFlywheelRPM = useDebounceFn((value: number) => {
-  publishDouble(TOPICS.INPUT_FLYWHEEL_RPM, value)
+  publishWithVerification(
+    TOPICS.INPUT_FLYWHEEL_RPM,
+    'flywheel rpm',
+    value,
+    ntInputFlywheelRPM,
+    robotObservedInputFlywheelRPM,
+    1.0
+  )
 }, 100)
 
 // Publish changes to NetworkTables with debouncing
@@ -39,6 +125,14 @@ watch(inputHoodAngle, (value) => {
 
 watch(inputFlywheelRPM, (value) => {
   debouncedPublishFlywheelRPM(value)
+})
+
+watch(ntInputHoodAngle, (value) => {
+  console.log(`NetworkTables echo hood angle: ${value}`)
+})
+
+watch(ntInputFlywheelRPM, (value) => {
+  console.log(`NetworkTables echo flywheel rpm: ${value}`)
 })
 
 // Clamp inputs when constants change and publish initial values on startup
@@ -62,8 +156,22 @@ watch(
     // Publish initial values so robot receives them immediately
     if (!constantsReceived.value) {
       constantsReceived.value = true
-      publishDouble(TOPICS.INPUT_HOOD_ANGLE, inputHoodAngle.value)
-      publishDouble(TOPICS.INPUT_FLYWHEEL_RPM, inputFlywheelRPM.value)
+      publishWithVerification(
+        TOPICS.INPUT_HOOD_ANGLE,
+        'hood angle',
+        inputHoodAngle.value,
+        ntInputHoodAngle,
+        robotObservedInputHoodAngle,
+        0.05
+      )
+      publishWithVerification(
+        TOPICS.INPUT_FLYWHEEL_RPM,
+        'flywheel rpm',
+        inputFlywheelRPM.value,
+        ntInputFlywheelRPM,
+        robotObservedInputFlywheelRPM,
+        1.0
+      )
     }
   },
   { immediate: true }
@@ -89,8 +197,14 @@ const clampFlywheelRPM = () => {
 </script>
 
 <template>
-  <div class="control-panel">
+  <div class="control-panel" :class="{ inactive: !calibrationEnabled }">
     <h3>Controls</h3>
+
+    <div v-if="!calibrationEnabled" class="inactive-warning">
+      Calibration inactive. Put the robot in test mode and hold the driver right trigger to apply web app setpoints.
+    </div>
+
+    <fieldset class="controls-fieldset" :disabled="!calibrationEnabled">
 
     <div class="control-group">
       <div class="control-header">
@@ -122,6 +236,12 @@ const clampFlywheelRPM = () => {
 
       <div class="actual-value">
         Actual: {{ actualHoodAngle.toFixed(1) }}°
+      </div>
+      <div class="nt-echo">
+        NT Echo: {{ ntInputHoodAngle.toFixed(2) }} deg
+      </div>
+      <div class="nt-echo robot-echo">
+        Robot Readback: {{ robotObservedInputHoodAngle.toFixed(2) }} deg
       </div>
     </div>
 
@@ -156,7 +276,15 @@ const clampFlywheelRPM = () => {
       <div class="actual-value">
         Actual: {{ actualFlywheelRPM.toFixed(0) }} RPM
       </div>
+      <div class="nt-echo">
+        NT Echo: {{ ntInputFlywheelRPM.toFixed(1) }} RPM
+      </div>
+      <div class="nt-echo robot-echo">
+        Robot Readback: {{ robotObservedInputFlywheelRPM.toFixed(1) }} RPM
+      </div>
     </div>
+
+    </fieldset>
   </div>
 </template>
 
@@ -167,12 +295,38 @@ const clampFlywheelRPM = () => {
   padding: 16px;
 }
 
+.control-panel.inactive {
+  opacity: 0.78;
+}
+
 h3 {
   margin: 0 0 16px 0;
   font-size: 14px;
   color: #888;
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+.inactive-warning {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(255, 152, 0, 0.12);
+  border: 1px solid rgba(255, 152, 0, 0.35);
+  color: #ffb74d;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.controls-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.controls-fieldset:disabled {
+  cursor: not-allowed;
 }
 
 .control-group {
@@ -223,6 +377,11 @@ input[type="range"] {
   outline: none;
 }
 
+.controls-fieldset:disabled input[type="range"] {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 input[type="range"]::-webkit-slider-thumb {
   appearance: none;
   width: 18px;
@@ -247,6 +406,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
   text-align: right;
 }
 
+.controls-fieldset:disabled .value-input {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .value-input:focus {
   outline: none;
   border-color: #3f51b5;
@@ -263,5 +427,16 @@ input[type="range"]::-webkit-slider-thumb:hover {
   font-size: 12px;
   color: #888;
   font-family: 'Consolas', monospace;
+}
+
+.nt-echo {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6fb3ff;
+  font-family: 'Consolas', monospace;
+}
+
+.robot-echo {
+  color: #9be37a;
 }
 </style>

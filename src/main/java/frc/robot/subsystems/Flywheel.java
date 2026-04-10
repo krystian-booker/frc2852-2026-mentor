@@ -216,6 +216,11 @@ public class Flywheel extends SubsystemBase {
         leaderMotor.setControl(neutralRequest);
     }
 
+    /** Get the current target velocity in RPM. */
+    public double getTargetVelocityRPM() {
+        return targetVelocityRPM;
+    }
+
     /**
      * Hot-reload Slot0 gains using refresh+apply to preserve current limits.
      */

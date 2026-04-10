@@ -106,23 +106,13 @@ public class Indexer extends SubsystemBase {
     }
 
     /**
-     * Command that feeds game pieces, automatically reversing only the
-     * independent motor on a current spike to clear jams.
+     * Command that runs the intake motors at feed speed.
      */
     public Command feedCommand() {
         return run(() -> {
             independentMotor.set(IndexerConstants.FEED_SPEED);
             groupLeaderMotor.set(IndexerConstants.FEED_SPEED);
-        })
-                .until(() -> independentMotor.getOutputCurrent() >= IndexerConstants.JAM_CURRENT_THRESHOLD_AMPS)
-                .andThen(run(() -> independentMotor.set(IndexerConstants.REVERSE_SPEED))
-                        .withTimeout(IndexerConstants.JAM_REVERSE_DURATION_SECONDS))
-                .andThen(run(() -> {
-                    independentMotor.set(IndexerConstants.FEED_SPEED);
-                    groupLeaderMotor.set(IndexerConstants.FEED_SPEED);
-                }).withTimeout(IndexerConstants.JAM_COOLDOWN_SECONDS))
-                .repeatedly()
-                .finallyDo(this::stop);
+        }).finallyDo(this::stop);
     }
 
     /**
@@ -131,6 +121,34 @@ public class Indexer extends SubsystemBase {
     public void runFeed() {
         independentMotor.set(IndexerConstants.FEED_SPEED);
         groupLeaderMotor.set(IndexerConstants.FEED_SPEED);
+    }
+
+    /**
+     * Run only the group motors at feed speed.
+     */
+    public void runGroupFeed() {
+        groupLeaderMotor.set(IndexerConstants.FEED_SPEED);
+    }
+
+    /**
+     * Run only the independent motor at feed speed.
+     */
+    public void runIndependentFeed() {
+        independentMotor.set(IndexerConstants.FEED_SPEED);
+    }
+
+    /**
+     * Stop only the independent motor.
+     */
+    public void stopIndependent() {
+        independentMotor.setVoltage(0);
+    }
+
+    /**
+     * Stop only the group motor.
+     */
+    public void stopGroup() {
+        groupLeaderMotor.setVoltage(0);
     }
 
     /**

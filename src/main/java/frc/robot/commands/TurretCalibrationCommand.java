@@ -13,6 +13,8 @@ import edu.wpi.first.networktables.IntegerPublisher;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StringPublisher;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 
@@ -23,11 +25,12 @@ import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.Indexer;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
-import frc.robot.subsystems.IntakeActuator;
+import frc.robot.util.DiagnosticLogger;
 import frc.robot.util.TurretAimingCalculator;
 
 /**
- * Calibration command for tuning turret lookup tables. Acts as a thin client - only handles hardware I/O. The webapp is
+ * Calibration command for tuning turret lookup tables. Acts as a thin client -
+ * only handles hardware I/O. The webapp is
  * the single source of truth for all calibration data.
  */
 public class TurretCalibrationCommand extends Command {
@@ -35,17 +38,14 @@ public class TurretCalibrationCommand extends Command {
     private final Hood hood;
     private final Flywheel flywheel;
     private final Indexer indexer;
-    private final IntakeActuator intakeActuator;
     private final Supplier<Pose2d> poseSupplier;
     private final TurretAimingCalculator aimingCalculator;
     private final CommandSwerveDrivetrain drivetrain;
     private final Supplier<SwerveRequest> driveRequestSupplier;
     private final BooleanSupplier driverActive;
+    private final BooleanSupplier feedActive;
     private final SwerveRequest.SwerveDriveBrake brakeRequest = new SwerveRequest.SwerveDriveBrake();
-
-    // Intake actuator agitation state
-    private boolean agitateRetract;
-    private long agitateTimer;
+    private final DiagnosticLogger logger;
 
     // NetworkTables
     private final NetworkTable table;
@@ -57,6 +57,8 @@ public class TurretCalibrationCommand extends Command {
     private final DoublePublisher distancePub;
     private final DoublePublisher actualHoodAnglePub;
     private final DoublePublisher actualFlywheelRPMPub;
+    private final DoublePublisher observedInputHoodAnglePub;
+    private final DoublePublisher observedInputFlywheelRPMPub;
     private final BooleanPublisher hoodAtPositionPub;
     private final BooleanPublisher flywheelAtSetpointPub;
     private final IntegerPublisher gridRowPub;
@@ -73,35 +75,60 @@ public class TurretCalibrationCommand extends Command {
     // Retained publishers (must be stored to prevent GC from unpublishing)
     @SuppressWarnings("unused")
     private final DoublePublisher[] retainedPublishers;
+    private double lastLoggedInputHoodAngle = Double.NaN;
+    private double lastLoggedInputFlywheelRPM = Double.NaN;
+    private boolean lastLoggedFeedActive = false;
 
     /**
      * Creates a new TurretCalibrationCommand.
      *
-     * @param hood The hood subsystem
-     * @param flywheel The flywheel subsystem
-     * @param indexer The indexer subsystem
-     * @param intakeActuator The intake actuator subsystem (oscillates during feeding)
-     * @param poseSupplier Supplier for the robot's current pose
-     * @param aimingCalculator The turret aiming calculator for distance calculation
-     * @param drivetrain The swerve drivetrain (locked in X-brake when driver is idle)
+     * @param hood                 The hood subsystem
+     * @param flywheel             The flywheel subsystem
+     * @param indexer              The indexer subsystem
+     * @param poseSupplier         Supplier for the robot's current pose
+     * @param aimingCalculator     The turret aiming calculator for distance
+     *                             calculation
+     * @param drivetrain           The swerve drivetrain (locked in X-brake when
+     *                             driver is idle)
      * @param driveRequestSupplier Supplier for the driver's swerve request
-     * @param driverActive Whether the driver is actively controlling the drivetrain
+     * @param driverActive         Whether the driver is actively controlling the
+     *                             drivetrain
+     * @param feedActive           Whether the driver is actively requesting feed
      */
     public TurretCalibrationCommand(Hood hood, Flywheel flywheel, Indexer indexer,
-            IntakeActuator intakeActuator,
             Supplier<Pose2d> poseSupplier, TurretAimingCalculator aimingCalculator,
             CommandSwerveDrivetrain drivetrain,
             Supplier<SwerveRequest> driveRequestSupplier,
-            BooleanSupplier driverActive) {
+            BooleanSupplier driverActive,
+            BooleanSupplier feedActive) {
         this.hood = hood;
         this.flywheel = flywheel;
         this.indexer = indexer;
-        this.intakeActuator = intakeActuator;
         this.poseSupplier = poseSupplier;
         this.aimingCalculator = aimingCalculator;
         this.drivetrain = drivetrain;
         this.driveRequestSupplier = driveRequestSupplier;
         this.driverActive = driverActive;
+        this.feedActive = feedActive;
+        this.logger = new DiagnosticLogger("turret_calibration", new String[] {
+                "timestamp",
+                "pose_available",
+                "driver_active",
+                "feed_active",
+                "robot_x",
+                "robot_y",
+                "distance_m",
+                "grid_row",
+                "grid_col",
+                "input_hood_deg",
+                "hood_target_deg",
+                "actual_hood_deg",
+                "hood_at_position",
+                "input_flywheel_rpm",
+                "flywheel_target_rpm",
+                "actual_flywheel_rpm",
+                "flywheel_at_setpoint"
+        });
 
         // Initialize NetworkTables
         table = NetworkTableInstance.getDefault().getTable("TurretCalibration");
@@ -113,6 +140,8 @@ public class TurretCalibrationCommand extends Command {
         distancePub = table.getDoubleTopic("Distance").publish();
         actualHoodAnglePub = table.getDoubleTopic("Actual/HoodAngle").publish();
         actualFlywheelRPMPub = table.getDoubleTopic("Actual/FlywheelRPM").publish();
+        observedInputHoodAnglePub = table.getDoubleTopic("ObservedInput/HoodAngle").publish();
+        observedInputFlywheelRPMPub = table.getDoubleTopic("ObservedInput/FlywheelRPM").publish();
         hoodAtPositionPub = table.getBooleanTopic("Actual/HoodAtPosition").publish();
         flywheelAtSetpointPub = table.getBooleanTopic("Actual/FlywheelAtSetpoint").publish();
         gridRowPub = table.getIntegerTopic("Grid/CurrentRow").publish();
@@ -144,20 +173,31 @@ public class TurretCalibrationCommand extends Command {
         table.getIntegerTopic("Grid/Rows").publish().set(CalibrationConstants.GRID_ROWS);
         table.getIntegerTopic("Grid/Cols").publish().set(CalibrationConstants.GRID_COLS);
 
-        addRequirements(hood, flywheel, indexer, intakeActuator, drivetrain);
+        addRequirements(drivetrain);
     }
 
     @Override
     public void initialize() {
         enabledPub.set(true);
         statusPub.set("Calibration Mode Active");
-        calibrationInfoPub.set("Webapp is source of truth for calibration data");
-        agitateRetract = true;
-        agitateTimer = System.currentTimeMillis();
+        calibrationInfoPub.set("Webapp controls hood/flywheel continuously in test mode; right trigger feeds");
+        SmartDashboard.putBoolean("Calibration/CommandActive", true);
+        SmartDashboard.putString("Calibration/LogFile", "");
+        logger.open();
+        SmartDashboard.putString("Calibration/LogFile", logger.getCurrentFilePath());
+        DriverStation.reportWarning("Turret calibration logging started: " + logger.getCurrentFilePath(), false);
+        lastLoggedInputHoodAngle = Double.NaN;
+        lastLoggedInputFlywheelRPM = Double.NaN;
+        lastLoggedFeedActive = false;
     }
 
     @Override
     public void execute() {
+        double inputHoodAngle = inputHoodAngleSub.get();
+        double inputFlywheelRPM = inputFlywheelRPMSub.get();
+        boolean feedRequested = feedActive.getAsBoolean();
+        boolean driverDriving = driverActive.getAsBoolean();
+
         // Get current pose and calculate derived values
         Pose2d pose = poseSupplier.get();
         if (pose == null) {
@@ -167,6 +207,34 @@ public class TurretCalibrationCommand extends Command {
             distancePub.set(0);
             gridRowPub.set(-1);
             gridColPub.set(-1);
+            SmartDashboard.putString("Calibration/Status", "Pose unavailable");
+            SmartDashboard.putNumber("Calibration/InputHoodAngle", inputHoodAngle);
+            SmartDashboard.putNumber("Calibration/InputFlywheelRPM", inputFlywheelRPM);
+            observedInputHoodAnglePub.set(inputHoodAngle);
+            observedInputFlywheelRPMPub.set(inputFlywheelRPM);
+            SmartDashboard.putBoolean("Calibration/FeedRequested", feedRequested);
+            SmartDashboard.putBoolean("Calibration/DriverActive", driverDriving);
+            logStateChange(inputHoodAngle, inputFlywheelRPM, feedRequested);
+            if (logger.isOpen()) {
+                logger.logRow(
+                        Timer.getFPGATimestamp(),
+                        0.0,
+                        driverDriving ? 1.0 : 0.0,
+                        feedRequested ? 1.0 : 0.0,
+                        Double.NaN,
+                        Double.NaN,
+                        Double.NaN,
+                        -1.0,
+                        -1.0,
+                        inputHoodAngle,
+                        hood.getTargetPositionDegrees(),
+                        hood.getCurrentPositionDegrees(),
+                        hood.atPosition() ? 1.0 : 0.0,
+                        inputFlywheelRPM,
+                        flywheel.getTargetVelocityRPM(),
+                        flywheel.getCurrentVelocityRPM(),
+                        flywheel.atSetpoint() ? 1.0 : 0.0);
+            }
             return;
         }
 
@@ -180,17 +248,30 @@ public class TurretCalibrationCommand extends Command {
         int gridCol = calculateGridCol(robotX);
         int gridRow = calculateGridRow(robotY);
 
-        // Read user inputs from webapp and apply to hardware
-        double inputHoodAngle = inputHoodAngleSub.get();
-        double inputFlywheelRPM = inputFlywheelRPMSub.get();
-        hood.setPosition(inputHoodAngle);
-        flywheel.setVelocity(inputFlywheelRPM);
+        double actualHoodAngle = hood.getCurrentPositionDegrees();
+        double actualFlywheelRPM = flywheel.getCurrentVelocityRPM();
+        boolean hoodAtPosition = hood.atPosition();
+        boolean flywheelAtSetpoint = flywheel.atSetpoint();
+
+        // Read user inputs from webapp for logging and dashboard visibility.
         SmartDashboard.putNumber("Calibration/InputHoodAngle", inputHoodAngle);
         SmartDashboard.putNumber("Calibration/InputFlywheelRPM", inputFlywheelRPM);
-        indexer.runFeed();
+        observedInputHoodAnglePub.set(inputHoodAngle);
+        observedInputFlywheelRPMPub.set(inputFlywheelRPM);
+        SmartDashboard.putNumber("Calibration/TargetHoodAngle", hood.getTargetPositionDegrees());
+        SmartDashboard.putNumber("Calibration/TargetFlywheelRPM", flywheel.getTargetVelocityRPM());
+        SmartDashboard.putNumber("Calibration/ActualHoodAngle", actualHoodAngle);
+        SmartDashboard.putNumber("Calibration/ActualFlywheelRPM", actualFlywheelRPM);
+        SmartDashboard.putBoolean("Calibration/HoodAtPosition", hoodAtPosition);
+        SmartDashboard.putBoolean("Calibration/FlywheelAtSetpoint", flywheelAtSetpoint);
+        SmartDashboard.putBoolean("Calibration/FeedRequested", feedRequested);
+        SmartDashboard.putBoolean("Calibration/DriverActive", driverDriving);
+        SmartDashboard.putString("Calibration/Status", feedRequested ? "Calibration Active - Feeding"
+                : "Calibration Active - Waiting");
+        logStateChange(inputHoodAngle, inputFlywheelRPM, feedRequested);
 
         // Lock wheels in X-brake when driver is not actively driving
-        if (driverActive.getAsBoolean()) {
+        if (driverDriving) {
             drivetrain.setControl(driveRequestSupplier.get());
         } else {
             drivetrain.setControl(brakeRequest);
@@ -200,10 +281,10 @@ public class TurretCalibrationCommand extends Command {
         positionXPub.set(robotX);
         positionYPub.set(robotY);
         distancePub.set(distance);
-        actualHoodAnglePub.set(hood.getCurrentPositionDegrees());
-        actualFlywheelRPMPub.set(flywheel.getCurrentVelocityRPM());
-        hoodAtPositionPub.set(hood.atPosition());
-        flywheelAtSetpointPub.set(flywheel.atSetpoint());
+        actualHoodAnglePub.set(actualHoodAngle);
+        actualFlywheelRPMPub.set(actualFlywheelRPM);
+        hoodAtPositionPub.set(hoodAtPosition);
+        flywheelAtSetpointPub.set(flywheelAtSetpoint);
         gridRowPub.set(gridRow);
         gridColPub.set(gridCol);
 
@@ -211,15 +292,36 @@ public class TurretCalibrationCommand extends Command {
         double[] nextTarget = calculateNextTarget(gridRow, gridCol);
         nextTargetXPub.set(nextTarget[0]);
         nextTargetYPub.set(nextTarget[1]);
+
+        if (logger.isOpen()) {
+            logger.logRow(
+                    Timer.getFPGATimestamp(),
+                    1.0,
+                    driverDriving ? 1.0 : 0.0,
+                    feedRequested ? 1.0 : 0.0,
+                    robotX,
+                    robotY,
+                    distance,
+                    gridRow,
+                    gridCol,
+                    inputHoodAngle,
+                    hood.getTargetPositionDegrees(),
+                    actualHoodAngle,
+                    hoodAtPosition ? 1.0 : 0.0,
+                    inputFlywheelRPM,
+                    flywheel.getTargetVelocityRPM(),
+                    actualFlywheelRPM,
+                    flywheelAtSetpoint ? 1.0 : 0.0);
+        }
     }
 
     @Override
     public void end(boolean interrupted) {
         enabledPub.set(false);
-        flywheel.setVelocity(0);
-        hood.setNeutral();
         indexer.stop();
-        intakeActuator.driveExtend();
+        SmartDashboard.putBoolean("Calibration/CommandActive", false);
+        SmartDashboard.putString("Calibration/Status", interrupted ? "Calibration Interrupted" : "Calibration Ended");
+        logger.close();
 
         if (interrupted) {
             statusPub.set("Calibration Interrupted");
@@ -262,7 +364,8 @@ public class TurretCalibrationCommand extends Command {
     }
 
     /**
-     * Calculates the next target position for the calibration grid. Moves right along rows, then down to next row.
+     * Calculates the next target position for the calibration grid. Moves right
+     * along rows, then down to next row.
      *
      * @return Array of [x, y] for next target
      */
@@ -288,5 +391,24 @@ public class TurretCalibrationCommand extends Command {
                 + nextRow * CalibrationConstants.GRID_CELL_SIZE_METERS;
 
         return new double[] { nextX, nextY };
+    }
+
+    private void logStateChange(double inputHoodAngle, double inputFlywheelRPM, boolean feedRequested) {
+        boolean hoodChanged = Double.isNaN(lastLoggedInputHoodAngle)
+                || Math.abs(inputHoodAngle - lastLoggedInputHoodAngle) > 1e-6;
+        boolean flywheelChanged = Double.isNaN(lastLoggedInputFlywheelRPM)
+                || Math.abs(inputFlywheelRPM - lastLoggedInputFlywheelRPM) > 1e-6;
+        boolean feedChanged = feedRequested != lastLoggedFeedActive;
+
+        if (hoodChanged || flywheelChanged || feedChanged) {
+            System.out.printf(
+                    "TurretCalibration: hoodInput=%.2f deg, flywheelInput=%.1f rpm, feed=%s%n",
+                    inputHoodAngle,
+                    inputFlywheelRPM,
+                    feedRequested ? "ON" : "OFF");
+            lastLoggedInputHoodAngle = inputHoodAngle;
+            lastLoggedInputFlywheelRPM = inputFlywheelRPM;
+            lastLoggedFeedActive = feedRequested;
+        }
     }
 }

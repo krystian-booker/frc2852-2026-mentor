@@ -22,12 +22,14 @@ public class DiagnosticLogger {
 
     private PrintWriter writer;
     private boolean errorReported = false;
+    private String currentFilePath = "";
 
     public DiagnosticLogger(String name, String[] columnHeaders) {
         this.name = name;
         this.columnHeaders = columnHeaders;
         this.dashboardKey = "Diagnostics/" + name;
         SmartDashboard.putBoolean(dashboardKey, DiagnosticConstants.TURRET_LOGGING_DEFAULT_ENABLED);
+        SmartDashboard.putString(dashboardKey + "/File", "");
     }
 
     /** Create a new timestamped CSV file and write the header row. */
@@ -42,10 +44,12 @@ public class DiagnosticLogger {
                     .format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             String filename = name + "_" + timestamp + ".csv";
             File file = new File(dir, filename);
+            currentFilePath = file.getAbsolutePath();
 
             writer = new PrintWriter(new BufferedWriter(new FileWriter(file)));
             writer.println(String.join(",", columnHeaders));
             errorReported = false;
+            SmartDashboard.putString(dashboardKey + "/File", currentFilePath);
         } catch (Exception e) {
             reportError("Failed to open log file: " + e.getMessage());
             writer = null;
@@ -86,6 +90,10 @@ public class DiagnosticLogger {
 
     public boolean isOpen() {
         return writer != null;
+    }
+
+    public String getCurrentFilePath() {
+        return currentFilePath;
     }
 
     private void reportError(String message) {

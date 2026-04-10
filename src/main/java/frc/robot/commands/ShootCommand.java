@@ -5,6 +5,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.Indexer;
 import frc.robot.subsystems.Flywheel;
 import frc.robot.subsystems.Hood;
+import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
 import frc.robot.util.TurretAimingCalculator;
@@ -33,6 +34,7 @@ public class ShootCommand extends Command {
     private final Flywheel flywheel;
     private final Hood hood;
     private final Indexer indexer;
+    private final Intake intake;
     private final TurretAimingCalculator aimingCalculator;
     private final IntakeActuator intakeActuator;
 
@@ -46,16 +48,18 @@ public class ShootCommand extends Command {
             Flywheel flywheel,
             Hood hood,
             Indexer indexer,
+            Intake intake,
             Turret turret,
             TurretAimingCalculator aimingCalculator,
             IntakeActuator intakeActuator) {
         this.flywheel = flywheel;
         this.hood = hood;
         this.indexer = indexer;
+        this.intake = intake;
         this.aimingCalculator = aimingCalculator;
         this.intakeActuator = intakeActuator;
 
-        addRequirements(flywheel, hood, indexer, intakeActuator);
+        addRequirements(flywheel, hood, indexer, intake, intakeActuator);
     }
 
     /** Auto constructor - no intake actuator. */
@@ -63,15 +67,17 @@ public class ShootCommand extends Command {
             Flywheel flywheel,
             Hood hood,
             Indexer indexer,
+            Intake intake,
             Turret turret,
             TurretAimingCalculator aimingCalculator) {
         this.flywheel = flywheel;
         this.hood = hood;
         this.indexer = indexer;
+        this.intake = intake;
         this.aimingCalculator = aimingCalculator;
         this.intakeActuator = null;
 
-        addRequirements(flywheel, hood, indexer);
+        addRequirements(flywheel, hood, indexer, intake);
     }
 
     @Override
@@ -97,13 +103,15 @@ public class ShootCommand extends Command {
         boolean hoodReady = hood.atPosition();
         boolean turretReady = true; // turret.isAtPosition();
 
+        // Always run group motors and intake
+        indexer.runIndependentFeed();
+        intake.runIntake();
+
         if (flywheelReady && hoodReady && turretReady) {
             isFeeding = true;
-            indexer.runFeed();
+            indexer.runGroupFeed();
         } else {
-            if (isFeeding) {
-                indexer.stop();
-            }
+            indexer.stopGroup();
             isFeeding = false;
         }
 
@@ -130,7 +138,9 @@ public class ShootCommand extends Command {
     @Override
     public void end(boolean interrupted) {
         flywheel.setVelocity(0);
+        hood.setPosition(0);
         indexer.stop();
+        intake.stop();
         if (intakeActuator != null) {
             intakeActuator.driveExtend();
         }

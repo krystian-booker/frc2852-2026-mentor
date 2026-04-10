@@ -4,6 +4,7 @@ import frc.robot.Constants.IntakeActuatorConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
 import frc.robot.Constants.TurretConstants;
+import frc.robot.Constants.CalibrationConstants;
 import frc.robot.commands.DumbShootCommand;
 import frc.robot.commands.ShootCommand;
 import frc.robot.generated.TunerConstants;
@@ -32,6 +33,9 @@ import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
 
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.networktables.DoubleSubscriber;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.DigitalInput;
@@ -75,15 +79,19 @@ public class RobotContainer {
   // Turret aiming calculator
   private TurretAimingCalculator shooterCalculator = null;
 
-  // QuestNav seeding state
-  private boolean isQuestNavSeeded = false;
-
   // Physical reseed button on the robot
   private final DigitalInput reseedButtonInput = new DigitalInput(QuestNavConstants.RESEED_BUTTON_DIO_PORT);
   private final Trigger reseedButton = new Trigger(() -> !reseedButtonInput.get());
 
   // Auto setup
   private final SendableChooser<Command> autoChooser;
+
+  // Calibration webapp subscribers for test-mode default control
+  private final NetworkTable calibrationTable = NetworkTableInstance.getDefault().getTable("TurretCalibration");
+  private final DoubleSubscriber calibrationHoodAngleSub = calibrationTable.getDoubleTopic("Input/HoodAngle")
+      .subscribe(CalibrationConstants.DEFAULT_HOOD_ANGLE);
+  private final DoubleSubscriber calibrationFlywheelRPMSub = calibrationTable.getDoubleTopic("Input/FlywheelRPM")
+      .subscribe(CalibrationConstants.DEFAULT_FLYWHEEL_RPM);
 
   public RobotContainer() {
     DriverStation.silenceJoystickConnectionWarning(true);
@@ -99,7 +107,7 @@ public class RobotContainer {
 
     // Register named commands before building auto chooser
     NamedCommands.registerCommand("shoot",
-        new ShootCommand(flywheel, hood, indexer, turret, shooterCalculator));
+        new ShootCommand(flywheel, hood, indexer, intake, turret, shooterCalculator));
     NamedCommands.registerCommand("extendIntake", intakeActuator.extend());
     NamedCommands.registerCommand("agitateIntake", intakeActuator.agitate());
     NamedCommands.registerCommand("runIntake", intake.runCommand());
@@ -120,7 +128,8 @@ public class RobotContainer {
         // Manual field-oriented override
         double fieldAngleRad = Math.atan2(-stickX, -stickY);
         double robotHeadingRad = drivetrain.getState().Pose.getRotation().getRadians();
-        double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) % 360.0;
+        double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) %
+            360.0;
         if (turretAngleDeg > 180.0)
           turretAngleDeg -= 360.0;
         else if (turretAngleDeg <= -180.0)
@@ -140,6 +149,18 @@ public class RobotContainer {
         turret.setPosition(turretSetpoint, -chassisOmega);
       }
     }).withName("TurretAimWithOverride"));
+
+    hood.setDefaultCommand(hood.run(() -> {
+      if (DriverStation.isTest()) {
+        hood.setPosition(calibrationHoodAngleSub.get());
+      }
+    }).withName("HoodCalibrationWebappDefault"));
+
+    flywheel.setDefaultCommand(flywheel.run(() -> {
+      if (DriverStation.isTest()) {
+        flywheel.setVelocity(calibrationFlywheelRPMSub.get());
+      }
+    }).withName("FlywheelCalibrationWebappDefault"));
 
     // Configure normal bindings (always available)
     configureDriverBindings();
@@ -166,8 +187,8 @@ public class RobotContainer {
     driverController.leftTrigger(0.5).whileTrue(intake.run(intake::runIntake).finallyDo(intake::stop));
 
     // RIGHT TRIGGER - Shoot (held)
-    driverController.rightTrigger(0.5).whileTrue(
-        new ShootCommand(flywheel, hood, indexer, turret,
+    RobotModeTriggers.teleop().and(driverController.rightTrigger(0.5)).whileTrue(
+        new ShootCommand(flywheel, hood, indexer, intake, turret,
             shooterCalculator,
             intakeActuator)
             .withName("Shoot"));
@@ -195,52 +216,23 @@ public class RobotContainer {
   }
 
   /**
-   * Configure QuestNav seeding. Polls for 2+ visible AprilTags while disabled,
-   * then seeds QuestNav pose. The physical
-   * reseed button (DIO) resets and re-seeds when 2+ tags visible.
+   * Configure QuestNav seeding. Continuously reseeds QuestNav from vision
+   * whenever 2+ AprilTags are visible, in all robot modes.
    */
   private void questNavInitialization() {
-    // Automatic initial seeding: poll every second while disabled until first seed
-    Command initialSeedingCommand = Commands.sequence(
-        Commands.sequence(
-            Commands.waitSeconds(1.0),
-            Commands.runOnce(() -> {
-              if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
-                if (questNav.seedPoseFromVision()) {
-                  isQuestNavSeeded = true;
-                }
-              }
-            })).repeatedly().until(() -> isQuestNavSeeded))
-        .ignoringDisable(true);
-    RobotModeTriggers.disabled().onTrue(initialSeedingCommand);
+    // Continuous reseeding: call seedPoseFromVision() every cycle in all modes.
+    // It internally checks for 2+ tags and a recent valid vision pose;
+    // when conditions aren't met it safely no-ops.
+    questNav.setDefaultCommand(
+        Commands.run(() -> questNav.seedPoseFromVision(), questNav)
+            .ignoringDisable(true)
+            .withName("QuestNavContinuousReseed"));
 
-    // One-time auto-seed while enabled: seed QuestNav if it hasn't been seeded yet
-    // After seeding, QuestNav feeds drivetrain via addVisionMeasurement (soft
-    // correction)
-    // and vision also continues feeding when 2+ tags visible (redundancy)
-    Command enabledAutoSeedCommand = Commands.run(() -> {
-      if (!isQuestNavSeeded && vision.getVisibleTagCount() >= 2) {
-        if (questNav.seedPoseFromVision()) {
-          isQuestNavSeeded = true;
-        }
-      }
-    }).ignoringDisable(false);
-    RobotModeTriggers.teleop().whileTrue(enabledAutoSeedCommand);
-    RobotModeTriggers.autonomous().whileTrue(enabledAutoSeedCommand);
-
-    // Reseed button: only works while disabled so a mid-match press is ignored
-    reseedButton.and(RobotModeTriggers.disabled()).onTrue(Commands.sequence(
-        Commands.runOnce(() -> {
-          isQuestNavSeeded = false;
-          questNav.clearSeeded();
-        }),
-        // Wait for 2+ visible tags, then reseed
-        Commands.waitUntil(() -> vision.getVisibleTagCount() >= 2),
-        Commands.runOnce(() -> {
-          if (questNav.seedPoseFromVision()) {
-            isQuestNavSeeded = true;
-          }
-        })).ignoringDisable(true));
+    // Reseed button: clears seeded state so QuestNav stops feeding drivetrain
+    // until next successful 2+ tag seed.
+    reseedButton.onTrue(
+        Commands.runOnce(() -> questNav.clearSeeded())
+            .ignoringDisable(true));
   }
 
   /**
@@ -249,12 +241,26 @@ public class RobotContainer {
    * mode.
    */
   private void configureTestBindings() {
-    // Toggle calibration mode while in test mode
+    // Calibration session runs for all of test mode. Hood/flywheel continuously
+    // follow webapp setpoints via their default commands, and the right trigger
+    // only feeds game pieces.
     TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
-        hood, flywheel, indexer, intakeActuator,
+        hood, flywheel, indexer,
         () -> drivetrain.getState().Pose, shooterCalculator,
-        drivetrain, this::getDriveRequest, this::isDriverActive);
-    RobotModeTriggers.test().and(driverController.rightBumper()).toggleOnTrue(calibrationCmd);
+        drivetrain, this::getDriveRequest, this::isDriverActive,
+        () -> driverController.getRightTriggerAxis() > 0.5);
+    RobotModeTriggers.test().whileTrue(calibrationCmd);
+    RobotModeTriggers.test().and(driverController.rightTrigger(0.5)).whileTrue(
+        Commands.parallel(
+            indexer.feedCommand(),
+            intake.runCommand())
+            .withName("TurretCalibrationFeed"));
+    RobotModeTriggers.test().onFalse(Commands.runOnce(() -> {
+      hood.setNeutral();
+      flywheel.stop();
+      indexer.stop();
+      intake.stop();
+    }, hood, flywheel, indexer, intake));
 
     // --- Indexer ---
     // RobotModeTriggers.test().and(driverController.povUp()).whileTrue(indexer.feedCommand());
@@ -263,8 +269,13 @@ public class RobotContainer {
 
     // // --- Intake Actuator ---
     // RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
-    // RobotModeTriggers.test().and(driverController.b()).whileTrue(intakeActuator.retract());
+    // RobotModeTriggers.test().and(driverController.povRight()).whileTrue(intakeActuator.retract());
+    // //
     // RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
+    // RobotModeTriggers.test().and(driverController.povDown()).whileTrue(
+    // intakeActuator.run(intakeActuator::driveRetractOpenLoop).finallyDo(intakeActuator::stop));
+    // RobotModeTriggers.test().and(driverController.povLeft()).onTrue(
+    // Commands.runOnce(intakeActuator::resetEncoder, intakeActuator));
 
     // // --- Intake ---
     // RobotModeTriggers.test().and(driverController.leftBumper()).whileTrue(intake.run(intake::runIntake));
@@ -365,9 +376,8 @@ public class RobotContainer {
                 .withTimeout(0.6),
             intakeActuator.extend()),
         drivetrain.applyRequest(() -> stop).withTimeout(0.02),
-        Commands.parallel(new ShootCommand(flywheel, hood, indexer, turret, shooterCalculator),
-            intakeActuator.agitate(),
-            intake.runCommand()));
+        Commands.parallel(new ShootCommand(flywheel, hood, indexer, intake, turret, shooterCalculator),
+            intakeActuator.agitate()));
   }
 
   public Command getAutonomousCommand() {

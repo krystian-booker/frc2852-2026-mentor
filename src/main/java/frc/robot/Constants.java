@@ -81,7 +81,10 @@ public final class Constants {
     public static final double MIN_POSITION_DEGREES = 0.0;
     public static final double MAX_POSITION_DEGREES = 25.0;
 
-    /** Actual shot elevation (degrees from horizontal) when hood is at mechanism position 0. */
+    /**
+     * Actual shot elevation (degrees from horizontal) when hood is at mechanism
+     * position 0.
+     */
     public static final double ACTUAL_ANGLE_AT_ZERO_POSITION = 70.0;
 
     /** Convert mechanism position (0-25) to actual launch elevation (70-45). */
@@ -126,7 +129,7 @@ public final class Constants {
     public static final double CANCODER_OFFSET = -0.359131;
 
     // Forward offset - turret pointing straight
-    public static final double FORWARD_ENCODER_POSITION_DEGREES = 48.5;
+    public static final double FORWARD_ENCODER_POSITION_DEGREES = 42.5;
 
     public static final double GEAR_RATIO = 50.0;
     public static final double ENCODER_MIN_DEGREES = -180.0;
@@ -180,7 +183,7 @@ public final class Constants {
     // SOTM (Shoot on the Move) constants
     public static final boolean SOTM_ENABLED = true;
     public static final double AVERAGE_BALL_SPEED_MPS = 12.0; // Tune empirically
-    public static final double SOTM_MAX_LEAD_METERS = 1.5;    // Safety clamp on virtual target offset
+    public static final double SOTM_MAX_LEAD_METERS = 1.5; // Safety clamp on virtual target offset
 
     // Fallback grids used when no calibration data has been generated
     // Indexed by [row][col] matching CalibrationConstants grid dimensions
@@ -254,7 +257,8 @@ public final class Constants {
     public static final double FIELD_WIDTH_METERS = 8.07;
 
     /**
-     * Grid cell size in meters. Used for both UI display and 2D lookup table generation.
+     * Grid cell size in meters. Used for both UI display and 2D lookup table
+     * generation.
      */
     public static final double GRID_CELL_SIZE_METERS = 0.5;
     public static final double CALIBRATION_START_X = 0.0;
@@ -281,7 +285,8 @@ public final class Constants {
     public static final boolean ENABLED = true;
 
     // Transform from robot center to Quest headset mounting position
-    public static final double QUEST_OFFSET_X_METERS = Units.inchesToMeters(-9.213); // Forward/backward from robot center
+    public static final double QUEST_OFFSET_X_METERS = Units.inchesToMeters(-9.213); // Forward/backward from robot
+                                                                                     // center
     public static final double QUEST_OFFSET_Y_METERS = Units.inchesToMeters(8.250); // Left/right from robot center
     public static final double QUEST_OFFSET_Z_METERS = Units.inchesToMeters(13.303); // Up/down from robot center
     public static final double QUEST_YAW_OFFSET_DEGREES = 180.0; // Rotation around vertical axis
@@ -306,21 +311,24 @@ public final class Constants {
 
     // Left camera
     public static final CameraConfig LEFT_CAMERA = new CameraConfig("LEFT_CAMERA",
-        new Transform3d(new Translation3d(0.0244348, 0.2737866, 0.6747256),
-            new Rotation3d(Math.toRadians(0), Math.toRadians(-30), Math.toRadians(-45))));
+        new Transform3d(
+            new Translation3d(Units.inchesToMeters(20.988), Units.inchesToMeters(17.903), Units.inchesToMeters(5.120)),
+            new Rotation3d(Math.toRadians(40), Math.toRadians(0), Math.toRadians(63))));
 
     // Right camera
     public static final CameraConfig RIGHT_CAMERA = new CameraConfig("RIGHT_CAMERA",
-        new Transform3d(new Translation3d(0.0394716, -0.263906, 0.6851142),
-            new Rotation3d(Math.toRadians(0), Math.toRadians(-30), Math.toRadians(45))));
+        new Transform3d(
+            new Translation3d(Units.inchesToMeters(20.988), Units.inchesToMeters(-11.903), Units.inchesToMeters(5.120)),
+            new Rotation3d(Math.toRadians(-40), Math.toRadians(0), Math.toRadians(-63))));
 
     // Limelight 4
     public static final CameraConfig LIMELIGHT = new CameraConfig("LIMELIGHT",
-        new Transform3d(new Translation3d(Units.inchesToMeters(-10.941), Units.inchesToMeters(8.250), Units.inchesToMeters(15.934)),
+        new Transform3d(
+            new Translation3d(Units.inchesToMeters(-10.941), Units.inchesToMeters(8.250), Units.inchesToMeters(15.934)),
             new Rotation3d(Math.toRadians(0), Math.toRadians(0), Math.toRadians(180))));
 
     // All cameras
-    public static final List<CameraConfig> CAMERAS = List.of();
+    public static final List<CameraConfig> CAMERAS = List.of(LEFT_CAMERA, RIGHT_CAMERA);
 
     // The layout of the AprilTags on the field
     public static final AprilTagFieldLayout kTagLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);

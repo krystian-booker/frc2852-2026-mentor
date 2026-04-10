@@ -104,6 +104,10 @@ public class IntakeActuator extends SubsystemBase {
         motor.set(0);
     }
 
+    public void resetEncoder() {
+        encoder.setPosition(0.0);
+    }
+
     // Imperative agitation API (for use inside execute() loops)
 
     private boolean agitateRetract;

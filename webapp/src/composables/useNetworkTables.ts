@@ -30,8 +30,15 @@ const reconnecting = ref(false)
 // Current NT instance
 let ntInstance = NetworkTables.getInstanceByURI(serverAddress.value)
 
-// Cache for published topics to avoid re-publishing
-let doubleTopics = new Map<string, NetworkTablesTopic<number>>()
+interface DoubleTopicState {
+  ntTopic: NetworkTablesTopic<number>
+  publishPromise: Promise<NetworkTablesTopic<number>> | null
+  writePromise: Promise<void>
+}
+
+// Per-topic writer state so writes are serialized and publisher acquisition
+// cannot race against concurrent retries for the same topic.
+let doubleTopics = new Map<string, DoubleTopicState>()
 
 // Subscription registry to track active subscriptions for reconnection
 interface SubscriptionEntry {
@@ -116,51 +123,6 @@ const resubscribeAll = (): void => {
 // Connection listener cleanup
 let connectionListenerCleanup: (() => void) | null = null
 
-// Auto-reconnect state
-let reconnectAttempts = 0
-let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-const MAX_RECONNECT_DELAY_MS = 30000 // 30 seconds max
-const BASE_RECONNECT_DELAY_MS = 1000 // 1 second base
-
-// Calculate exponential backoff delay
-const getReconnectDelay = (): number => {
-  const delay = Math.min(BASE_RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY_MS)
-  return delay
-}
-
-// Schedule a reconnection attempt
-const scheduleReconnect = () => {
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-  }
-
-  const delay = getReconnectDelay()
-  console.log(`NetworkTables: Scheduling reconnect in ${delay}ms (attempt ${reconnectAttempts + 1})`)
-
-  reconnectTimer = setTimeout(() => {
-    reconnectAttempts++
-    reconnecting.value = true
-
-    // Clear topic caches and create new instance
-    doubleTopics.clear()
-
-    // Cleanup old connection listener
-    if (connectionListenerCleanup) {
-      connectionListenerCleanup()
-      connectionListenerCleanup = null
-    }
-
-    // Create new NT instance with same address
-    ntInstance = NetworkTables.getInstanceByURI(serverAddress.value)
-
-    // Re-subscribe all active subscriptions to new instance
-    resubscribeAll()
-
-    // Setup new connection listener
-    setupConnectionListener()
-  }, delay)
-}
-
 // Setup connection listener
 const setupConnectionListener = () => {
   if (connectionListenerCleanup) {
@@ -168,21 +130,17 @@ const setupConnectionListener = () => {
   }
   connectionListenerCleanup = ntInstance.addRobotConnectionListener((isConnected) => {
     const wasConnected = connected.value
+    if (isConnected === wasConnected) {
+      return
+    }
     connected.value = isConnected
 
     if (isConnected) {
-      // Successfully connected - reset reconnect state
       reconnecting.value = false
-      reconnectAttempts = 0
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer)
-        reconnectTimer = null
-      }
       console.log('NetworkTables: Connected')
     } else if (wasConnected) {
-      // Lost connection - schedule reconnect
-      console.log('NetworkTables: Connection lost, scheduling reconnect')
-      scheduleReconnect()
+      reconnecting.value = true
+      console.log('NetworkTables: Connection lost')
     }
   }, true)
 }
@@ -200,13 +158,6 @@ export function reconnect(address: string): void {
   // Store the new address
   serverAddress.value = address
   storeAddress(address)
-
-  // Reset auto-reconnect state
-  reconnectAttempts = 0
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-    reconnectTimer = null
-  }
 
   // Clear topic caches
   doubleTopics.clear()
@@ -307,16 +258,87 @@ export function useNTString(topic: string, defaultValue: string = ''): Ref<strin
   return value
 }
 
-async function getOrCreateDoubleTopic(topic: string): Promise<NetworkTablesTopic<number>> {
-  if (!doubleTopics.has(topic)) {
-    const ntTopic = ntInstance.createTopic<number>(topic, NetworkTablesTypeInfos.kDouble)
-    await ntTopic.publish()
-    doubleTopics.set(topic, ntTopic)
+function getOrCreateDoubleTopicState(topic: string): DoubleTopicState {
+  const existingState = doubleTopics.get(topic)
+  if (existingState) {
+    return existingState
   }
-  return doubleTopics.get(topic)!
+
+  const ntTopic = ntInstance.createTopic<number>(topic, NetworkTablesTypeInfos.kDouble)
+  const state: DoubleTopicState = {
+    ntTopic,
+    publishPromise: null,
+    writePromise: Promise.resolve()
+  }
+  doubleTopics.set(topic, state)
+  return state
+}
+
+async function waitForPublisher(topic: NetworkTablesTopic<number>, timeoutMs: number = 500): Promise<boolean> {
+  if (topic.publisher) {
+    return true
+  }
+
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 25))
+    if (topic.publisher) {
+      return true
+    }
+  }
+
+  return topic.publisher
+}
+
+async function ensureDoubleTopicPublished(state: DoubleTopicState): Promise<NetworkTablesTopic<number>> {
+  if (state.ntTopic.publisher) {
+    return state.ntTopic
+  }
+
+  if (!state.publishPromise) {
+    state.publishPromise = (async () => {
+      try {
+        try {
+          await state.ntTopic.publish()
+        } catch (error) {
+          // ntcore-ts-client can time out waiting for an announce even when the
+          // topic eventually becomes the publisher. Give the announce path a
+          // short window to land before treating this as a real failure.
+          console.warn(`NetworkTables: publish wait failed for ${state.ntTopic.name}`, error)
+        }
+
+        if (!(await waitForPublisher(state.ntTopic))) {
+          throw new Error(`Topic ${state.ntTopic.name} did not acquire publisher ownership`)
+        }
+
+        return state.ntTopic
+      } finally {
+        state.publishPromise = null
+      }
+    })()
+  }
+
+  return state.publishPromise
 }
 
 export async function publishDouble(topic: string, value: number): Promise<void> {
-  const ntTopic = await getOrCreateDoubleTopic(topic)
-  ntTopic.setValue(value)
+  const state = getOrCreateDoubleTopicState(topic)
+
+  state.writePromise = state.writePromise
+    .catch(() => {
+      // Preserve the write queue after an earlier failed attempt.
+    })
+    .then(async () => {
+      let ntTopic = await ensureDoubleTopicPublished(state)
+
+      try {
+        ntTopic.setValue(value)
+      } catch (error) {
+        console.warn(`NetworkTables: setValue failed for ${topic}, retrying publish once`, error)
+        ntTopic = await ensureDoubleTopicPublished(state)
+        ntTopic.setValue(value)
+      }
+    })
+
+  return state.writePromise
 }

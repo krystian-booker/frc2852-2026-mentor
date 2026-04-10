@@ -5,28 +5,21 @@
     "data": {
       "commands": [
         {
-          "type": "parallel",
+          "type": "named",
           "data": {
-            "commands": [
-              {
-                "type": "named",
-                "data": {
-                  "name": "extendIntake"
-                }
-              },
-              {
-                "type": "path",
-                "data": {
-                  "pathName": "ToOutpost"
-                }
-              }
-            ]
+            "name": "extendIntake"
           }
         },
         {
-          "type": "wait",
+          "type": "path",
           "data": {
-            "waitTime": 4.0
+            "pathName": "1-1"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "1-2"
           }
         },
         {
