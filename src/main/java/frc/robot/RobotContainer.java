@@ -14,6 +14,8 @@ import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
+import static frc.robot.Constants.Vision.PIPELINE_BLUE;
+import static frc.robot.Constants.Vision.PIPELINE_RED;
 import frc.robot.subsystems.Vision;
 import frc.robot.util.DiagnosticLogger;
 import frc.robot.util.Telemetry;
@@ -189,6 +191,16 @@ public class RobotContainer {
     RobotModeTriggers.teleop().onTrue(Commands.runOnce(() -> shotLogger.open()));
     RobotModeTriggers.autonomous().onTrue(Commands.runOnce(() -> shotLogger.open()));
     RobotModeTriggers.disabled().onTrue(Commands.runOnce(() -> shotLogger.close()));
+
+
+
+    // Switch both cameras to Red pipeline when teleop starts (regardless of
+    // alliance)
+    RobotModeTriggers.teleop().onTrue(
+        Commands.runOnce(() -> {
+          vision.setPipelineIndex("LEFT_CAMERA", PIPELINE_RED);
+          vision.setPipelineIndex("RIGHT_CAMERA", PIPELINE_RED);
+        }));
 
     // Auto-extend intake actuator at the start of autonomous and teleop
     RobotModeTriggers.teleop().onTrue(intakeActuator.extend());
@@ -394,6 +406,18 @@ public class RobotContainer {
         drivetrain.applyRequest(() -> stop).withTimeout(0.02),
         Commands.parallel(new ShootCommand(flywheel, hood, indexer, intake, turret, shooterCalculator, shotLogger),
             intakeActuator.agitate()));
+  }
+
+  /**
+   * Sets vision pipelines based on alliance. Called every cycle while disabled from Robot.disabledPeriodic().
+   */
+  public void updateDisabledPipelines() {
+    if (DriverStation.getAlliance().isPresent()) {
+      boolean isBlue = DriverStation.getAlliance().get() == DriverStation.Alliance.Blue;
+      int pipeline = isBlue ? PIPELINE_BLUE : PIPELINE_RED;
+      vision.setPipelineIndex("LEFT_CAMERA", pipeline);
+      vision.setPipelineIndex("RIGHT_CAMERA", pipeline);
+    }
   }
 
   public Command getAutonomousCommand() {

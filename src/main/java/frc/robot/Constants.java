@@ -126,7 +126,7 @@ public final class Constants {
   public static class TurretConstants {
 
     // Turret at physical zero
-    public static final double CANCODER_OFFSET = -0.404541;
+    public static final double CANCODER_OFFSET = -0.334961;
 
     // Forward offset - turret pointing straight
     public static final double FORWARD_ENCODER_POSITION_DEGREES = 0;
@@ -335,6 +335,10 @@ public final class Constants {
 
     // Pose validity timeout - max age in seconds for a pose to be considered valid
     public static final double POSE_VALIDITY_TIMEOUT = 0.5;
+
+    // Pipeline indices (must match PhotonVision UI configuration)
+    public static final int PIPELINE_BLUE = 0;
+    public static final int PIPELINE_RED = 1;
 
   }
 

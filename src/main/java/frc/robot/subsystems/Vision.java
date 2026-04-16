@@ -9,8 +9,10 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Robot;
 import frc.robot.Constants.Vision.CameraConfig;
@@ -182,8 +184,10 @@ public class Vision extends SubsystemBase {
                 getSimDebugField().getObject("VisionEstimation").setPose(latestEstimate);
             }
 
-            // Feed to drivetrain if enabled and we see multiple tags for better accuracy
-            if (feedingEnabled && bestNumTags >= 2) {
+            // Feed to drivetrain if enabled; allow 1 tag while disabled for initial seeding,
+            // require 2+ tags when enabled for better accuracy
+            int minTags = DriverStation.isDisabled() ? 1 : 2;
+            if (feedingEnabled && bestNumTags >= minTags) {
                 estConsumer.accept(latestEstimate, latestEstimateTimestamp, curStdDevs);
             }
         } else if (Robot.isSimulation()) {
@@ -355,6 +359,24 @@ public class Vision extends SubsystemBase {
      */
     public boolean isFeedingEnabled() {
         return feedingEnabled;
+    }
+
+    /**
+     * Sets the pipeline index on a specific camera by name.
+     *
+     * @param cameraName    The name of the camera (e.g. "LEFT_CAMERA")
+     * @param pipelineIndex The pipeline index to activate
+     */
+    public void setPipelineIndex(String cameraName, int pipelineIndex) {
+        for (CameraInstance cam : cameras) {
+            if (cam.name.equals(cameraName)) {
+                if (cam.camera.getPipelineIndex() != pipelineIndex) {
+                    cam.camera.setPipelineIndex(pipelineIndex);
+                    SmartDashboard.putNumber("Vision/" + cameraName + "/PipelineIndex", pipelineIndex);
+                }
+                return;
+            }
+        }
     }
 
     /**

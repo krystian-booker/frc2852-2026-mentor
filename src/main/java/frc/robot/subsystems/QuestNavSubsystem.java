@@ -9,6 +9,7 @@ import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -124,7 +125,8 @@ public class QuestNavSubsystem extends SubsystemBase {
      * @return true if seeding was successful (valid vision pose with 2+ tags)
      */
     public boolean seedPoseFromVision() {
-        if (vision.getVisibleTagCount() >= 2 && vision.hasRecentValidPose(0.5)) {
+        int minTags = DriverStation.isDisabled() ? 1 : 2;
+        if (vision.getVisibleTagCount() >= minTags && vision.hasRecentValidPose(0.5)) {
             var visionPose = vision.getLatestPose2d();
             if (visionPose.isPresent()) {
                 resetPose(visionPose.get());
