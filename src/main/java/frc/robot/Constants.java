@@ -126,7 +126,7 @@ public final class Constants {
   public static class TurretConstants {
 
     // Turret at physical zero
-    public static final double CANCODER_OFFSET = -0.404541;
+    public static final double CANCODER_OFFSET = -0.334961;
 
     // Forward offset - turret pointing straight
     public static final double FORWARD_ENCODER_POSITION_DEGREES = 0;

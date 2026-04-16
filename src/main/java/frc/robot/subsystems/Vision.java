@@ -9,6 +9,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -182,8 +183,9 @@ public class Vision extends SubsystemBase {
                 getSimDebugField().getObject("VisionEstimation").setPose(latestEstimate);
             }
 
-            // Feed to drivetrain if enabled and we see multiple tags for better accuracy
-            if (feedingEnabled && bestNumTags >= 2) {
+            // Feed to drivetrain - require 1 tag when disabled (pre-match seeding), 2 when enabled
+            int requiredTags = DriverStation.isDisabled() ? 1 : 2;
+            if (feedingEnabled && bestNumTags >= requiredTags) {
                 estConsumer.accept(latestEstimate, latestEstimateTimestamp, curStdDevs);
             }
         } else if (Robot.isSimulation()) {
