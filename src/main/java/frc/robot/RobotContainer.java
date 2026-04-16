@@ -15,8 +15,8 @@ import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
 import frc.robot.subsystems.Vision;
+import frc.robot.util.DiagnosticLogger;
 import frc.robot.util.Telemetry;
-import frc.robot.commands.TurretCalibrationCommand;
 import frc.robot.util.TurretAimingCalculator;
 
 import edu.wpi.first.wpilibj2.command.Command;
@@ -79,6 +79,13 @@ public class RobotContainer {
   // Turret aiming calculator
   private TurretAimingCalculator shooterCalculator = null;
 
+  // Shared shot logger - one CSV per enabled session
+  private static final String[] SHOT_LOG_COLUMNS = {
+      "MatchTime", "RobotX", "RobotY", "TargetRPM", "ActualRPM",
+      "TargetHoodAngle", "ActualHoodAngle", "Feeding"
+  };
+  private final DiagnosticLogger shotLogger = new DiagnosticLogger("Shoot", SHOT_LOG_COLUMNS);
+
   // Physical reseed button on the robot
   private final DigitalInput reseedButtonInput = new DigitalInput(QuestNavConstants.RESEED_BUTTON_DIO_PORT);
   private final Trigger reseedButton = new Trigger(() -> !reseedButtonInput.get());
@@ -107,7 +114,7 @@ public class RobotContainer {
 
     // Register named commands before building auto chooser
     NamedCommands.registerCommand("shoot",
-        new ShootCommand(flywheel, hood, indexer, intake, turret, shooterCalculator));
+        new ShootCommand(flywheel, hood, indexer, intake, turret, shooterCalculator, shotLogger));
     NamedCommands.registerCommand("extendIntake", intakeActuator.extend());
     NamedCommands.registerCommand("agitateIntake", intakeActuator.agitate());
     NamedCommands.registerCommand("runIntake", intake.runCommand());
@@ -175,10 +182,14 @@ public class RobotContainer {
 
     // Telemetry setup
     drivetrain.registerTelemetry(logger::telemeterize);
-
   }
 
   private void configureDriverBindings() {
+    // Open shot logger when robot enters any enabled mode, close on disable
+    RobotModeTriggers.teleop().onTrue(Commands.runOnce(() -> shotLogger.open()));
+    RobotModeTriggers.autonomous().onTrue(Commands.runOnce(() -> shotLogger.open()));
+    RobotModeTriggers.disabled().onTrue(Commands.runOnce(() -> shotLogger.close()));
+
     // Auto-extend intake actuator at the start of autonomous and teleop
     RobotModeTriggers.teleop().onTrue(intakeActuator.extend());
 
@@ -190,16 +201,21 @@ public class RobotContainer {
     RobotModeTriggers.teleop().and(driverController.rightTrigger(0.5)).whileTrue(
         new ShootCommand(flywheel, hood, indexer, intake, turret,
             shooterCalculator,
-            intakeActuator)
+            intakeActuator,
+            shotLogger)
             .withName("Shoot"));
 
     // LEFT BUMPER - Retract intake actuator (held)
-    driverController.leftBumper().whileTrue(intakeActuator.retract());
+    operatorController.a().onTrue(intakeActuator.retract());
+    operatorController.b().onTrue(intakeActuator.extend());
+    operatorController.leftTrigger(0.5).whileTrue(
+        Commands.parallel(indexer.runReverseCommand(), intake.runOutCommand()));
 
-    // RIGHT BUMPER - Dumb Shoot (held)
-    driverController.rightBumper().whileTrue(
-        new DumbShootCommand(flywheel, hood, indexer, intakeActuator)
-            .withName("DumbShoot"));
+    // RIGHT BUMPER - Shoot without retracting intake actuator (held)
+    RobotModeTriggers.teleop().and(driverController.rightBumper()).whileTrue(
+        new ShootCommand(flywheel, hood, indexer, intake, turret,
+            shooterCalculator, shotLogger)
+            .withName("ShootNoRetract"));
 
     // DEFAULT COMMAND - Field-Centric Drive
     drivetrain.setDefaultCommand(
@@ -244,23 +260,23 @@ public class RobotContainer {
     // Calibration session runs for all of test mode. Hood/flywheel continuously
     // follow webapp setpoints via their default commands, and the right trigger
     // only feeds game pieces.
-    TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
-        hood, flywheel, indexer,
-        () -> drivetrain.getState().Pose, shooterCalculator,
-        drivetrain, this::getDriveRequest, this::isDriverActive,
-        () -> driverController.getRightTriggerAxis() > 0.5);
-    RobotModeTriggers.test().whileTrue(calibrationCmd);
-    RobotModeTriggers.test().and(driverController.rightTrigger(0.5)).whileTrue(
-        Commands.parallel(
-            indexer.feedCommand(),
-            intake.runCommand())
-            .withName("TurretCalibrationFeed"));
-    RobotModeTriggers.test().onFalse(Commands.runOnce(() -> {
-      hood.setNeutral();
-      flywheel.stop();
-      indexer.stop();
-      intake.stop();
-    }, hood, flywheel, indexer, intake));
+    // TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
+    // hood, flywheel, indexer,
+    // () -> drivetrain.getState().Pose, shooterCalculator,
+    // drivetrain, this::getDriveRequest, this::isDriverActive,
+    // () -> driverController.getRightTriggerAxis() > 0.5);
+    // RobotModeTriggers.test().whileTrue(calibrationCmd);
+    // RobotModeTriggers.test().and(driverController.rightTrigger(0.5)).whileTrue(
+    // Commands.parallel(
+    // indexer.feedCommand(),
+    // intake.runCommand())
+    // .withName("TurretCalibrationFeed"));
+    // RobotModeTriggers.test().onFalse(Commands.runOnce(() -> {
+    // hood.setNeutral();
+    // flywheel.stop();
+    // indexer.stop();
+    // intake.stop();
+    // }, hood, flywheel, indexer, intake));
 
     // --- Indexer ---
     // RobotModeTriggers.test().and(driverController.povUp()).whileTrue(indexer.feedCommand());
@@ -268,8 +284,8 @@ public class RobotContainer {
     // indexer));
 
     // // --- Intake Actuator ---
-    // RobotModeTriggers.test().and(driverController.a()).whileTrue(intakeActuator.extend());
-    // RobotModeTriggers.test().and(driverController.povRight()).whileTrue(intakeActuator.retract());
+    // RobotModeTriggers.test().and(driverController.a()).onTrue(intakeActuator.extend());
+    // RobotModeTriggers.test().and(driverController.b()).onTrue(intakeActuator.retract());
     // //
     // RobotModeTriggers.test().and(driverController.x()).whileTrue(intakeActuator.agitate());
     // RobotModeTriggers.test().and(driverController.povDown()).whileTrue(
@@ -289,12 +305,12 @@ public class RobotContainer {
     // driverController.b()
     // .whileTrue(turret.run(turret::testDirectionNegative).finallyDo(() ->
     // turret.stop()));
-    // RobotModeTriggers.test().and(driverController.x())
-    // .onTrue(Commands.runOnce(() -> turret.setPosition(0)));
-    // RobotModeTriggers.test().and(driverController.y())
-    // .onTrue(Commands.runOnce(() -> turret.nudge(-120)));
-    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop,
-    // turret));
+    RobotModeTriggers.test().and(driverController.x())
+        .onTrue(Commands.runOnce(() -> turret.setPosition(0)));
+    RobotModeTriggers.test().and(driverController.y())
+        .onTrue(Commands.runOnce(() -> turret.nudge(-180)));
+    RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop,
+        turret));
 
     // --- Turret Field Hold ---
     // RobotModeTriggers.test().and(driverController.rightBumper())
@@ -376,7 +392,7 @@ public class RobotContainer {
                 .withTimeout(0.6),
             intakeActuator.extend()),
         drivetrain.applyRequest(() -> stop).withTimeout(0.02),
-        Commands.parallel(new ShootCommand(flywheel, hood, indexer, intake, turret, shooterCalculator),
+        Commands.parallel(new ShootCommand(flywheel, hood, indexer, intake, turret, shooterCalculator, shotLogger),
             intakeActuator.agitate()));
   }
 

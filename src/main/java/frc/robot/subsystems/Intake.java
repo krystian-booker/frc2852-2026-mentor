@@ -104,6 +104,12 @@ public class Intake extends SubsystemBase {
                 .withName("Intake.run");
     }
 
+    public Command runOutCommand() {
+        return run(this::runOuttake)
+                .finallyDo(this::stop)
+                .withName("IntakeOut.run");
+    }
+
     @Override
     public void periodic() {
         // SmartDashboard.putNumber("Intake/Velocity RPS", getVelocityRPS());

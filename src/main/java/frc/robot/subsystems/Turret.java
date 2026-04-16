@@ -106,10 +106,9 @@ public class Turret extends SubsystemBase {
         config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
 
-        // Use FusedCANcoder for absolute position feedback
-        config.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.SyncCANcoder;
+        // Use CANcoder only for position feedback — motor encoder is ignored
+        config.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.RemoteCANcoder;
         config.Feedback.FeedbackRemoteSensorID = CANIds.TURRET_CANCODER;
-        config.Feedback.RotorToSensorRatio = TurretConstants.GEAR_RATIO;
         config.Feedback.SensorToMechanismRatio = 1.0; // CANcoder is 1:1 with turret
 
         // PID Gains

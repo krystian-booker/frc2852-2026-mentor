@@ -126,10 +126,10 @@ public final class Constants {
   public static class TurretConstants {
 
     // Turret at physical zero
-    public static final double CANCODER_OFFSET = -0.359131;
+    public static final double CANCODER_OFFSET = -0.404541;
 
     // Forward offset - turret pointing straight
-    public static final double FORWARD_ENCODER_POSITION_DEGREES = 42.5;
+    public static final double FORWARD_ENCODER_POSITION_DEGREES = 0;
 
     public static final double GEAR_RATIO = 50.0;
     public static final double ENCODER_MIN_DEGREES = -180.0;
@@ -150,10 +150,10 @@ public final class Constants {
     public static final double MOTION_MAGIC_ACCELERATION = 25.0000;
     public static final double MOTION_MAGIC_JERK = 200.0000;
 
-    public static final double SUPPLY_CURRENT_LIMIT = 60.0;
-    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 40.0;
+    public static final double SUPPLY_CURRENT_LIMIT = 40.0;
+    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 20.0;
     public static final double SUPPLY_CURRENT_LOWER_TIME = 0.5;
-    public static final double STATOR_CURRENT_LIMIT = 60.0;
+    public static final double STATOR_CURRENT_LIMIT = 40.0;
 
     public static final double POSITION_TOLERANCE_DEGREES = 1.0;
   }
@@ -203,8 +203,8 @@ public final class Constants {
   }
 
   public static class IntakeActuatorConstants {
-    public static final int SMART_CURRENT_LIMIT = 40;
-    public static final int SECONDARY_CURRENT_LIMIT = 50;
+    public static final int SMART_CURRENT_LIMIT = 60;
+    public static final int SECONDARY_CURRENT_LIMIT = 80;
     public static final double EXTEND_DUTY_CYCLE = 1.0;
     public static final double RETRACT_DUTY_CYCLE = -1.0;
 
@@ -240,15 +240,10 @@ public final class Constants {
     public static final double GEAR_RATIO = 1.0;
     public static final double FEED_SPEED = 1.0;
     public static final double REVERSE_SPEED = -1.0;
-    public static final int SMART_CURRENT_LIMIT = 60;
-    public static final int SECONDARY_CURRENT_LIMIT = 80;
-    public static final int GROUP_SMART_CURRENT_LIMIT = 40;
-    public static final int GROUP_SECONDARY_CURRENT_LIMIT = 60;
-
-    // Jam detection
-    public static final double JAM_CURRENT_THRESHOLD_AMPS = 55;
-    public static final double JAM_REVERSE_DURATION_SECONDS = 0.5;
-    public static final double JAM_COOLDOWN_SECONDS = 1.0;
+    public static final int SMART_CURRENT_LIMIT = 80;
+    public static final int SECONDARY_CURRENT_LIMIT = 120;
+    public static final int GROUP_SMART_CURRENT_LIMIT = 80;
+    public static final int GROUP_SECONDARY_CURRENT_LIMIT = 120;
   }
 
   public static class CalibrationConstants {

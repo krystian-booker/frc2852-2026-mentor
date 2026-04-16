@@ -86,6 +86,14 @@ public class IntakeActuator extends SubsystemBase {
         motor.set(IntakeActuatorConstants.RETRACT_DUTY_CYCLE);
     }
 
+    public void driveRetractHalfSpeed() {
+        motor.set(-0.1);
+    }
+
+    public boolean isAtAgitatePosition() {
+        return encoder.getPosition() <= IntakeActuatorConstants.RETRACTED_POSITION_AG;
+    }
+
     public boolean isExtended() {
         return Math.abs(encoder.getPosition()
                 - IntakeActuatorConstants.EXTENDED_POSITION) <= IntakeActuatorConstants.POSITION_TOLERANCE_ROTATIONS;
@@ -138,12 +146,16 @@ public class IntakeActuator extends SubsystemBase {
     // Commands
 
     public Command extend() {
-        return runOnce(this::driveExtend)
+        return run(this::driveExtend)
+                .until(this::isExtended)
+                .finallyDo(this::stop)
                 .withName("IntakeActuator.extend");
     }
 
     public Command retract() {
-        return runOnce(this::driveRetract)
+        return run(this::driveRetract)
+                .until(this::isRetracted)
+                .finallyDo(this::stop)
                 .withName("IntakeActuator.retract");
     }
 
@@ -157,8 +169,8 @@ public class IntakeActuator extends SubsystemBase {
     public Command stepTest() {
         return run(() -> motor.set(SmartDashboard.getNumber("IntakeActuator/StepTestDutyCycle",
                 IntakeActuatorConstants.STEP_TEST_DUTY_CYCLE)))
-                        .finallyDo(this::stop)
-                        .withName("IntakeActuator.stepTest");
+                .finallyDo(this::stop)
+                .withName("IntakeActuator.stepTest");
     }
 
     @Override

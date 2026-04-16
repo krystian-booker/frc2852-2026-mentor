@@ -159,6 +159,12 @@ public class Indexer extends SubsystemBase {
         groupLeaderMotor.set(IndexerConstants.REVERSE_SPEED);
     }
 
+    public Command runReverseCommand() {
+        return run(this::runReverse)
+                .finallyDo(this::stop)
+                .withName("indexerReverse.run");
+    }
+
     /**
      * Stop all indexer motors.
      */

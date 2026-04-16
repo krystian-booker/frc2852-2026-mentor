@@ -58,6 +58,11 @@ public class TurretAimingCalculator {
         this.speedsSupplier = speedsSupplier;
     }
 
+    /** Returns the current robot pose from the pose supplier. */
+    public Pose2d getRobotPose() {
+        return poseSupplier.get();
+    }
+
     /**
      * Calculates the turret angle needed to aim at the alliance-specific target.
      *

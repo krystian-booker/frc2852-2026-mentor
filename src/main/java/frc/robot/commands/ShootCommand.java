@@ -1,5 +1,7 @@
 package frc.robot.commands;
 
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.Indexer;
@@ -8,6 +10,7 @@ import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.IntakeActuator;
 import frc.robot.subsystems.Turret;
+import frc.robot.util.DiagnosticLogger;
 import frc.robot.util.TurretAimingCalculator;
 
 /**
@@ -37,9 +40,9 @@ public class ShootCommand extends Command {
     private final Intake intake;
     private final TurretAimingCalculator aimingCalculator;
     private final IntakeActuator intakeActuator;
+    private final DiagnosticLogger shotLogger;
 
     private boolean isFeeding;
-    private boolean waitingForExtend;
 
     /**
      * Teleop constructor - includes intake actuator.
@@ -51,13 +54,15 @@ public class ShootCommand extends Command {
             Intake intake,
             Turret turret,
             TurretAimingCalculator aimingCalculator,
-            IntakeActuator intakeActuator) {
+            IntakeActuator intakeActuator,
+            DiagnosticLogger shotLogger) {
         this.flywheel = flywheel;
         this.hood = hood;
         this.indexer = indexer;
         this.intake = intake;
         this.aimingCalculator = aimingCalculator;
         this.intakeActuator = intakeActuator;
+        this.shotLogger = shotLogger;
 
         addRequirements(flywheel, hood, indexer, intake, intakeActuator);
     }
@@ -69,24 +74,23 @@ public class ShootCommand extends Command {
             Indexer indexer,
             Intake intake,
             Turret turret,
-            TurretAimingCalculator aimingCalculator) {
+            TurretAimingCalculator aimingCalculator,
+            DiagnosticLogger shotLogger) {
         this.flywheel = flywheel;
         this.hood = hood;
         this.indexer = indexer;
         this.intake = intake;
         this.aimingCalculator = aimingCalculator;
         this.intakeActuator = null;
+        this.shotLogger = shotLogger;
 
         addRequirements(flywheel, hood, indexer, intake);
     }
 
+
     @Override
     public void initialize() {
         isFeeding = false;
-        waitingForExtend = false;
-        if (intakeActuator != null) {
-            intakeActuator.resetAgitate();
-        }
     }
 
     @Override
@@ -99,8 +103,8 @@ public class ShootCommand extends Command {
         hood.setPosition(targetHoodAngle);
 
         // Check if all conditions are met to begin feeding
-        boolean flywheelReady = flywheel.atSetpoint();
-        boolean hoodReady = hood.atPosition();
+        boolean flywheelReady = true; // flywheel.atSetpoint();
+        boolean hoodReady = true;// hood.atPosition();
         boolean turretReady = true; // turret.isAtPosition();
 
         // Always run group motors and intake
@@ -115,15 +119,12 @@ public class ShootCommand extends Command {
             isFeeding = false;
         }
 
-        // Intake actuator control (teleop only)
+        // Intake actuator control (teleop only) - retract to ag position at half speed
         if (intakeActuator != null) {
-            if (waitingForExtend) {
-                intakeActuator.driveExtend();
-                if (intakeActuator.isExtended()) {
-                    waitingForExtend = false;
-                }
+            if (!intakeActuator.isAtAgitatePosition()) {
+                intakeActuator.driveRetractHalfSpeed();
             } else {
-                intakeActuator.runAgitate();
+                intakeActuator.stop();
             }
         }
 
@@ -133,6 +134,18 @@ public class ShootCommand extends Command {
         SmartDashboard.putBoolean("Shoot/FlywheelReady", flywheelReady);
         SmartDashboard.putBoolean("Shoot/HoodReady", hoodReady);
         SmartDashboard.putBoolean("Shoot/Feeding", isFeeding);
+
+        // Shot logging
+        Pose2d pose = aimingCalculator.getRobotPose();
+        shotLogger.logRow(
+                DriverStation.getMatchTime(),
+                pose != null ? pose.getX() : 0.0,
+                pose != null ? pose.getY() : 0.0,
+                targetRPM,
+                flywheel.getCurrentVelocityRPM(),
+                targetHoodAngle,
+                hood.getCurrentPositionDegrees(),
+                isFeeding ? 1.0 : 0.0);
     }
 
     @Override
