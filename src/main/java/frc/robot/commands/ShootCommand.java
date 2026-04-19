@@ -43,6 +43,7 @@ public class ShootCommand extends Command {
     private final DiagnosticLogger shotLogger;
 
     private boolean isFeeding;
+    private boolean waitingForExtend;
 
     /**
      * Teleop constructor - includes intake actuator.
@@ -87,10 +88,13 @@ public class ShootCommand extends Command {
         addRequirements(flywheel, hood, indexer, intake);
     }
 
-
     @Override
     public void initialize() {
         isFeeding = false;
+        waitingForExtend = false;
+        if (intakeActuator != null) {
+            intakeActuator.resetAgitate();
+        }
     }
 
     @Override
@@ -102,37 +106,32 @@ public class ShootCommand extends Command {
         flywheel.setVelocity(targetRPM);
         hood.setPosition(targetHoodAngle);
 
-        // Check if all conditions are met to begin feeding
-        boolean flywheelReady = true; // flywheel.atSetpoint();
-        boolean hoodReady = true;// hood.atPosition();
-        boolean turretReady = true; // turret.isAtPosition();
-
-        // Always run group motors and intake
-        indexer.runIndependentFeed();
-        intake.runIntake();
-
-        if (flywheelReady && hoodReady && turretReady) {
+        if (!isFeeding && flywheel.atSetpoint()) {
             isFeeding = true;
-            indexer.runGroupFeed();
-        } else {
-            indexer.stopGroup();
-            isFeeding = false;
         }
 
-        // Intake actuator control (teleop only) - retract to ag position at half speed
+        // Always run group motors and intake
+        if (isFeeding) {
+            indexer.runIndependentFeed();
+            indexer.runGroupFeed();
+            intake.runIntake();
+        }
+
+        // Intake actuator control (teleop only)
         if (intakeActuator != null) {
-            if (!intakeActuator.isAtAgitatePosition()) {
-                intakeActuator.driveRetractHalfSpeed();
+            if (waitingForExtend) {
+                intakeActuator.driveExtend();
+                if (intakeActuator.isExtended()) {
+                    waitingForExtend = false;
+                }
             } else {
-                intakeActuator.stop();
+                intakeActuator.runAgitate();
             }
         }
 
         // Telemetry
         SmartDashboard.putNumber("Shoot/TargetRPM", targetRPM);
         SmartDashboard.putNumber("Shoot/TargetHoodAngle", targetHoodAngle);
-        SmartDashboard.putBoolean("Shoot/FlywheelReady", flywheelReady);
-        SmartDashboard.putBoolean("Shoot/HoodReady", hoodReady);
         SmartDashboard.putBoolean("Shoot/Feeding", isFeeding);
 
         // Shot logging

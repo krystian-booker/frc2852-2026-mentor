@@ -126,7 +126,7 @@ public final class Constants {
   public static class TurretConstants {
 
     // Turret at physical zero
-    public static final double CANCODER_OFFSET = -0.334961;
+    public static final double CANCODER_OFFSET = 0.005615;
 
     // Forward offset - turret pointing straight
     public static final double FORWARD_ENCODER_POSITION_DEGREES = 0;
@@ -142,7 +142,7 @@ public final class Constants {
     public static final double V = 4.8862;
     public static final double A = 0.1000;
     public static final double G = 0.0;
-    public static final double P = 80.0000;
+    public static final double P = 100.0000;
     public static final double I = 1.0;
     public static final double D = 1.5;
 
@@ -150,10 +150,10 @@ public final class Constants {
     public static final double MOTION_MAGIC_ACCELERATION = 25.0000;
     public static final double MOTION_MAGIC_JERK = 200.0000;
 
-    public static final double SUPPLY_CURRENT_LIMIT = 40.0;
-    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 20.0;
+    public static final double SUPPLY_CURRENT_LIMIT = 50.0;
+    public static final double SUPPLY_CURRENT_LOWER_LIMIT = 40.0;
     public static final double SUPPLY_CURRENT_LOWER_TIME = 0.5;
-    public static final double STATOR_CURRENT_LIMIT = 40.0;
+    public static final double STATOR_CURRENT_LIMIT = 50.0;
 
     public static final double POSITION_TOLERANCE_DEGREES = 1.0;
   }

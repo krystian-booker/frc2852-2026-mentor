@@ -305,12 +305,12 @@ public class RobotContainer {
     // driverController.b()
     // .whileTrue(turret.run(turret::testDirectionNegative).finallyDo(() ->
     // turret.stop()));
-    RobotModeTriggers.test().and(driverController.x())
-        .onTrue(Commands.runOnce(() -> turret.setPosition(0)));
-    RobotModeTriggers.test().and(driverController.y())
-        .onTrue(Commands.runOnce(() -> turret.nudge(-180)));
-    RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop,
-        turret));
+    // RobotModeTriggers.test().and(driverController.x())
+    // .onTrue(Commands.runOnce(() -> turret.setPosition(0)));
+    // RobotModeTriggers.test().and(driverController.y())
+    // .onTrue(Commands.runOnce(() -> turret.nudge(-180)));
+    // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop,
+    // turret));
 
     // --- Turret Field Hold ---
     // RobotModeTriggers.test().and(driverController.rightBumper())
