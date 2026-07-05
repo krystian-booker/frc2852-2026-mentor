@@ -182,24 +182,7 @@ public final class Constants {
 
     // SOTM (Shoot on the Move) constants
     public static final boolean SOTM_ENABLED = true;
-    public static final double AVERAGE_BALL_SPEED_MPS = 12.0; // Tune empirically
     public static final double SOTM_MAX_LEAD_METERS = 1.5; // Safety clamp on virtual target offset
-
-    // Fallback grids used when no calibration data has been generated
-    // Indexed by [row][col] matching CalibrationConstants grid dimensions
-    public static final double[][] HOOD_GRID_FALLBACK;
-    public static final double[][] FLYWHEEL_GRID_FALLBACK;
-
-    static {
-      HOOD_GRID_FALLBACK = new double[CalibrationConstants.GRID_ROWS][CalibrationConstants.GRID_COLS];
-      FLYWHEEL_GRID_FALLBACK = new double[CalibrationConstants.GRID_ROWS][CalibrationConstants.GRID_COLS];
-      for (int r = 0; r < CalibrationConstants.GRID_ROWS; r++) {
-        for (int c = 0; c < CalibrationConstants.GRID_COLS; c++) {
-          HOOD_GRID_FALLBACK[r][c] = CalibrationConstants.DEFAULT_HOOD_ANGLE;
-          FLYWHEEL_GRID_FALLBACK[r][c] = CalibrationConstants.DEFAULT_FLYWHEEL_RPM;
-        }
-      }
-    }
   }
 
   public static class IntakeActuatorConstants {
@@ -246,34 +229,74 @@ public final class Constants {
     public static final int GROUP_SECONDARY_CURRENT_LIMIT = 120;
   }
 
-  public static class CalibrationConstants {
-    // Field dimensions
-    public static final double FIELD_LENGTH_METERS = 16.54;
-    public static final double FIELD_WIDTH_METERS = 8.07;
+  /**
+   * Physical model and calibration defaults for the distance-based shot maps.
+   * See SHOOTER_TUNING.md for the calibration procedure.
+   */
+  public static class ShooterModelConstants {
+    /** Height of the hub rim opening above the carpet (6 ft). */
+    public static final double HUB_RIM_HEIGHT_METERS = 1.8288;
+    /** Height of the ball exit above the carpet. TODO: measure on the robot. */
+    public static final double SHOOTER_EXIT_HEIGHT_METERS = 0.60;
+    /** Lob shots land on the carpet. */
+    public static final double LOB_LANDING_HEIGHT_METERS = 0.0;
+    public static final double GRAVITY = 9.80665;
+
+    /** ToF fallback when ballistic geometry is degenerate or a map is empty. */
+    public static final double FALLBACK_BALL_SPEED_MPS = 12.0;
+    /** Re-recording within this distance replaces the previous point. */
+    public static final double POINT_MERGE_DISTANCE_METERS = 0.15;
+
+    /** Values used if a shot map has no points at all. */
+    public static final double EMPTY_MAP_HOOD_DEGREES = 15.0;
+    public static final double EMPTY_MAP_FLYWHEEL_RPM = 3000.0;
+
+    /** Fixed-point iterations of the SOTM time-of-flight solve. */
+    public static final int SOTM_ITERATIONS = 3;
+
+    // Defaults for the live dashboard tunables under Shooter/SOTM/*
+    /**
+     * Fraction of chassis velocity the ball keeps at release (0-1). 254's 2022
+     * reference implementation assumed 1.0; tune down if moving shots miss in
+     * the direction of travel (feeder friction / ball slip).
+     */
+    public static final double SOTM_VELOCITY_INHERITANCE_DEFAULT = 1.0;
+    /** Multiplier on vacuum time-of-flight to account for drag on the foam ball. */
+    public static final double SOTM_TOF_SCALE_DEFAULT = 1.05;
+    /** Seconds to project the robot pose forward for release latency. */
+    public static final double SOTM_RELEASE_LOOKAHEAD_SECONDS_DEFAULT = 0.10;
 
     /**
-     * Grid cell size in meters. Used for both UI display and 2D lookup table
-     * generation.
+     * Directory (under the operating dir, /home/lvuser on the roboRIO) where
+     * calibrated shot maps persist across deploys.
      */
-    public static final double GRID_CELL_SIZE_METERS = 0.5;
-    public static final double CALIBRATION_START_X = 0.0;
-    public static final double CALIBRATION_START_Y = 0.0;
-    public static final double CALIBRATION_END_X = FIELD_LENGTH_METERS;
-    public static final double CALIBRATION_END_Y = FIELD_WIDTH_METERS;
+    public static final String SHOTMAP_DIRECTORY = "shotmaps";
 
-    // Calculated grid size
-    public static final int GRID_COLS = (int) ((CALIBRATION_END_X - CALIBRATION_START_X) / GRID_CELL_SIZE_METERS) + 1;
-    public static final int GRID_ROWS = (int) ((CALIBRATION_END_Y - CALIBRATION_START_Y) / GRID_CELL_SIZE_METERS) + 1;
-
-    // Position tolerance for grid cell detection
-    public static final double POSITION_TOLERANCE_METERS = 0.15;
-
-    // Default values for inputs
-    public static final double DEFAULT_HOOD_ANGLE = 15.0;
-    public static final double DEFAULT_FLYWHEEL_RPM = 3000.0;
-
-    // Calibration file path on roboRIO
-    public static final String CALIBRATION_FILE_PATH = "/home/lvuser/deploy/calibration/turret_calibration_data.csv";
+    // Seed points distilled from the 2026-04-17 grid calibration session
+    // (median hood/RPM per 0.5 m distance bucket). {distance_m, hood_deg, rpm}
+    public static final double[][] HUB_DEFAULT_POINTS = {
+        { 1.5, 0.0, 2350 },
+        { 2.0, 10.5, 2550 },
+        { 2.5, 12.0, 2650 },
+        { 3.0, 15.0, 2725 },
+        { 3.5, 16.0, 2850 },
+        { 4.0, 18.0, 3000 },
+        { 4.5, 18.0, 3100 },
+        { 5.0, 18.0, 3250 },
+        { 5.5, 18.0, 3350 },
+        { 6.0, 18.0, 3425 },
+    };
+    public static final double[][] LOB_DEFAULT_POINTS = {
+        { 4.0, 24.2, 2820 },
+        { 5.0, 24.4, 2960 },
+        { 6.0, 24.5, 3340 },
+        { 7.0, 24.6, 3530 },
+        { 8.0, 24.7, 4220 },
+        { 9.0, 24.7, 4420 },
+        { 10.0, 24.75, 4520 },
+        { 11.0, 24.8, 4700 },
+        { 15.0, 24.85, 4700 },
+    };
   }
 
   public static class QuestNavConstants {

@@ -38,6 +38,7 @@ public class ShootCommand extends Command {
     private final Hood hood;
     private final Indexer indexer;
     private final Intake intake;
+    private final Turret turret;
     private final TurretAimingCalculator aimingCalculator;
     private final IntakeActuator intakeActuator;
     private final DiagnosticLogger shotLogger;
@@ -61,6 +62,7 @@ public class ShootCommand extends Command {
         this.hood = hood;
         this.indexer = indexer;
         this.intake = intake;
+        this.turret = turret;
         this.aimingCalculator = aimingCalculator;
         this.intakeActuator = intakeActuator;
         this.shotLogger = shotLogger;
@@ -81,6 +83,7 @@ public class ShootCommand extends Command {
         this.hood = hood;
         this.indexer = indexer;
         this.intake = intake;
+        this.turret = turret;
         this.aimingCalculator = aimingCalculator;
         this.intakeActuator = null;
         this.shotLogger = shotLogger;
@@ -99,14 +102,22 @@ public class ShootCommand extends Command {
 
     @Override
     public void execute() {
-        // Get flywheel RPM and hood angle from the SOTM solver
-        double targetRPM = aimingCalculator.getFlywheelRPM();
-        double targetHoodAngle = aimingCalculator.getHoodAngle();
+        // One coherent solution per loop: hood/RPM here and the turret angle in
+        // the turret default command come from the same solver state
+        var solution = aimingCalculator.solve();
+        double targetRPM = solution.flywheelRPM();
+        double targetHoodAngle = solution.hoodAngleDegrees();
 
         flywheel.setVelocity(targetRPM);
         hood.setPosition(targetHoodAngle);
 
-        if (!isFeeding && flywheel.atSetpoint()) {
+        // Hold fire until every mechanism is on target, not just the flywheel —
+        // feeding while the hood or turret is still moving is a guaranteed miss
+        if (!isFeeding
+                && flywheel.atSetpoint()
+                && hood.atPosition()
+                && turret.isAtPosition()
+                && solution.isReachable()) {
             isFeeding = true;
         }
 
@@ -133,6 +144,9 @@ public class ShootCommand extends Command {
         SmartDashboard.putNumber("Shoot/TargetRPM", targetRPM);
         SmartDashboard.putNumber("Shoot/TargetHoodAngle", targetHoodAngle);
         SmartDashboard.putBoolean("Shoot/Feeding", isFeeding);
+        SmartDashboard.putNumber("Shoot/DistanceMeters", solution.distanceMeters());
+        SmartDashboard.putNumber("Shoot/TimeOfFlight", solution.timeOfFlightSeconds());
+        SmartDashboard.putBoolean("Shoot/IsHubShot", solution.isHubShot());
 
         // Shot logging
         Pose2d pose = aimingCalculator.getRobotPose();

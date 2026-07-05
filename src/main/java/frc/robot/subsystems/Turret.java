@@ -24,7 +24,6 @@ import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
 import frc.robot.Constants.TurretConstants;
 import frc.robot.util.TurretAimingCalculator;
-import frc.robot.util.TurretAimingCalculator.AimingResult;
 
 import static edu.wpi.first.units.Units.*;
 
@@ -226,9 +225,9 @@ public class Turret extends SubsystemBase {
      */
     public Command aimAtTargetCommand(TurretAimingCalculator calculator) {
         return run(() -> {
-            AimingResult result = calculator.calculate();
-            if (result.isReachable()) {
-                setPosition(result.turretAngleDegrees());
+            var solution = calculator.solve();
+            if (solution.isReachable()) {
+                setPosition(solution.turretAngleDegrees(), solution.turretVelocityFFDegreesPerSecond());
             }
         }).withName("TurretAimAtTarget");
     }

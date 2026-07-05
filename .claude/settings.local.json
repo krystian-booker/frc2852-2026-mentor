@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npm run:*)",
-      "Bash(./gradlew build:*)"
+      "Bash(./gradlew build:*)",
+      "Skill(deep-research)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

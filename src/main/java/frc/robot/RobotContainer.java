@@ -4,7 +4,7 @@ import frc.robot.Constants.IntakeActuatorConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
 import frc.robot.Constants.TurretConstants;
-import frc.robot.Constants.CalibrationConstants;
+import frc.robot.commands.CalibrationCommand;
 import frc.robot.commands.DumbShootCommand;
 import frc.robot.commands.ShootCommand;
 import frc.robot.generated.TunerConstants;
@@ -33,9 +33,6 @@ import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.FollowPathCommand;
 
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.networktables.DoubleSubscriber;
-import edu.wpi.first.networktables.NetworkTable;
-import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.DigitalInput;
@@ -93,13 +90,6 @@ public class RobotContainer {
   // Auto setup
   private final SendableChooser<Command> autoChooser;
 
-  // Calibration webapp subscribers for test-mode default control
-  private final NetworkTable calibrationTable = NetworkTableInstance.getDefault().getTable("TurretCalibration");
-  private final DoubleSubscriber calibrationHoodAngleSub = calibrationTable.getDoubleTopic("Input/HoodAngle")
-      .subscribe(CalibrationConstants.DEFAULT_HOOD_ANGLE);
-  private final DoubleSubscriber calibrationFlywheelRPMSub = calibrationTable.getDoubleTopic("Input/FlywheelRPM")
-      .subscribe(CalibrationConstants.DEFAULT_FLYWHEEL_RPM);
-
   public RobotContainer() {
     DriverStation.silenceJoystickConnectionWarning(true);
 
@@ -130,7 +120,6 @@ public class RobotContainer {
       double stickY = operatorController.getLeftY();
       double magnitude = Math.hypot(stickX, stickY);
 
-      double turretSetpoint;
       if (magnitude > 0.15) {
         // Manual field-oriented override
         double fieldAngleRad = Math.atan2(-stickX, -stickY);
@@ -143,31 +132,20 @@ public class RobotContainer {
           turretAngleDeg += 360.0;
         if (turretAngleDeg > TurretConstants.MAX_POSITION_DEGREES)
           turretAngleDeg -= 360.0;
-        turretSetpoint = turretAngleDeg;
-        turret.setPosition(turretSetpoint);
+        turret.setPosition(turretAngleDeg);
       } else {
-        // Auto-aim at target with SOTM
-        var result = shooterCalculator.calculate();
-        turretSetpoint = result.turretAngleDegrees();
+        // Auto-aim at target with SOTM. The velocity feedforward covers both
+        // the bearing change from translation and counter-rotation against
+        // chassis yaw; flip its sign here if the turret drifts with the
+        // chassis instead of against it (see SHOOTER_TUNING.md).
+        var solution = shooterCalculator.solve();
+        turret.setPosition(solution.turretAngleDegrees(), solution.turretVelocityFFDegreesPerSecond());
 
-        // Feedforward: turret counter-rotates against chassis yaw to maintain field
-        // heading
-        double chassisOmega = shooterCalculator.getChassisOmegaDegreesPerSecond();
-        turret.setPosition(turretSetpoint, -chassisOmega);
+        SmartDashboard.putNumber("Turret/AimSetpointDeg", solution.turretAngleDegrees());
+        SmartDashboard.putNumber("Turret/AimVelocityFF", solution.turretVelocityFFDegreesPerSecond());
+        SmartDashboard.putNumber("Shoot/SolvedDistanceMeters", solution.distanceMeters());
       }
     }).withName("TurretAimWithOverride"));
-
-    hood.setDefaultCommand(hood.run(() -> {
-      if (DriverStation.isTest()) {
-        hood.setPosition(calibrationHoodAngleSub.get());
-      }
-    }).withName("HoodCalibrationWebappDefault"));
-
-    flywheel.setDefaultCommand(flywheel.run(() -> {
-      if (DriverStation.isTest()) {
-        flywheel.setVelocity(calibrationFlywheelRPMSub.get());
-      }
-    }).withName("FlywheelCalibrationWebappDefault"));
 
     // Configure normal bindings (always available)
     configureDriverBindings();
@@ -257,26 +235,38 @@ public class RobotContainer {
    * mode.
    */
   private void configureTestBindings() {
-    // Calibration session runs for all of test mode. Hood/flywheel continuously
-    // follow webapp setpoints via their default commands, and the right trigger
-    // only feeds game pieces.
-    // TurretCalibrationCommand calibrationCmd = new TurretCalibrationCommand(
-    // hood, flywheel, indexer,
-    // () -> drivetrain.getState().Pose, shooterCalculator,
-    // drivetrain, this::getDriveRequest, this::isDriverActive,
-    // () -> driverController.getRightTriggerAxis() > 0.5);
-    // RobotModeTriggers.test().whileTrue(calibrationCmd);
-    // RobotModeTriggers.test().and(driverController.rightTrigger(0.5)).whileTrue(
-    // Commands.parallel(
-    // indexer.feedCommand(),
-    // intake.runCommand())
-    // .withName("TurretCalibrationFeed"));
-    // RobotModeTriggers.test().onFalse(Commands.runOnce(() -> {
-    // hood.setNeutral();
-    // flywheel.stop();
-    // indexer.stop();
-    // intake.stop();
-    // }, hood, flywheel, indexer, intake));
+    // Shooter calibration session runs for all of test mode (SHOOTER_TUNING.md).
+    // Hood/flywheel follow the Calibration/HoodAngle and Calibration/FlywheelRPM
+    // dashboard values, the turret keeps auto-aiming via its default command,
+    // and the driver right trigger feeds balls.
+    CalibrationCommand calibrationCmd = new CalibrationCommand(hood, flywheel, shooterCalculator);
+    RobotModeTriggers.test().whileTrue(calibrationCmd);
+    RobotModeTriggers.test().and(driverController.rightTrigger(0.5)).whileTrue(
+        Commands.parallel(
+            indexer.feedCommand(),
+            intake.runCommand())
+            .withName("CalibrationFeed"));
+
+    // Driver A records the current hood/RPM at the current distance,
+    // driver B undoes the last recorded point
+    RobotModeTriggers.test().and(driverController.a())
+        .onTrue(Commands.runOnce(calibrationCmd::recordPoint));
+    RobotModeTriggers.test().and(driverController.b())
+        .onTrue(Commands.runOnce(calibrationCmd::undoLastPoint));
+
+    // Dashboard buttons (work alongside the controller bindings)
+    SmartDashboard.putData("Calibration/Record", Commands.runOnce(calibrationCmd::recordPoint)
+        .ignoringDisable(true).withName("Record"));
+    SmartDashboard.putData("Calibration/UndoLast", Commands.runOnce(calibrationCmd::undoLastPoint)
+        .ignoringDisable(true).withName("UndoLast"));
+    SmartDashboard.putData("Calibration/PrintMaps", Commands.runOnce(calibrationCmd::printMaps)
+        .ignoringDisable(true).withName("PrintMaps"));
+    SmartDashboard.putData("Calibration/ResetHubMap",
+        Commands.runOnce(() -> shooterCalculator.getHubMap().resetToDefaults())
+            .ignoringDisable(true).withName("ResetHubMap"));
+    SmartDashboard.putData("Calibration/ResetLobMap",
+        Commands.runOnce(() -> shooterCalculator.getLobMap().resetToDefaults())
+            .ignoringDisable(true).withName("ResetLobMap"));
 
     // --- Indexer ---
     // RobotModeTriggers.test().and(driverController.povUp()).whileTrue(indexer.feedCommand());
@@ -363,12 +353,6 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.start())
     // .onTrue(hood.zeroHoodCommand());
 
-  }
-
-  /** Returns true if the driver is actively providing joystick input. */
-  private boolean isDriverActive() {
-    double stickMag = Math.hypot(driverController.getLeftX(), driverController.getLeftY());
-    return stickMag > 0.1 || Math.abs(driverController.getRightX()) > 0.1;
   }
 
   /** Builds a field-centric drive request from driver joystick input. */
