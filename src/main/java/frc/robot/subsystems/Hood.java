@@ -16,11 +16,14 @@ import com.ctre.phoenix6.signals.GravityTypeValue;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import com.frc2852.mechid.CharacterizableSubsystem;
+import com.frc2852.mechid.MechIdConfig;
+import com.frc2852.mechid.MotorModel;
+
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
@@ -28,7 +31,7 @@ import frc.robot.Constants.HoodConstants;
 
 import static edu.wpi.first.units.Units.*;
 
-public class Hood extends SubsystemBase {
+public class Hood extends CharacterizableSubsystem {
 
     // Hardware
     private final TalonFX motor;
@@ -121,6 +124,31 @@ public class Hood extends SubsystemBase {
         if (!status.isOK()) {
             System.err.println("Failed to configure hood motor: " + status);
         }
+    }
+
+    /**
+     * MechID characterization setup. The hood MUST be homed (zeroHoodCommand) before
+     * running the routine — position limits are meaningless from an unhomed encoder;
+     * the RobotContainer binding chains homing in automatically.
+     *
+     * <p>Matches this subsystem's Arm_Cosine convention (position 0 at the reverse
+     * hard stop). If the hard stop is not where the hood's center of gravity is
+     * horizontal, set withArmHorizontalPosition to that position in rotations so kG
+     * is fit against the correct angle.
+     */
+    @Override
+    protected MechIdConfig configureMechId() {
+        return MechIdConfig.arm("hood", motor, MotorModel.KRAKEN_X44)
+                .withPositionRange(HoodConstants.MIN_POSITION_DEGREES / 360.0,
+                        HoodConstants.MAX_POSITION_DEGREES / 360.0)
+                // Only 25° of travel: excite gently and sample fast so each guarded
+                // pulse still yields useful data.
+                .withQuasistaticRamp(0.2, 2.5)
+                .withDynamicSteps(new double[] { 1.0, 1.5, 2.0 }, 1.0)
+                .withSampleRate(250)
+                .withMaxVelocityAbort(2.0 * HoodConstants.MOTION_MAGIC_CRUISE_VELOCITY / 360.0)
+                // Backstop only — the device's 40 A stator limit clamps first.
+                .withStatorCurrentAbort(50.0);
     }
 
     public void setPosition(double degrees) {

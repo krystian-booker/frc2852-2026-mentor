@@ -10,9 +10,12 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import com.frc2852.mechid.CharacterizableSubsystem;
+import com.frc2852.mechid.MechIdConfig;
+import com.frc2852.mechid.MotorModel;
+
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
@@ -20,7 +23,7 @@ import frc.robot.Constants.IntakeConstants;
 
 import static edu.wpi.first.units.Units.*;
 
-public class Intake extends SubsystemBase {
+public class Intake extends CharacterizableSubsystem {
 
     // Hardware
     private final TalonFX leftMotor;
@@ -76,6 +79,19 @@ public class Intake extends SubsystemBase {
         if (!status.isOK()) {
             System.err.println("Failed to configure intake " + name + " motor: " + status);
         }
+    }
+
+    /**
+     * MechID characterization setup. The two roller motors are independent (not
+     * follower-configured), so both are driven with the identical voltage during the
+     * routine — each motor's inversion config already makes +V = intake direction.
+     * Run with the intake clear of game pieces.
+     */
+    @Override
+    protected MechIdConfig configureMechId() {
+        return MechIdConfig.flywheel("intake", leftMotor, MotorModel.KRAKEN_X60)
+                .withSynchronizedMotors(rightMotor)
+                .withMaxVelocityAbort(115.0 / IntakeConstants.GEAR_RATIO);
     }
 
     public void runIntake() {

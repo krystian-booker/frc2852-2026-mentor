@@ -8,6 +8,10 @@ import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
+import com.frc2852.mechid.MotorModel;
+import com.frc2852.mechid.SwerveIdConfig;
+import com.frc2852.mechid.SwerveMechId;
+
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
@@ -26,6 +30,7 @@ import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 
+import frc.robot.generated.TunerConstants;
 import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
 
 /**
@@ -50,6 +55,17 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
     /** Swerve request to apply during robot-centric path following */
     private final SwerveRequest.ApplyRobotSpeeds m_pathApplyRobotSpeeds = new SwerveRequest.ApplyRobotSpeeds();
+
+    /**
+     * MechID characterization for drive and steer motors. The drive routine needs the
+     * robot lined up with ~4 m of open floor ahead. Run the steer routine with the
+     * robot sitting on carpet — azimuth friction comes mostly from the wheel scrubbing
+     * under the robot's weight, so unloaded (on-blocks) results are far off reality.
+     */
+    private final SwerveMechId m_mechId = new SwerveMechId(this,
+            new SwerveIdConfig(MotorModel.KRAKEN_X60, MotorModel.KRAKEN_X60)
+                    .withTravelMeters(4.0)
+                    .withWheelRadius(TunerConstants.FrontLeft.WheelRadius));
 
     /**
      * Constructs a CTRE SwerveDrivetrain using the specified constants.
@@ -167,6 +183,16 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
      */
     public Command applyRequest(Supplier<SwerveRequest> request) {
         return run(() -> this.setControl(request.get()));
+    }
+
+    /** MechID drive-motor routine. Line the robot up with ~4 m of open floor ahead. */
+    public Command mechIdDriveRoutine() {
+        return m_mechId.driveRoutine();
+    }
+
+    /** MechID steer-motor routine. Run with the robot on carpet so the wheels see match loads. */
+    public Command mechIdSteerRoutine() {
+        return m_mechId.steerRoutine();
     }
 
     @Override

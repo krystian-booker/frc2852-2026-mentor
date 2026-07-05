@@ -309,15 +309,46 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.leftBumper()).onTrue(Commands.runOnce(turret::stop,
     // turret));
 
-    // --- Turret System Identification (for MATLAB) ---
-    // Operator D-pad Up: runs all routines (Quasistatic → Steps → Coastdown)
-    // RobotModeTriggers.test().and(operatorController.povUp())
-    // .toggleOnTrue(new TurretSysIdCommand(turret,
-    // TurretSysIdCommand.Routine.ALL));
+    // --- MechID characterization (test mode only) ---
+    // Each routine records to /home/lvuser/mechid/<name>_<timestamp>/ on the RIO.
+    // Afterwards: `mechid pull --team 2852` then `mechid analyze <session>` on a
+    // laptop for feedforward, PID, Motion Magic, and current-limit recommendations.
+    // Press the button (or dashboard button) again to cancel — partial data is saved.
+    // Starting a routine interrupts the calibration command until test mode is
+    // re-entered.
 
-    // --- Flywheel System Identification (for MATLAB) ---
-    // RobotModeTriggers.test().and(driverController.back())
-    // .toggleOnTrue(new FlywheelSysIdCommand(flywheel));
+    // Hood must be homed before characterizing, since its limits are encoder-relative.
+    Command hoodMechId = hood.zeroHoodCommand().unless(hood::isHomed)
+        .andThen(hood.mechIdRoutine())
+        .withName("Hood MechID");
+
+    // IntakeActuator's encoder zeroes at boot in the retracted position; make sure it
+    // is actually retracted before the routine trusts its position limits.
+    Command actuatorMechId = intakeActuator.retract().withTimeout(3.0)
+        .andThen(intakeActuator.mechIdRoutine())
+        .withName("IntakeActuator MechID");
+
+    // Operator D-pad shortcuts for the most common four.
+    RobotModeTriggers.test().and(operatorController.povUp())
+        .toggleOnTrue(turret.mechIdRoutine());
+    RobotModeTriggers.test().and(operatorController.povRight())
+        .toggleOnTrue(flywheel.mechIdRoutine());
+    // Drive: line up with ~4 m of open floor ahead of the robot.
+    RobotModeTriggers.test().and(operatorController.povDown())
+        .toggleOnTrue(drivetrain.mechIdDriveRoutine());
+    // Steer: robot sitting on carpet — the wheels must carry match loads.
+    RobotModeTriggers.test().and(operatorController.povLeft())
+        .toggleOnTrue(drivetrain.mechIdSteerRoutine());
+
+    // Dashboard buttons for every characterizable mechanism (no-ops outside test mode).
+    SmartDashboard.putData("MechID/Turret", gatedMechId(turret.mechIdRoutine(), "Turret"));
+    SmartDashboard.putData("MechID/Flywheel", gatedMechId(flywheel.mechIdRoutine(), "Flywheel"));
+    SmartDashboard.putData("MechID/Hood", gatedMechId(hoodMechId, "Hood"));
+    SmartDashboard.putData("MechID/Intake", gatedMechId(intake.mechIdRoutine(), "Intake"));
+    SmartDashboard.putData("MechID/Indexer", gatedMechId(indexer.mechIdRoutine(), "Indexer"));
+    SmartDashboard.putData("MechID/IntakeActuator", gatedMechId(actuatorMechId, "IntakeActuator"));
+    SmartDashboard.putData("MechID/SwerveDrive", gatedMechId(drivetrain.mechIdDriveRoutine(), "SwerveDrive"));
+    SmartDashboard.putData("MechID/SwerveSteer", gatedMechId(drivetrain.mechIdSteerRoutine(), "SwerveSteer"));
 
     // --- Flywheel ---
     // RobotModeTriggers.test().and(driverController.a())
@@ -353,6 +384,14 @@ public class RobotContainer {
     // RobotModeTriggers.test().and(driverController.start())
     // .onTrue(hood.zeroHoodCommand());
 
+  }
+
+  /**
+   * Wraps a MechID routine for a dashboard button: does nothing unless the robot is
+   * in test mode, so a stray click while teleop-enabled can't start a characterization.
+   */
+  private Command gatedMechId(Command routine, String name) {
+    return routine.unless(() -> !DriverStation.isTest()).withName(name + " MechID");
   }
 
   /** Builds a field-centric drive request from driver joystick input. */

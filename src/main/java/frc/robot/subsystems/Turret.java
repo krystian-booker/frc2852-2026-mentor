@@ -16,9 +16,12 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
 
+import com.frc2852.mechid.CharacterizableSubsystem;
+import com.frc2852.mechid.MechIdConfig;
+import com.frc2852.mechid.MotorModel;
+
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
@@ -28,7 +31,7 @@ import frc.robot.util.TurretAngles;
 
 import static edu.wpi.first.units.Units.*;
 
-public class Turret extends SubsystemBase {
+public class Turret extends CharacterizableSubsystem {
 
     // Hardware
     private final TalonFX motor;
@@ -161,6 +164,23 @@ public class Turret extends SubsystemBase {
         if (!status.isOK()) {
             System.err.println("Failed to configure turret motor: " + status);
         }
+    }
+
+    /**
+     * MechID characterization setup. Run via {@code mechIdRoutine()} bound in test
+     * mode; analyze the recorded session with the MechID CLI to get new
+     * TurretConstants values.
+     */
+    @Override
+    protected MechIdConfig configureMechId() {
+        return MechIdConfig.turret("turret", motor, MotorModel.KRAKEN_X60)
+                .withPositionRange(TurretConstants.ENCODER_MIN_DEGREES / 360.0,
+                        TurretConstants.ENCODER_MAX_DEGREES / 360.0)
+                // Feedback is RemoteCANcoder (1:1 with the turret), so the device config
+                // can't tell MechID the motor gearing — provide it for current modeling.
+                .withRotorToMechanismRatio(TurretConstants.GEAR_RATIO)
+                .withMaxVelocityAbort(2.0)
+                .withStatorCurrentAbort(60.0);
     }
 
     public void setPosition(double aimDegrees) {

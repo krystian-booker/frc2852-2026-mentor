@@ -12,14 +12,17 @@ import com.revrobotics.spark.FeedbackSensor;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkFlexConfig;
 
+import com.frc2852.mechid.CharacterizableSubsystem;
+import com.frc2852.mechid.MechIdConfig;
+import com.frc2852.mechid.MotorModel;
+
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.Constants.CANIds;
 import frc.robot.Constants.IntakeActuatorConstants;
 
-public class IntakeActuator extends SubsystemBase {
+public class IntakeActuator extends CharacterizableSubsystem {
 
     // Hardware
     private final SparkFlex motor;
@@ -61,6 +64,22 @@ public class IntakeActuator extends SubsystemBase {
         }
 
         encoder.setPosition(0.0);
+    }
+
+    /**
+     * MechID characterization setup. Positions here are raw motor rotations
+     * (GEAR_RATIO constant is 1.0), so the arm-cosine gravity model cannot map
+     * rotations to a physical angle — the pivot is characterized as a gravity-less
+     * position mechanism and any gravity asymmetry folds into the directional
+     * friction fit. The encoder zeroes at boot: the routine must start from the
+     * physically retracted position (the RobotContainer binding retracts it first).
+     */
+    @Override
+    protected MechIdConfig configureMechId() {
+        return MechIdConfig.turret("intake_actuator", motor, MotorModel.NEO_VORTEX)
+                .withPositionRange(IntakeActuatorConstants.RETRACTED_POSITION,
+                        IntakeActuatorConstants.EXTENDED_POSITION)
+                .withMaxVelocityAbort(60.0);
     }
 
     public void driveExtend() {

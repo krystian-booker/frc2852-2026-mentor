@@ -15,10 +15,13 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import com.frc2852.mechid.CharacterizableSubsystem;
+import com.frc2852.mechid.MechIdConfig;
+import com.frc2852.mechid.MotorModel;
+
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
@@ -26,7 +29,7 @@ import frc.robot.Constants.FlywheelConstants;
 
 import static edu.wpi.first.units.Units.*;
 
-public class Flywheel extends SubsystemBase {
+public class Flywheel extends CharacterizableSubsystem {
 
     // Hardware
     private final TalonFX leaderMotor;
@@ -77,6 +80,20 @@ public class Flywheel extends SubsystemBase {
         // Optimize CAN bus utilization
         leaderMotor.optimizeBusUtilization();
         followerMotor.optimizeBusUtilization();
+    }
+
+    /**
+     * MechID characterization setup. The follower is recorded for the current budget
+     * but never commanded; it already mirrors the leader via the Follower request.
+     * Note: this subsystem drives with VelocityTorqueCurrentFOC, whose gains are in
+     * amps — use the amp-domain conversions from the MechID report, or switch to
+     * VelocityVoltage to use the voltage gains directly.
+     */
+    @Override
+    protected MechIdConfig configureMechId() {
+        return MechIdConfig.flywheel("flywheel", leaderMotor, MotorModel.KRAKEN_X60)
+                .withFollowers(followerMotor)
+                .withMaxVelocityAbort(100.0);
     }
 
     private void configureLeaderMotor() {
