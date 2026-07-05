@@ -1,11 +1,4 @@
 Fable 1:
-Next can you please investigate our turret aiming, its intended to aim at the hub while we're in our scoring zone and while not in our scoring zone it should be pointing towards the scoring zone. 
-Generally it works properly but I think there is a bug burried in it somewhere that I was unable to find. What I saw it majority of the time the turret would aim properly and then on rare random occassions the turret would just point in a random diffent directions away from the hub when we were in the scoring zone.
-Additionally I would notice some odd drift where the turret would be off by a few degrees which would cause use to miss our shots.
-
-Now our turret angle is based on our pose estimation (which comes from QuestNav, an app that runs on an Oculus Quest 3s that is on the robot). Can you investigate the whole pipeline of our turret aiming and see if you notice anything that would cause improper turret angles or positions?
-Feel free to generally imrpove that system, clean it up or make it more simple/readable while maintaing the existing functionality.
-
 
 
 Fable 2:
