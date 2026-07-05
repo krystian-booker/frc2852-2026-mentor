@@ -1,7 +1,3 @@
-Fable 1:
-
-
-Fable 2:
 For our FRC robot I'd like to have top tier tuning for our PID and Feed forward systems on our robot. In an attempt to accomplish this goal this year I attempted to write SysId scripts which could record data to a csv, then be imported into MatLab where we would perform automatic calibration and be able to use those values on our robot. 
 My attempts at this weren't great, you'll see them in the tuning folder and in the subsystems and I think could be mostly ignored other than viewing the general idea of what I was going for.
 I'd like you to put together a new library or couple of java files I can reuse year after year to perform this same task. The great part about this task is there really aren't that many types of mechanisms we use every year in FRC, we use:
@@ -34,3 +30,8 @@ Stateflow Toolbox
 System Identification Toolbox 
 
 python is available via uv
+
+For this project, I'm really leaning toward a vendor library that we and other teams can install, similar to the QuestNav vendor library, found here:
+https://github.com/QuestNav/QuestNav/tree/main/questnav-lib
+
+If you agree that a vendor library is the best way to go, I already created a new folder/repo in the parent folder repos/vendor-lib where you can do the vendor lib implementation, and then do the usage of the vendor-lib in this folder.

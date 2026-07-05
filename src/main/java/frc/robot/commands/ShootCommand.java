@@ -1,7 +1,9 @@
 package frc.robot.commands;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj.DriverStation;
+import frc.robot.Constants.TurretAimingConstants;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.Indexer;
@@ -33,6 +35,13 @@ import frc.robot.util.TurretAimingCalculator;
  * this command; its default aim command continues independently.
  */
 public class ShootCommand extends Command {
+
+    /**
+     * Once feeding, pause if the turret is pulled this far off its setpoint
+     * (target flip, seam unwind, pose jump) — keeping the feed running would
+     * spray balls in whatever direction the turret happens to pass through.
+     */
+    private static final double FEED_PAUSE_TURRET_ERROR_DEGREES = 10.0;
 
     private final Flywheel flywheel;
     private final Hood hood;
@@ -111,14 +120,29 @@ public class ShootCommand extends Command {
         flywheel.setVelocity(targetRPM);
         hood.setPosition(targetHoodAngle);
 
+        // True aim error: solved bearing vs measured turret position, on the
+        // shortest angular path. The turret's own at-position check compares
+        // against its commanded target, which can deliberately lag the
+        // solution (seam-hold hysteresis) — this must not count as aimed.
+        double aimErrorDegrees = Math.abs(MathUtil.inputModulus(
+                solution.turretAngleDegrees() - turret.getPositionDegrees(), -180.0, 180.0));
+
         // Hold fire until every mechanism is on target, not just the flywheel —
         // feeding while the hood or turret is still moving is a guaranteed miss
         if (!isFeeding
                 && flywheel.atSetpoint()
                 && hood.atPosition()
-                && turret.isAtPosition()
+                && aimErrorDegrees <= TurretAimingConstants.AIM_TOLERANCE_DEGREES
                 && solution.isReachable()) {
             isFeeding = true;
+        }
+
+        // Pause the volley if the shot stops being viable mid-stream (target
+        // flip, seam unwind, pose jump); the latch above re-arms once
+        // everything is back on target
+        if (isFeeding && (!solution.isReachable()
+                || aimErrorDegrees > FEED_PAUSE_TURRET_ERROR_DEGREES)) {
+            isFeeding = false;
         }
 
         // Always run group motors and intake
@@ -126,6 +150,9 @@ public class ShootCommand extends Command {
             indexer.runIndependentFeed();
             indexer.runGroupFeed();
             intake.runIntake();
+        } else {
+            indexer.stop();
+            intake.stop();
         }
 
         // Intake actuator control (teleop only)

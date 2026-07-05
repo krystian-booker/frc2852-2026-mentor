@@ -130,4 +130,49 @@ class TurretAimingCalculatorTest {
         assertTrue(!solution.isReachable());
         assertEquals(0.0, solution.flywheelRPM(), 1e-9);
     }
+
+    @Test
+    void zoneSelectionHasHysteresisAtBoundary() {
+        // Start clearly inside the Blue zone: hub shot
+        pose = new Pose2d(4.0, 4.0, Rotation2d.kZero);
+        assertTrue(calculator.solve().isHubShot());
+
+        // Drift just past the line, within the hysteresis band: still hub
+        pose = new Pose2d(TurretAimingConstants.BLUE_ZONE_MAX_X + 0.1, 4.0, Rotation2d.kZero);
+        assertTrue(calculator.solve().isHubShot(),
+                "pose noise past the boundary must not flip the target");
+
+        // Clearly past the band: switches to lob
+        pose = new Pose2d(TurretAimingConstants.BLUE_ZONE_MAX_X
+                + TurretAimingConstants.ZONE_HYSTERESIS_METERS + 0.1, 4.0, Rotation2d.kZero);
+        assertTrue(!calculator.solve().isHubShot());
+
+        // Re-entering flips back immediately at the line
+        pose = new Pose2d(TurretAimingConstants.BLUE_ZONE_MAX_X - 0.1, 4.0, Rotation2d.kZero);
+        assertTrue(calculator.solve().isHubShot());
+    }
+
+    @Test
+    void lobSideSelectionHasCenterlineHysteresis() {
+        // Neutral zone, below centerline: left lob target
+        pose = new Pose2d(8.0, 2.0, Rotation2d.kZero);
+        calculator.solve();
+        assertEquals(TurretAimingConstants.BLUE_LEFT_TARGET_POSITION, calculator.getLastTargetPosition());
+
+        // Just across the centerline, inside the band: still left
+        pose = new Pose2d(8.0, TurretAimingConstants.FIELD_CENTERLINE_Y + 0.1, Rotation2d.kZero);
+        calculator.solve();
+        assertEquals(TurretAimingConstants.BLUE_LEFT_TARGET_POSITION, calculator.getLastTargetPosition());
+
+        // Decisively across: right
+        pose = new Pose2d(8.0, TurretAimingConstants.FIELD_CENTERLINE_Y
+                + TurretAimingConstants.CENTERLINE_HYSTERESIS_METERS + 0.1, Rotation2d.kZero);
+        calculator.solve();
+        assertEquals(TurretAimingConstants.BLUE_RIGHT_TARGET_POSITION, calculator.getLastTargetPosition());
+
+        // Coming back inside the band keeps right until decisively below
+        pose = new Pose2d(8.0, TurretAimingConstants.FIELD_CENTERLINE_Y - 0.1, Rotation2d.kZero);
+        calculator.solve();
+        assertEquals(TurretAimingConstants.BLUE_RIGHT_TARGET_POSITION, calculator.getLastTargetPosition());
+    }
 }

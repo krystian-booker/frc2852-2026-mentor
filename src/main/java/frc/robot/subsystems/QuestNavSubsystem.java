@@ -9,6 +9,7 @@ import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -25,8 +26,9 @@ public class QuestNavSubsystem extends SubsystemBase {
     private final CommandSwerveDrivetrain drivetrain;
     private final Vision vision;
 
-    // Transform from robot center to Quest headset
+    // Transforms between robot center and Quest headset
     private final Transform3d robotToQuest;
+    private final Transform3d questToRobot;
 
     // Standard deviations for vision measurements
     private final Matrix<N3, N1> visionStdDevs;
@@ -51,6 +53,7 @@ public class QuestNavSubsystem extends SubsystemBase {
                         Math.toRadians(QuestNavConstants.QUEST_ROLL_OFFSET_DEGREES),
                         Math.toRadians(QuestNavConstants.QUEST_PITCH_OFFSET_DEGREES),
                         Math.toRadians(QuestNavConstants.QUEST_YAW_OFFSET_DEGREES)));
+        this.questToRobot = robotToQuest.inverse();
 
         // Build standard deviation matrix
         this.visionStdDevs = VecBuilder.fill(
@@ -65,29 +68,31 @@ public class QuestNavSubsystem extends SubsystemBase {
         // Required: must call commandPeriodic() every loop
         questNav.commandPeriodic();
 
-        // Process all unread pose frames
-        PoseFrame[] frames = questNav.getAllUnreadPoseFrames();
+        isConnected = questNav.isConnected();
 
-        for (PoseFrame frame : frames) {
-            if (frame.isTracking()) {
-                isConnected = true;
-
-                // Transform Quest pose to robot pose
-                Pose3d questPose = frame.questPose3d();
-                Pose3d robotPose3d = questPose.transformBy(robotToQuest.inverse());
-                Pose2d robotPose = robotPose3d.toPose2d();
-
-                latestRobotPose = robotPose;
-
-                // Only feed to drivetrain after seeded from vision
+        for (PoseFrame frame : questNav.getAllUnreadPoseFrames()) {
+            if (!frame.isTracking()) {
+                // Tracking loss (USB drop, camera occlusion) invalidates the
+                // Quest's pose stream. Stop feeding the estimator; the seeding
+                // command re-seeds automatically at the next 2-tag vision view.
                 if (isSeeded) {
-                    drivetrain.addVisionMeasurement(
-                            robotPose,
-                            frame.dataTimestamp(),
-                            visionStdDevs);
+                    DriverStation.reportWarning(
+                            "QuestNav lost tracking - waiting for vision reseed", false);
                 }
-            } else {
-                isConnected = false;
+                isSeeded = false;
+                continue;
+            }
+
+            // Transform Quest pose to robot pose
+            Pose3d robotPose3d = frame.questPose3d().transformBy(questToRobot);
+            latestRobotPose = robotPose3d.toPose2d();
+
+            // Only feed to drivetrain after seeded from vision
+            if (isSeeded) {
+                drivetrain.addVisionMeasurement(
+                        latestRobotPose,
+                        frame.dataTimestamp(),
+                        visionStdDevs);
             }
         }
 
@@ -119,12 +124,15 @@ public class QuestNavSubsystem extends SubsystemBase {
     }
 
     /**
-     * Attempts to immediately seed QuestNav pose from vision. Requires at least 2 visible tags for accurate seeding.
-     * 
-     * @return true if seeding was successful (valid vision pose with 2+ tags)
+     * Attempts to immediately seed QuestNav pose from vision. Requires the
+     * latest vision estimate to be a fresh multi-tag solve — a single-tag
+     * fallback (even with two tags in view across cameras) can be ambiguous
+     * and must never become the hard-reset pose.
+     *
+     * @return true if seeding was successful
      */
     public boolean seedPoseFromVision() {
-        if (vision.getVisibleTagCount() >= 2 && vision.hasRecentValidPose(0.5)) {
+        if (vision.getLatestEstimateTagCount() >= 2 && vision.hasRecentValidPose(0.5)) {
             var visionPose = vision.getLatestPose2d();
             if (visionPose.isPresent()) {
                 resetPose(visionPose.get());

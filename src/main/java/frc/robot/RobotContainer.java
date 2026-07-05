@@ -3,7 +3,6 @@ package frc.robot;
 import frc.robot.Constants.IntakeActuatorConstants;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.Constants.QuestNavConstants;
-import frc.robot.Constants.TurretConstants;
 import frc.robot.commands.CalibrationCommand;
 import frc.robot.commands.DumbShootCommand;
 import frc.robot.commands.ShootCommand;
@@ -121,18 +120,10 @@ public class RobotContainer {
       double magnitude = Math.hypot(stickX, stickY);
 
       if (magnitude > 0.15) {
-        // Manual field-oriented override
+        // Manual field-oriented override; setPosition normalizes into range
         double fieldAngleRad = Math.atan2(-stickX, -stickY);
         double robotHeadingRad = drivetrain.getState().Pose.getRotation().getRadians();
-        double turretAngleDeg = Math.toDegrees(fieldAngleRad - robotHeadingRad) %
-            360.0;
-        if (turretAngleDeg > 180.0)
-          turretAngleDeg -= 360.0;
-        else if (turretAngleDeg <= -180.0)
-          turretAngleDeg += 360.0;
-        if (turretAngleDeg > TurretConstants.MAX_POSITION_DEGREES)
-          turretAngleDeg -= 360.0;
-        turret.setPosition(turretAngleDeg);
+        turret.setPosition(Math.toDegrees(fieldAngleRad - robotHeadingRad));
       } else {
         // Auto-aim at target with SOTM. The velocity feedforward covers both
         // the bearing change from translation and counter-rotation against
@@ -210,20 +201,29 @@ public class RobotContainer {
   }
 
   /**
-   * Configure QuestNav seeding. Continuously reseeds QuestNav from vision
-   * whenever 2+ AprilTags are visible, in all robot modes.
+   * Configure QuestNav seeding. Seeds QuestNav (and the pose estimator) from
+   * vision once, then leaves the filter alone: QuestNav and the cameras keep
+   * feeding the estimator as weighted measurements every loop.
+   *
+   * <p>
+   * Seeding must NOT run continuously — resetPose() hard-snaps the estimator
+   * to the raw camera solve, so reseeding every loop replaces the fused pose
+   * with unfiltered vision noise (and one bad solve whips the turret off
+   * target). QuestNav re-seeds automatically when it reports tracking loss
+   * (USB disconnect, occlusion), or manually via the reseed button.
    */
   private void questNavInitialization() {
-    // Continuous reseeding: call seedPoseFromVision() every cycle in all modes.
-    // It internally checks for 2+ tags and a recent valid vision pose;
-    // when conditions aren't met it safely no-ops.
     questNav.setDefaultCommand(
-        Commands.run(() -> questNav.seedPoseFromVision(), questNav)
+        Commands.run(() -> {
+          if (!questNav.isSeeded()) {
+            questNav.seedPoseFromVision();
+          }
+        }, questNav)
             .ignoringDisable(true)
-            .withName("QuestNavContinuousReseed"));
+            .withName("QuestNavSeedWhenUnseeded"));
 
     // Reseed button: clears seeded state so QuestNav stops feeding drivetrain
-    // until next successful 2+ tag seed.
+    // until the next successful multi-tag seed.
     reseedButton.onTrue(
         Commands.runOnce(() -> questNav.clearSeeded())
             .ignoringDisable(true));

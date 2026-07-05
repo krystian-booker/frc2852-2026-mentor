@@ -134,9 +134,18 @@ public final class Constants {
     public static final double GEAR_RATIO = 50.0;
     public static final double ENCODER_MIN_DEGREES = -180.0;
     public static final double ENCODER_MAX_DEGREES = 180.0;
-    public static final double MIN_POSITION_DEGREES = ENCODER_MIN_DEGREES - FORWARD_ENCODER_POSITION_DEGREES; // -225
-    public static final double MAX_POSITION_DEGREES = ENCODER_MAX_DEGREES - FORWARD_ENCODER_POSITION_DEGREES; // +135
+    public static final double MIN_POSITION_DEGREES = ENCODER_MIN_DEGREES - FORWARD_ENCODER_POSITION_DEGREES; // -180
+    public static final double MAX_POSITION_DEGREES = ENCODER_MAX_DEGREES - FORWARD_ENCODER_POSITION_DEGREES; // +180
     public static final double SOFT_LIMIT_BUFFER_DEGREES = 5.0;
+
+    /**
+     * The turret range spans exactly 360°, so a target bearing sitting right on
+     * the ±180° seam flips between the two range limits with the tiniest pose
+     * noise — and every flip commands a full-revolution unwind. A new setpoint
+     * whose physical bearing change is smaller than this is ignored when it
+     * would command such an unwind.
+     */
+    public static final double WRAP_HYSTERESIS_DEGREES = 10.0;
 
     public static final double S = 1.2;
     public static final double V = 4.8862;
@@ -165,6 +174,16 @@ public final class Constants {
     public static final double BLUE_ZONE_MAX_X = 4.625;
     public static final double RED_ZONE_MIN_X = 11.905;
     public static final double FIELD_CENTERLINE_Y = 4.035;
+
+    /**
+     * Once inside the scoring zone, the robot must travel this far back past
+     * the boundary before the target switches to the lob shot. Without the
+     * band, pose noise at the line flips the turret between the hub and lob
+     * targets every loop.
+     */
+    public static final double ZONE_HYSTERESIS_METERS = 0.30;
+    /** Same idea for the left/right lob target split at the centerline. */
+    public static final double CENTERLINE_HYSTERESIS_METERS = 0.30;
 
     // Non-goal targets per alliance (used in neutral/opponent zone)
     public static final Translation2d BLUE_LEFT_TARGET_POSITION = new Translation2d(1.5, 2.5);

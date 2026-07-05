@@ -24,6 +24,7 @@ import frc.robot.Constants;
 import frc.robot.Constants.CANIds;
 import frc.robot.Constants.TurretConstants;
 import frc.robot.util.TurretAimingCalculator;
+import frc.robot.util.TurretAngles;
 
 import static edu.wpi.first.units.Units.*;
 
@@ -59,9 +60,17 @@ public class Turret extends SubsystemBase {
         configureCANCoder();
         configureMotor();
 
-        // Seed motor position from CANcoder so they agree on startup
-        // (avoids 360° wrapping mismatch between absolute position and fused position)
-        motor.setPosition(canCoder.getAbsolutePosition().getValue().in(Rotations));
+        // Seed motor position from the CANcoder absolute position so they agree
+        // on startup. waitForUpdate guarantees the signal carries real data —
+        // reading immediately after configuration can return a stale value and
+        // silently offset every subsequent aim by the difference.
+        var absolutePosition = canCoder.getAbsolutePosition().waitForUpdate(1.0);
+        if (absolutePosition.getStatus().isOK()) {
+            motor.setPosition(absolutePosition.getValue().in(Rotations));
+        } else {
+            System.err.println("Turret CANcoder absolute position not available at startup: "
+                    + absolutePosition.getStatus());
+        }
 
         // Cache status signals
         motorPosition = motor.getPosition();
@@ -168,15 +177,20 @@ public class Turret extends SubsystemBase {
      * @param velocityDegreesPerSecond  Desired turret velocity for feedforward (deg/s)
      */
     public void setPosition(double aimDegrees, double velocityDegreesPerSecond) {
-        // Wrap into turret range before clamping
-        if (aimDegrees > TurretConstants.MAX_POSITION_DEGREES) {
-            aimDegrees -= 360.0;
-        } else if (aimDegrees < TurretConstants.MIN_POSITION_DEGREES) {
-            aimDegrees += 360.0;
+        double wrapped = TurretAngles.normalizeToTurretRange(aimDegrees);
+
+        // Reject noise-induced flips across the range seam: when the target
+        // bearing sits right at the seam, tiny pose noise alternates the
+        // setpoint between the two range limits, each flip commanding a
+        // full-revolution unwind mid-match. Hold the previous target until the
+        // bearing moves decisively past the seam.
+        if (TurretAngles.isWrapFlip(targetPositionDegrees, wrapped)) {
+            wrapped = targetPositionDegrees;
         }
-        // Safety clamp (should rarely trigger after wrapping)
+
+        // Safety clamp (should never trigger after normalization)
         targetPositionDegrees = Math.max(TurretConstants.MIN_POSITION_DEGREES,
-                Math.min(TurretConstants.MAX_POSITION_DEGREES, aimDegrees));
+                Math.min(TurretConstants.MAX_POSITION_DEGREES, wrapped));
 
         // Convert aiming degrees to encoder degrees, then to rotations
         double encoderDegrees = targetPositionDegrees + TurretConstants.FORWARD_ENCODER_POSITION_DEGREES;
@@ -248,14 +262,8 @@ public class Turret extends SubsystemBase {
             // Capture the field-relative direction the turret is currently pointing
             fieldTarget[0] = getPositionDegrees() + robotHeadingSupplier.getAsDouble();
         }).andThen(run(() -> {
-            double turretAngle = fieldTarget[0] - robotHeadingSupplier.getAsDouble();
-            // Normalize to [-180, 180]
-            turretAngle = ((turretAngle % 360.0) + 540.0) % 360.0 - 180.0;
-            // Wrap into turret range
-            if (turretAngle > TurretConstants.MAX_POSITION_DEGREES) {
-                turretAngle -= 360.0;
-            }
-            setPosition(turretAngle);
+            // setPosition normalizes into the turret range itself
+            setPosition(fieldTarget[0] - robotHeadingSupplier.getAsDouble());
         })).withName("TurretFieldHold");
     }
 

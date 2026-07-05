@@ -15,7 +15,6 @@ import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.Timer;
 import frc.robot.Constants.ShooterModelConstants;
 import frc.robot.Constants.TurretAimingConstants;
-import frc.robot.Constants.TurretConstants;
 import frc.robot.util.ShotMap.ShotPoint;
 
 /**
@@ -55,6 +54,12 @@ public class TurretAimingCalculator {
     private Alliance cachedAlliance = Alliance.Blue;
     private double lastAllianceCheckTime = -10.0;
 
+    // Hysteresis state for target selection. Without a band around the zone
+    // boundary and centerline, pose noise flips the selected target every
+    // loop and the turret swings between very different bearings.
+    private boolean inOwnScoringZone = false;
+    private Boolean lobTargetOnRightSide = null;
+
     // Last solution, kept for telemetry/logging
     private ShotSolution lastSolution = ShotSolution.invalid();
     private Translation2d lastTargetPosition = new Translation2d();
@@ -63,7 +68,7 @@ public class TurretAimingCalculator {
      * A complete shot solution for the current robot state.
      *
      * @param turretAngleDegrees               Robot-relative turret setpoint,
-     *                                         within [-225, +135]
+     *                                         within the turret's range
      * @param turretVelocityFFDegreesPerSecond Rate the turret angle is changing
      *                                         due to chassis motion — feed to the
      *                                         turret as velocity feedforward
@@ -226,12 +231,24 @@ public class TurretAimingCalculator {
         return new CalibrationTarget(distance, isInOwnScoringZone(robotPose));
     }
 
-    /** True when the robot is inside its alliance's scoring zone. */
+    /**
+     * True when the robot is inside its alliance's scoring zone. Entering is
+     * decided exactly at the boundary; leaving requires driving
+     * {@link TurretAimingConstants#ZONE_HYSTERESIS_METERS} past it, so pose
+     * noise at the line can't rapidly flip the turret between the hub and the
+     * lob targets.
+     */
     public boolean isInOwnScoringZone(Pose2d robotPose) {
-        if (getAlliance() == Alliance.Blue) {
-            return robotPose.getX() < TurretAimingConstants.BLUE_ZONE_MAX_X;
+        // Positive depth = inside own zone
+        double depth = getAlliance() == Alliance.Blue
+                ? TurretAimingConstants.BLUE_ZONE_MAX_X - robotPose.getX()
+                : robotPose.getX() - TurretAimingConstants.RED_ZONE_MIN_X;
+        if (inOwnScoringZone) {
+            inOwnScoringZone = depth > -TurretAimingConstants.ZONE_HYSTERESIS_METERS;
+        } else {
+            inOwnScoringZone = depth > 0.0;
         }
-        return robotPose.getX() > TurretAimingConstants.RED_ZONE_MIN_X;
+        return inOwnScoringZone;
     }
 
     /**
@@ -247,26 +264,36 @@ public class TurretAimingCalculator {
      * @return Target position in field coordinates (meters)
      */
     public Translation2d getTargetPosition(Pose2d robotPose) {
-        Alliance alliance = getAlliance();
-        double robotY = robotPose.getY();
-
-        if (alliance == Alliance.Blue) {
-            if (isInOwnScoringZone(robotPose)) {
-                return TurretAimingConstants.BLUE_TARGET_POSITION;
-            } else if (robotY < TurretAimingConstants.FIELD_CENTERLINE_Y) {
-                return TurretAimingConstants.BLUE_LEFT_TARGET_POSITION;
-            } else {
-                return TurretAimingConstants.BLUE_RIGHT_TARGET_POSITION;
-            }
-        } else {
-            if (isInOwnScoringZone(robotPose)) {
-                return TurretAimingConstants.RED_TARGET_POSITION;
-            } else if (robotY < TurretAimingConstants.FIELD_CENTERLINE_Y) {
-                return TurretAimingConstants.RED_LEFT_TARGET_POSITION;
-            } else {
-                return TurretAimingConstants.RED_RIGHT_TARGET_POSITION;
-            }
+        boolean blue = getAlliance() == Alliance.Blue;
+        if (isInOwnScoringZone(robotPose)) {
+            return blue ? TurretAimingConstants.BLUE_TARGET_POSITION
+                    : TurretAimingConstants.RED_TARGET_POSITION;
         }
+        if (isLobTargetOnRightSide(robotPose)) {
+            return blue ? TurretAimingConstants.BLUE_RIGHT_TARGET_POSITION
+                    : TurretAimingConstants.RED_RIGHT_TARGET_POSITION;
+        }
+        return blue ? TurretAimingConstants.BLUE_LEFT_TARGET_POSITION
+                : TurretAimingConstants.RED_LEFT_TARGET_POSITION;
+    }
+
+    /**
+     * Chooses the left/right lob target with hysteresis around the field
+     * centerline, so driving along the centerline doesn't flip the turret
+     * between the two targets every loop.
+     */
+    private boolean isLobTargetOnRightSide(Pose2d robotPose) {
+        double y = robotPose.getY();
+        if (lobTargetOnRightSide == null) {
+            lobTargetOnRightSide = y >= TurretAimingConstants.FIELD_CENTERLINE_Y;
+        } else if (lobTargetOnRightSide) {
+            lobTargetOnRightSide = y > TurretAimingConstants.FIELD_CENTERLINE_Y
+                    - TurretAimingConstants.CENTERLINE_HYSTERESIS_METERS;
+        } else {
+            lobTargetOnRightSide = y > TurretAimingConstants.FIELD_CENTERLINE_Y
+                    + TurretAimingConstants.CENTERLINE_HYSTERESIS_METERS;
+        }
+        return lobTargetOnRightSide;
     }
 
     /** Returns the aim target position used in the last solve. */
@@ -302,33 +329,19 @@ public class TurretAimingCalculator {
      *
      * @param robotPose      The robot's current pose
      * @param targetPosition The target to aim at (field coordinates)
-     * @return Turret angle in degrees, within turret range [-225, +135]
+     * @return Turret angle in degrees, within the turret's commandable range
      */
     private double calculateTurretAngleToTarget(Pose2d robotPose, Translation2d targetPosition) {
         Translation2d turretPosition = getTurretFieldPosition(robotPose);
 
-        // Calculate field-relative angle to target
+        // Field-relative bearing to the target
         double fieldAngleRadians = Math.atan2(
                 targetPosition.getY() - turretPosition.getY(),
                 targetPosition.getX() - turretPosition.getX());
 
-        // Convert to robot-relative angle (subtract robot heading)
+        // Robot-relative angle (subtract robot heading), wrapped into range
         double robotRelativeRadians = fieldAngleRadians - robotPose.getRotation().getRadians();
-
-        // Normalize to (-180, +180) degrees
-        double turretAngleDegrees = Math.toDegrees(robotRelativeRadians) % 360.0;
-        if (turretAngleDegrees > 180.0) {
-            turretAngleDegrees -= 360.0;
-        } else if (turretAngleDegrees <= -180.0) {
-            turretAngleDegrees += 360.0;
-        }
-
-        // Wrap into turret's physical range [-225, +135]
-        if (turretAngleDegrees > TurretConstants.MAX_POSITION_DEGREES) {
-            turretAngleDegrees -= 360.0;
-        }
-
-        return turretAngleDegrees;
+        return TurretAngles.normalizeToTurretRange(Math.toDegrees(robotRelativeRadians));
     }
 
     /**

@@ -68,6 +68,7 @@ public class Vision extends SubsystemBase {
     private Matrix<N3, N1> curStdDevs = kSingleTagStdDevs;
     private Pose2d latestEstimate = new Pose2d();
     private double latestEstimateTimestamp = 0.0;
+    private int latestEstimateTagCount = 0;
 
     // Feeding control - can be disabled after QuestNav seeding
     private boolean feedingEnabled = true;
@@ -155,12 +156,15 @@ public class Vision extends SubsystemBase {
                             cam.currentStdDevs.get(1, 0) +
                             cam.currentStdDevs.get(2, 0);
 
-                    // Check if this is the best estimate so far
+                    // Check if this is the best estimate so far. Count the tags
+                    // the estimate actually used, not the tags in view — the
+                    // single-tag fallback can run while two tags are visible,
+                    // and its ambiguous solve must not get multi-tag trust.
                     if (stdDevSum < bestStdDevSum) {
                         bestStdDevSum = stdDevSum;
                         bestCamera = cam;
                         bestEstimate = visionEst.get();
-                        bestNumTags = result.getTargets().size();
+                        bestNumTags = visionEst.get().targetsUsed.size();
                     }
                 }
             }
@@ -176,6 +180,7 @@ public class Vision extends SubsystemBase {
         if (bestCamera != null && bestEstimate != null) {
             latestEstimate = bestEstimate.estimatedPose.toPose2d();
             latestEstimateTimestamp = bestEstimate.timestampSeconds;
+            latestEstimateTagCount = bestNumTags;
             curStdDevs = bestCamera.currentStdDevs;
 
             // Simulation debug visualization
@@ -276,11 +281,19 @@ public class Vision extends SubsystemBase {
 
     /**
      * Returns the timestamp of the latest pose estimate.
-     * 
+     *
      * @return Timestamp in seconds, or 0 if no estimate exists
      */
     public double getLatestEstimateTimestamp() {
         return latestEstimateTimestamp;
+    }
+
+    /**
+     * Returns the number of AprilTags used to compute the latest pose estimate
+     * (1 when it came from the single-tag lowest-ambiguity fallback).
+     */
+    public int getLatestEstimateTagCount() {
+        return latestEstimateTagCount;
     }
 
     /**
